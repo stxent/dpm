@@ -1,0 +1,58 @@
+choice
+	prompt "Controller family"
+	default FAMILY_LPC11XX
+
+	config FAMILY_LPC11XX
+		bool "NXP LPC11xx"
+
+	config FAMILY_LPC11EXX
+		bool "NXP LPC11Exx"
+
+	config FAMILY_LPC13XX
+		bool "NXP LPC13xx"
+
+	config FAMILY_LPC17XX
+		bool "NXP LPC175x and LPC176x"
+
+	config FAMILY_LPC43XX
+		bool "NXP LPC43xx"
+endchoice
+
+config CPU_FAMILY
+	string
+	default "LPC11XX"   if FAMILY_LPC11XX
+	default "LPC11EXX"  if FAMILY_LPC11EXX
+	default "LPC13XX"   if FAMILY_LPC13XX
+	default "LPC17XX"   if FAMILY_LPC17XX
+	default "LPC43XX"   if FAMILY_LPC43XX
+
+menu "Build options"
+
+choice
+	prompt "Optimization level"
+	default OPTIMIZATIONS_DISABLED
+
+	config OPTIMIZATIONS_DISABLED
+		bool "None"
+
+	config OPTIMIZATIONS_SIZE
+		bool "Size"
+
+	config OPTIMIZATIONS_FULL
+	  bool "Full"
+endchoice
+
+endmenu
+
+config OPTIMIZATIONS
+	string
+	default "none" if OPTIMIZATIONS_DISABLED
+	default "size" if OPTIMIZATIONS_SIZE
+	default "full" if OPTIMIZATIONS_FULL
+
+menu "Drivers"
+
+config DRIVERS_RGB_LED
+	bool "RGB LED driver"
+
+endmenu
