@@ -1,91 +1,61 @@
 #Copyright (C) 2015 xent
 #Project is distributed under the terms of the GNU General Public License v3.0
 
-PROJECT = dpm
-PROJECTDIR = $(shell pwd)
+PROJECT := dpm
+PROJECTDIR := $(shell pwd)
 
 CONFIG_FILE ?= .config
 CROSS_COMPILE ?= arm-none-eabi-
 
-#External libraries
-XCORE_PATH ?= $(PROJECTDIR)/../xcore
-HALM_PATH ?= $(PROJECTDIR)/../halm
-
 -include $(CONFIG_FILE)
+OPTION_NAMES += CORE CORE_TYPE PLATFORM PLATFORM_TYPE
 
-AR = $(CROSS_COMPILE)ar
-CC = $(CROSS_COMPILE)gcc
+#Nested makefiles
+include drivers/makefile
 
-ifeq ($(CONFIG_CPU_FAMILY),"LPC11XX")
-  CORE := m0
-  CORE_TYPE := cortex
-  PLATFORM := lpc11xx
-  PLATFORM_TYPE := nxp
+#Process configuration options
+define process-option
+  $(1) := $$(CONFIG_$(1):"%"=%)
+endef
 
-  #Platform-specific options
-  CPU_FLAGS := -mcpu=cortex-m0 -mthumb
-else ifeq ($(CONFIG_CPU_FAMILY),"LPC11EXX")
-  CORE := m0
-  CORE_TYPE := cortex
-  PLATFORM := lpc11exx
-  PLATFORM_TYPE := nxp
+$(foreach entry,$(OPTION_NAMES),$(eval $(call process-option,$(entry))))
 
-  #Platform-specific options
-  CPU_FLAGS := -mcpu=cortex-m0 -mthumb
-else ifeq ($(CONFIG_CPU_FAMILY),"LPC13XX")
-  CORE := m3
-  CORE_TYPE := cortex
-  PLATFORM := lpc13xx
-  PLATFORM_TYPE = nxp
-
-  #Platform-specific options
-  CPU_FLAGS := -mcpu=cortex-m3 -mthumb
-else ifeq ($(CONFIG_CPU_FAMILY),"LPC17XX")
-  CORE := m3
-  CORE_TYPE := cortex
-  PLATFORM := lpc17xx
-  PLATFORM_TYPE := nxp
-
-  #Platform-specific options
-  CPU_FLAGS := -mcpu=cortex-m3 -mthumb
-else ifeq ($(CONFIG_CPU_FAMILY),"LPC43XX")
-  CORE := m4
-  CORE_TYPE := cortex
-  PLATFORM := lpc43xx
-  PLATFORM_TYPE := nxp
-
-  #Platform-specific options
-  CPU_FLAGS := -mcpu=cortex-m4 -mthumb
-else
-  ifneq ($(MAKECMDGOALS),menuconfig)
-    $(error Target architecture is undefined)
-  endif
+#Determine build flags
+ifeq ($(CORE_TYPE),cortex)
+  AR := $(CROSS_COMPILE)ar
+  CC := $(CROSS_COMPILE)gcc
+  CPU_FLAGS += -mcpu=cortex-$(CORE) -mthumb
+  CPU_FLAGS += -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections
+else ifneq ($(MAKECMDGOALS),menuconfig)
+  $(error Target architecture is undefined)
 endif
 
 ifeq ($(CONFIG_OPTIMIZATIONS),"full")
-  OPT_FLAGS += -O3 -DNDEBUG
+  OPT_FLAGS := -O3 -DNDEBUG
 else ifeq ($(CONFIG_OPTIMIZATIONS),"size")
-  OPT_FLAGS += -Os -DNDEBUG
+  OPT_FLAGS := -Os -DNDEBUG
 else ifeq ($(CONFIG_OPTIMIZATIONS),"none")
-  OPT_FLAGS += -O0 -g3
+  OPT_FLAGS := -O0 -g3
 else
-  OPT_FLAGS += $(CONFIG_OPTIMIZATIONS)
+  OPT_FLAGS := $(CONFIG_OPTIMIZATIONS)
 endif
 
 #Configure common paths and libraries
-INCLUDEPATH += -Iinclude -I"$(XCORE_PATH)/include" -I"$(HALM_PATH)/include"
+INCLUDEPATH += -Iinclude
 OUTPUTDIR = build_$(PLATFORM)
+
+#External libraries
+XCORE_PATH ?= $(PROJECTDIR)/../xcore
+INCLUDEPATH += -I"$(XCORE_PATH)/include"
+HALM_PATH ?= $(PROJECTDIR)/../halm
+INCLUDEPATH += -I"$(HALM_PATH)/include"
 
 #Configure compiler options
 CFLAGS += -std=c11 -Wall -Wextra -Winline -pedantic -Wshadow
-CFLAGS += -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections
-CFLAGS += $(CPU_FLAGS) $(CONFIG_FLAGS) $(OPT_FLAGS)
+CFLAGS += $(OPT_FLAGS) $(CPU_FLAGS) $(CONFIG_FLAGS)
 CFLAGS += -D$(shell echo $(PLATFORM) | tr a-z A-Z)
 
-#Modules specific for selected platform
-include drivers/makefile
-
-#Setup build flags
+#Process project options
 define append-flag
   ifeq ($$($(1)),y)
     CONFIG_FLAGS += -D$(1)
@@ -97,18 +67,19 @@ endef
 $(foreach entry,$(FLAG_NAMES),$(eval $(call append-flag,$(entry))))
 
 #Configure targets
-PROJECT_FILE += $(OUTPUTDIR)/lib$(PROJECT).a
+LIBRARY_FILE += $(OUTPUTDIR)/lib$(PROJECT).a
+TARGETS += $(LIBRARY_FILE)
 
-TARGETS += $(PROJECT_FILE)
 COBJECTS = $(CSOURCES:%.c=$(OUTPUTDIR)/%.o)
 
+#Define default targets
 .PHONY: all clean menuconfig
 .SUFFIXES:
-.DEFAULT_GOAL=all
+.DEFAULT_GOAL = all
 
 all: $(TARGETS)
 
-$(PROJECT_FILE): $(COBJECTS)
+$(LIBRARY_FILE): $(COBJECTS)
 	$(AR) -r $@ $^
 
 $(OUTPUTDIR)/%.o: %.c

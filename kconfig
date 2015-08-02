@@ -18,13 +18,27 @@ choice
 		bool "NXP LPC43xx"
 endchoice
 
-config CPU_FAMILY
+config CORE
 	string
-	default "LPC11XX"   if FAMILY_LPC11XX
-	default "LPC11EXX"  if FAMILY_LPC11EXX
-	default "LPC13XX"   if FAMILY_LPC13XX
-	default "LPC17XX"   if FAMILY_LPC17XX
-	default "LPC43XX"   if FAMILY_LPC43XX
+	default m0          if FAMILY_LPC11XX || FAMILY_LPC11EXX
+	default m3          if FAMILY_LPC13XX || FAMILY_LPC17XX
+	default m4          if FAMILY_LPC43XX
+
+config CORE_TYPE
+	string
+	default cortex      if FAMILY_LPC11XX || FAMILY_LPC11EXX || FAMILY_LPC13XX || FAMILY_LPC17XX || FAMILY_LPC43XX
+
+config PLATFORM
+	string
+	default lpc11xx     if FAMILY_LPC11XX
+	default lpc11exx    if FAMILY_LPC11EXX
+	default lpc13xx     if FAMILY_LPC13XX
+	default lpc17xx     if FAMILY_LPC17XX
+	default lpc43xx     if FAMILY_LPC43XX
+
+config PLATFORM_TYPE
+	string
+	default nxp         if FAMILY_LPC11XX || FAMILY_LPC11EXX || FAMILY_LPC13XX || FAMILY_LPC17XX || FAMILY_LPC43XX
 
 menu "Build options"
 
@@ -39,16 +53,16 @@ choice
 		bool "Size"
 
 	config OPTIMIZATIONS_FULL
-	  bool "Full"
+		bool "Full"
 endchoice
-
-endmenu
 
 config OPTIMIZATIONS
 	string
 	default "none" if OPTIMIZATIONS_DISABLED
 	default "size" if OPTIMIZATIONS_SIZE
 	default "full" if OPTIMIZATIONS_FULL
+
+endmenu
 
 menu "Drivers"
 
