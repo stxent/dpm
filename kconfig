@@ -40,6 +40,13 @@ config PLATFORM_TYPE
 	string
 	default nxp         if FAMILY_LPC11XX || FAMILY_LPC11EXX || FAMILY_LPC13XX || FAMILY_LPC17XX || FAMILY_LPC43XX
 
+menu "Drivers"
+
+config DRIVERS_RGB_LED
+	bool "RGB LED driver"
+
+endmenu
+
 menu "Build options"
 
 choice
@@ -61,12 +68,5 @@ config OPTIMIZATIONS
 	default "none" if OPTIMIZATIONS_DISABLED
 	default "size" if OPTIMIZATIONS_SIZE
 	default "full" if OPTIMIZATIONS_FULL
-
-endmenu
-
-menu "Drivers"
-
-config DRIVERS_RGB_LED
-	bool "RGB LED driver"
 
 endmenu
