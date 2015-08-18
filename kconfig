@@ -45,6 +45,9 @@ menu "Drivers"
 config DRIVERS_RGB_LED
 	bool "RGB LED driver"
 
+config DRIVERS_SOFTWARE_PWM
+	bool "Software PWM driver"
+
 endmenu
 
 menu "Build options"
