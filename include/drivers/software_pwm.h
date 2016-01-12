@@ -1,11 +1,11 @@
 /*
- * software_pwm.h
+ * drivers/software_pwm.h
  * Copyright (C) 2015 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef SOFTWARE_PWM_H_
-#define SOFTWARE_PWM_H_
+#ifndef DRIVERS_SOFTWARE_PWM_H_
+#define DRIVERS_SOFTWARE_PWM_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <containers/list.h>
@@ -28,7 +28,7 @@ struct SoftwarePwmUnitConfig
 /*----------------------------------------------------------------------------*/
 struct SoftwarePwmUnit
 {
-  struct Entity parent;
+  struct Entity base;
 
   /* Hardware timer */
   struct Timer *timer;
@@ -47,12 +47,12 @@ struct SoftwarePwmConfig
   /** Optional: initial duration in timer ticks. */
   uint32_t duration;
   /** Mandatory: pin used as an output for modulated signal. */
-  pin_t pin;
+  pinNumber pin;
 };
 /*----------------------------------------------------------------------------*/
 struct SoftwarePwm
 {
-  struct Pwm parent;
+  struct Pwm base;
 
   /* Pointer to a parent unit */
   struct SoftwarePwmUnit *unit;
@@ -62,6 +62,6 @@ struct SoftwarePwm
   uint32_t duration;
 };
 /*----------------------------------------------------------------------------*/
-void *softwarePwmCreate(void *, pin_t, uint32_t);
+void *softwarePwmCreate(void *, pinNumber, uint32_t);
 /*----------------------------------------------------------------------------*/
-#endif /* SOFTWARE_PWM_H_ */
+#endif /* DRIVERS_SOFTWARE_PWM_H_ */

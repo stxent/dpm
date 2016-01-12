@@ -44,9 +44,11 @@ menu "Drivers"
 
 config DRIVERS_RGB_LED
 	bool "RGB LED driver"
+	default y
 
 config DRIVERS_SOFTWARE_PWM
 	bool "Software PWM driver"
+	default y
 
 endmenu
 

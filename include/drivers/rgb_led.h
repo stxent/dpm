@@ -1,11 +1,11 @@
 /*
- * rgb_led.h
+ * drivers/rgb_led.h
  * Copyright (C) 2015 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef RGB_LED_H_
-#define RGB_LED_H_
+#ifndef DRIVERS_RGB_LED_H_
+#define DRIVERS_RGB_LED_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <entity.h>
@@ -29,7 +29,7 @@ struct RgbLedConfig
 /*----------------------------------------------------------------------------*/
 struct RgbLed
 {
-  struct Entity parent;
+  struct Entity base;
 
   /* Color channels */
   struct Pwm *channels[3];
@@ -41,4 +41,4 @@ struct RgbLed
 /*----------------------------------------------------------------------------*/
 void rgbLedSet(struct RgbLed *, uint16_t, uint8_t, uint8_t);
 /*----------------------------------------------------------------------------*/
-#endif /* RGB_LED_H_ */
+#endif /* DRIVERS_RGB_LED_H_ */

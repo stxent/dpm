@@ -128,21 +128,14 @@ static enum result channelInit(void *object, const void *configBase)
 static void channelDeinit(void *object)
 {
   struct SoftwarePwmUnit * const unit = ((struct SoftwarePwm *)object)->unit;
-  struct ListNode *current;
-  struct SoftwarePwm *pwm;
 
   timerSetEnabled(unit->timer, false);
-  current = listFirst(&unit->channels);
-  while (current)
-  {
-    listData(&unit->channels, current, &pwm);
-    if (pwm == object)
-    {
-      listErase(&unit->channels, current);
-      break;
-    }
-    current = listNext(current);
-  }
+
+  struct ListNode * const node = listFind(&unit->channels, &object);
+
+  if (node)
+    listErase(&unit->channels, node);
+
   timerSetEnabled(unit->timer, true);
 }
 /*----------------------------------------------------------------------------*/
@@ -181,7 +174,7 @@ static enum result channelSetFrequency(void *object, uint32_t frequency)
   return updateFrequency(unit, frequency);
 }
 /*----------------------------------------------------------------------------*/
-void *softwarePwmCreate(void *unit, pin_t pin, uint32_t duration)
+void *softwarePwmCreate(void *unit, pinNumber pin, uint32_t duration)
 {
   const struct SoftwarePwmConfig channelConfig = {
       .parent = unit,
