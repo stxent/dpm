@@ -50,6 +50,10 @@ config DRIVERS_SOFTWARE_PWM
 	bool "Software PWM driver"
 	default y
 
+config DRIVERS_USB_MOUSE
+	bool "USB Mouse"
+	default y
+
 endmenu
 
 menu "Build options"

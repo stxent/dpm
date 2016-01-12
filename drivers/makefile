@@ -8,3 +8,7 @@ endif
 ifeq ($(CONFIG_DRIVERS_SOFTWARE_PWM),y)
   CSOURCES += drivers/software_pwm.c
 endif
+
+ifeq ($(CONFIG_DRIVERS_USB_MOUSE),y)
+  CSOURCES += drivers/usb/mouse.c
+endif
