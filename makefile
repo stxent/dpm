@@ -30,14 +30,20 @@ else ifneq ($(MAKECMDGOALS),menuconfig)
   $(error Target architecture is undefined)
 endif
 
+ifneq ($(CONFIG_ASSERTIONS),y)
+  OPT_FLAGS += -DNDEBUG
+endif
+
 ifeq ($(CONFIG_OPTIMIZATIONS),"full")
-  OPT_FLAGS := -O3 -DNDEBUG
+  OPT_FLAGS += -O3
 else ifeq ($(CONFIG_OPTIMIZATIONS),"size")
-  OPT_FLAGS := -Os -DNDEBUG
+  OPT_FLAGS += -Os
 else ifeq ($(CONFIG_OPTIMIZATIONS),"none")
-  OPT_FLAGS := -O0 -g3
+  OPT_FLAGS += -O0 -g3
+else ifeq ($(CONFIG_OPTIMIZATIONS),"debug")
+  OPT_FLAGS += -Og -g3
 else
-  OPT_FLAGS := $(CONFIG_OPTIMIZATIONS)
+  OPT_FLAGS += $(CONFIG_OPTIMIZATIONS)
 endif
 
 #Configure common paths and libraries
@@ -47,9 +53,8 @@ OPTION_FILE := $(OUTPUT_DIR)/.options
 
 #External libraries
 XCORE_PATH ?= $(PROJECT_DIR)/../xcore
-INCLUDE_PATH += -I"$(XCORE_PATH)/include"
 HALM_PATH ?= $(PROJECT_DIR)/../halm
-INCLUDE_PATH += -I"$(HALM_PATH)/include"
+INCLUDE_PATH += -I"$(XCORE_PATH)/include" -I"$(HALM_PATH)/include"
 
 #Configure compiler options
 CFLAGS += -std=c11 -Wall -Wextra -Winline -pedantic -Wshadow

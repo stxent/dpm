@@ -49,10 +49,9 @@ void rgbLedSet(struct RgbLed *led, uint16_t hue, uint8_t saturation,
       {0, 1, 3}
   };
 
-  const uint16_t intValue = (uint16_t)value * 100;
-  const uint16_t minValue = (uint16_t)(100 - saturation) * (uint16_t)value;
-  const uint16_t delta = ((uint32_t)(intValue - minValue)
-      * (uint32_t)(hue % 60)) / 60;
+  const uint16_t intValue = value * 100;
+  const uint16_t minValue = (100 - saturation) * value;
+  const uint16_t delta = ((intValue - minValue) * (hue % 60)) / 60;
 
   const uint16_t fill[4] = {
       intValue,
@@ -62,11 +61,11 @@ void rgbLedSet(struct RgbLed *led, uint16_t hue, uint8_t saturation,
   };
 
   const uint8_t hi = (hue / 60) % 6;
-  const uint32_t resolution = (uint32_t)led->resolution;
+  const uint32_t resolution = led->resolution;
   uint32_t values[3] = {
-      ((uint32_t)fill[mapping[hi][0]] * resolution) / (100 * 100),
-      ((uint32_t)fill[mapping[hi][1]] * resolution) / (100 * 100),
-      ((uint32_t)fill[mapping[hi][2]] * resolution) / (100 * 100)
+      (fill[mapping[hi][0]] * resolution) / (100 * 100),
+      (fill[mapping[hi][1]] * resolution) / (100 * 100),
+      (fill[mapping[hi][2]] * resolution) / (100 * 100)
   };
 
   if (led->inversion)

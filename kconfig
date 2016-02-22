@@ -83,6 +83,9 @@ choice
 
 	config OPTIMIZATIONS_FULL
 		bool "Full"
+
+	config OPTIMIZATIONS_DEBUG
+		bool "Debug"
 endchoice
 
 config OPTIMIZATIONS
@@ -90,5 +93,11 @@ config OPTIMIZATIONS
 	default "none" if OPTIMIZATIONS_DISABLED
 	default "size" if OPTIMIZATIONS_SIZE
 	default "full" if OPTIMIZATIONS_FULL
+	default "debug" if OPTIMIZATIONS_DEBUG
+
+config ASSERTIONS
+	bool "Enable assertions"
+	depends on (OPTIMIZATIONS_DISABLED || OPTIMIZATIONS_DEBUG)
+	default y
 
 endmenu
