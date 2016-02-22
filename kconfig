@@ -54,6 +54,19 @@ config DRIVERS_USB_MOUSE
 	bool "USB Mouse"
 	default y
 
+config DRIVERS_DISPLAYS_S6D1121
+	bool "S6D1121 display"
+	default y
+
+config DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO
+	bool "Memory bus on GPIO"
+	default y
+
+config DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA
+	bool "Memory bus on DMA"
+	default y
+	depends on FAMILY_LPC17XX || FAMILY_LPC43XX
+
 endmenu
 
 menu "Build options"

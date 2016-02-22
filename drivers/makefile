@@ -12,3 +12,18 @@ endif
 ifeq ($(CONFIG_DRIVERS_USB_MOUSE),y)
   CSOURCES += drivers/usb/mouse.c
 endif
+
+ifeq ($(CONFIG_DRIVERS_DISPLAYS_S6D1121),y)
+  CSOURCES += drivers/displays/s6d1121.c
+endif
+
+ifeq ($(CONFIG_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO),y)
+  CSOURCES += drivers/platform/nxp/memory_bus_gpio.c
+  CSOURCES += drivers/platform/nxp/memory_bus_gpio_timer.c
+endif
+
+ifeq ($(CONFIG_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA),y)
+  CSOURCES += drivers/platform/nxp/memory_bus_dma.c
+  CSOURCES += drivers/platform/nxp/memory_bus_dma_finalizer.c
+  CSOURCES += drivers/platform/nxp/memory_bus_dma_timer.c
+endif
