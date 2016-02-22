@@ -5,10 +5,8 @@
  */
 
 #include <assert.h>
-#include <stdlib.h>
-#include <string.h>
 #include <bits.h>
-#include <delay.h> //FIXME
+#include <delay.h>
 #include <drivers/displays/display.h>
 #include <drivers/displays/s6d1121.h>
 /*----------------------------------------------------------------------------*/
@@ -76,8 +74,8 @@ enum displayRegister
   REG_PANEL_SIGNAL_CONTROL_1          = 0x79,
   REG_PANEL_SIGNAL_CONTROL_2          = 0x7A,
 
-  /* System definitions */
-  DELAY_MS                          = 0xFF
+  /* Service definitions */
+  DELAY_MS                            = 0xFF
 };
 /*----------------------------------------------------------------------------*/
 struct DisplayPoint
@@ -93,7 +91,9 @@ struct InitEntry
 };
 /*----------------------------------------------------------------------------*/
 static struct DisplayPoint addressToPoint(uint32_t);
-static void interruptHandler(void *);
+static void deselectChip(struct S6D1121 *);
+static void selectChip(struct S6D1121 *);
+static void setOrientation(struct S6D1121 *, enum displayOrientation);
 static void setPosition(struct S6D1121 *, uint16_t, uint16_t);
 static void setWindow(struct S6D1121 *, uint16_t, uint16_t, uint16_t, uint16_t);
 static inline void writeAddress(struct S6D1121 *, enum displayRegister);
@@ -124,19 +124,19 @@ const struct InterfaceClass *S6D1121 = &displayTable;
 /*----------------------------------------------------------------------------*/
 static const struct InitEntry initSequence[] = {
     // TODO Delays
-    {REG_POWER_CONTROL_2,   0x2004},
-    {REG_POWER_CONTROL_4,   0xCC00},
-    {REG_POWER_CONTROL_6,   0x2600},
-    {REG_POWER_CONTROL_5,   0x252A},
-    {REG_POWER_CONTROL_3,   0x0033},
-    {REG_POWER_CONTROL_4,   0xCC04},
+    {REG_POWER_CONTROL_2, 0x2004},
+    {REG_POWER_CONTROL_4, 0xCC00},
+    {REG_POWER_CONTROL_6, 0x2600},
+    {REG_POWER_CONTROL_5, 0x252A},
+    {REG_POWER_CONTROL_3, 0x0033},
+    {REG_POWER_CONTROL_4, 0xCC04},
     {DELAY_MS, 1},
-    {REG_POWER_CONTROL_4,   0xCC06},
+    {REG_POWER_CONTROL_4, 0xCC06},
     {DELAY_MS, 1},
-    {REG_POWER_CONTROL_4,   0xCC4F},
+    {REG_POWER_CONTROL_4, 0xCC4F},
     {DELAY_MS, 1},
-    {REG_POWER_CONTROL_4,   0x674F},
-    {REG_POWER_CONTROL_2,   0x2003},
+    {REG_POWER_CONTROL_4, 0x674F},
+    {REG_POWER_CONTROL_2, 0x2003},
     {DELAY_MS, 1},
 
     /* Gamma settings */
@@ -155,9 +155,9 @@ static const struct InitEntry initSequence[] = {
     {REG_GAMMA_CONTROL_13,  0x0D00},
     {REG_GAMMA_CONTROL_14,  0x000D},
 
-    {REG_POWER_CONTROL_7,   0x0007},
+    {REG_POWER_CONTROL_7,               0x0007},
     {REG_LCD_DRIVING_WAVEFORM_CONTROL,  0x0013},
-    {REG_ENTRY_MODE,                    0x0003},
+    {REG_ENTRY_MODE,                    0x0000},
     {REG_DRIVER_OUTPUT_CONTROL,         0x0127},
     {DELAY_MS, 1},
     {REG_BLANK_PERIOD_CONTROL_1,        0x0303},
@@ -180,29 +180,50 @@ static const struct InitEntry initSequence[] = {
 /*----------------------------------------------------------------------------*/
 static struct DisplayPoint addressToPoint(uint32_t address)
 {
+  address >>= 1; /* Each pixel is 16-bit wide */
+
   const uint16_t y = address / DISPLAY_WIDTH;
   const uint16_t x = address % DISPLAY_WIDTH;
 
   return (struct DisplayPoint){x, y};
 }
 /*----------------------------------------------------------------------------*/
-static void interruptHandler(void *object __attribute__((unused)))
+static void deselectChip(struct S6D1121 *display)
 {
-//  struct S6D1121 *display = object;
+  if (!display->csExternal)
+    pinSet(display->cs);
+}
+/*----------------------------------------------------------------------------*/
+static void selectChip(struct S6D1121 *display)
+{
+  if (!display->csExternal)
+    pinReset(display->cs);
+}
+/*----------------------------------------------------------------------------*/
+static void setOrientation(struct S6D1121 *display,
+    enum displayOrientation orientation)
+{
+  selectChip(display);
+  writeRegister(display, REG_ENTRY_MODE, (uint16_t)orientation);
+  deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
 static void setPosition(struct S6D1121 *display, uint16_t x, uint16_t y)
 {
+  selectChip(display);
   writeRegister(display, REG_GRAM_ADDRESS_X, x);
   writeRegister(display, REG_GRAM_ADDRESS_Y, y);
+  deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
 static void setWindow(struct S6D1121 *display, uint16_t beginX,
     uint16_t beginY, uint16_t endX, uint16_t endY)
 {
+  selectChip(display);
   writeRegister(display, REG_HORIZONTAL_WINDOW_ADDRESS, beginX | (endX << 8));
   writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_END, endY);
   writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_BEGIN, beginY);
+  deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
 static inline void writeAddress(struct S6D1121 *display,
@@ -233,19 +254,25 @@ static enum result displayInit(void *object, const void *configPtr)
 {
   const struct S6D1121Config * const config = configPtr;
   struct S6D1121 *display = object;
-//  enum result res;
 
   assert(config->bus);
 
-//  if ((res = ifSet(config->bus, IF_ZEROCOPY, 0)) != E_OK)
-//    return res;
-//  if ((res = ifCallback(config->bus, interruptHandler, display)) != E_OK)
-//    return res;
-
-  display->cs = pinInit(config->cs);
-  if (!pinValid(display->cs))
+  display->reset = pinInit(config->reset);
+  if (!pinValid(display->reset))
     return E_VALUE;
-  pinOutput(display->cs, 1);
+  pinOutput(display->reset, 1);
+
+  if (config->cs)
+  {
+    display->cs = pinInit(config->cs);
+    if (!pinValid(display->cs))
+      return E_VALUE;
+    pinOutput(display->cs, 1);
+
+    display->csExternal = false;
+  }
+  else
+    display->csExternal = true;
 
   display->rs = pinInit(config->rs);
   if (!pinValid(display->rs))
@@ -254,11 +281,14 @@ static enum result displayInit(void *object, const void *configPtr)
 
   display->callback = 0;
   display->bus = config->bus;
-  display->window.x = 0;
-  display->window.y = 0;
 
-  pinReset(display->cs);
+  /* Reset display */
+  pinReset(display->reset);
+  mdelay(20);
+  pinSet(display->reset);
+  mdelay(20);
 
+  selectChip(display);
   for (unsigned int index = 0; index < ARRAY_SIZE(initSequence); ++index)
   {
     if (initSequence[index].address != DELAY_MS)
@@ -271,15 +301,10 @@ static enum result displayInit(void *object, const void *configPtr)
       mdelay(initSequence[index].value);
     }
   }
+  deselectChip(display);
 
-  //FIXME End copypaste
-  pinSet(display->cs);
-
-  //FIXME Rewrite
-  pinReset(display->cs);
   setWindow(display, 0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1);
   setPosition(display, 0, 0);
-  pinSet(display->cs);
 
   return E_OK;
 }
@@ -305,13 +330,15 @@ static enum result displayGet(void *object, enum ifOption option, void *data)
 
   switch ((enum ifDisplayOption)option)
   {
-    case IF_DISPLAY_WIDTH:
-      *(uint32_t *)data = DISPLAY_WIDTH;
-      return E_OK;
+    case IF_DISPLAY_RESOLUTION:
+    {
+      struct DisplayResolution * const resolution =
+          (struct DisplayResolution *)data;
 
-    case IF_DISPLAY_HEIGHT:
-      *(uint32_t *)data = DISPLAY_HEIGHT;
+      resolution->width = DISPLAY_WIDTH;
+      resolution->height = DISPLAY_HEIGHT;
       return E_OK;
+    }
 
     default:
       break;
@@ -334,31 +361,37 @@ static enum result displaySet(void *object, enum ifOption option,
 
   switch ((enum ifDisplayOption)option)
   {
-    case IF_DISPLAY_WINDOW_BEGIN:
+    case IF_DISPLAY_ORIENTATION:
     {
-      const struct DisplayPoint point = addressToPoint(*(const uint32_t *)data);
+      const enum displayOrientation orientation = *(const uint32_t *)data;
 
-      if (point.y >= DISPLAY_HEIGHT)
+      if (orientation >= DISPLAY_ORIENTATION_END)
+      {
         return E_VALUE;
-
-      display->window.x = point.x;
-      display->window.y = point.y;
-      return E_OK;
+      }
+      else
+      {
+        setOrientation(display, orientation);
+        return E_OK;
+      }
     }
 
-    case IF_DISPLAY_WINDOW_END:
+    case IF_DISPLAY_WINDOW:
     {
-      const struct DisplayPoint point = addressToPoint(*(const uint32_t *)data);
+      const struct DisplayWindow * const window =
+          (const struct DisplayWindow *)data;
 
-      if (point.y >= DISPLAY_HEIGHT)
+      if (window->begin.x >= window->end.x || window->begin.y >= window->end.y
+          || window->end.x >= DISPLAY_WIDTH || window->end.y >= DISPLAY_HEIGHT)
+      {
         return E_VALUE;
-
-      pinReset(display->cs);
-      setWindow(display, display->window.x, display->window.y,
-          point.x, point.y);
-      pinSet(display->cs);
-
-      return E_OK;
+      }
+      else
+      {
+        setWindow(display, window->begin.x, window->begin.y,
+            window->end.x, window->end.y);
+        return E_OK;
+      }
     }
 
     default:
@@ -374,10 +407,7 @@ static enum result displaySet(void *object, enum ifOption option,
       if (point.y >= DISPLAY_HEIGHT)
         return E_VALUE;
 
-      pinReset(display->cs);
       setPosition(display, point.x, point.y);
-      pinSet(display->cs);
-
       return E_OK;
     }
 
@@ -386,22 +416,32 @@ static enum result displaySet(void *object, enum ifOption option,
   }
 }
 /*----------------------------------------------------------------------------*/
-static size_t displayRead(void *object __attribute__((unused)),
-    void *buffer __attribute__((unused)),
-    size_t length __attribute__((unused)))
+static size_t displayRead(void *object, void *buffer, size_t length)
 {
-  return 0;
+  struct S6D1121 *display = object;
+  size_t bytesRead;
+
+  selectChip(display);
+  writeAddress(display, REG_GRAM_DATA);
+
+  pinSet(display->rs);
+  bytesRead = ifRead(display->bus, buffer, length);
+  deselectChip(display);
+
+  return bytesRead;
 }
 /*----------------------------------------------------------------------------*/
 static size_t displayWrite(void *object, const void *buffer, size_t length)
 {
   struct S6D1121 *display = object;
+  size_t bytesWritten;
 
-  pinReset(display->cs);
+  selectChip(display);
   writeAddress(display, REG_GRAM_DATA);
-  pinSet(display->rs);
-  ifWrite(display->bus, buffer, length);
-  pinSet(display->cs);
 
-  return length;
+  pinSet(display->rs);
+  bytesWritten = ifWrite(display->bus, buffer, length);
+  deselectChip(display);
+
+  return bytesWritten;
 }

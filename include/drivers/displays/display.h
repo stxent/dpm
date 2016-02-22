@@ -9,20 +9,47 @@
 /*----------------------------------------------------------------------------*/
 #include <interface.h>
 /*----------------------------------------------------------------------------*/
+enum displayOrientation
+{
+  DISPLAY_ORIENTATION_NORMAL,
+  DISPLAY_ORIENTATION_MIRROR_X,
+  DISPLAY_ORIENTATION_MIRROR_Y,
+  DISPLAY_ORIENTATION_MIRROR_XY,
+
+  DISPLAY_ORIENTATION_END
+};
+/*----------------------------------------------------------------------------*/
+struct DisplayResolution
+{
+  uint16_t width;
+  uint16_t height;
+};
+
+struct DisplayWindow
+{
+  struct {
+    uint16_t x;
+    uint16_t y;
+  } begin;
+
+  struct {
+    uint16_t x;
+    uint16_t y;
+  } end;
+};
+/*----------------------------------------------------------------------------*/
 /** Display options extending common interface options. */
 enum ifDisplayOption
 {
   /** Update information on the display immediately. */
   IF_DISPLAY_UPDATE = IF_OPTION_END,
 
-  /** Display width. */
-  IF_DISPLAY_WIDTH,
-  /** Display height. */
-  IF_DISPLAY_HEIGHT,
-  /** First address of the current display window. */
-  IF_DISPLAY_WINDOW_BEGIN,
-  /** Last address of the current display window. */
-  IF_DISPLAY_WINDOW_END
+  /** Display orientation. */
+  IF_DISPLAY_ORIENTATION,
+  /** Display resolution. */
+  IF_DISPLAY_RESOLUTION,
+  /** First and last addresses of the current display window. */
+  IF_DISPLAY_WINDOW
 };
 /*----------------------------------------------------------------------------*/
 #endif /* DRIVERS_DISPLAYS_DISPLAY_H_ */

@@ -17,8 +17,10 @@ struct S6D1121Config
 {
   /** Mandatory: memory interface. */
   struct Interface *bus;
-  /** Mandatory: pin used as Chip Select output. */
+  /** Optional: pin used as Chip Select output. */
   pinNumber cs;
+  /** Mandatory: pin used for display reset. */
+  pinNumber reset;
   /** Mandatory: pin used as Register Select output. */
   pinNumber rs;
 };
@@ -34,14 +36,13 @@ struct S6D1121
 
   /* Chip Select output */
   struct Pin cs;
+  /* Reset pin */
+  struct Pin reset;
   /* Register Select output used to distinguish command and data modes */
   struct Pin rs;
 
-  /* Buffered values for the starting point of the display window */
-  struct {
-    uint16_t x;
-    uint16_t y;
-  } window;
+  /* Chip Select pin is controlled externally */
+  bool csExternal;
 };
 /*----------------------------------------------------------------------------*/
 #endif /* S6D1121_H_ */
