@@ -1,11 +1,11 @@
 /*
- * s6d1121.h
+ * drivers/displays/s6d1121.h
  * Copyright (C) 2014 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef S6D1121_H_
-#define S6D1121_H_
+#ifndef DRIVERS_DISPLAYS_S6D1121_H_
+#define DRIVERS_DISPLAYS_S6D1121_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <interface.h>
@@ -29,9 +29,6 @@ struct S6D1121
 {
   struct Interface parent;
 
-  void (*callback)(void *);
-  void *callbackArgument;
-
   struct Interface *bus;
 
   /* Chip Select output */
@@ -45,4 +42,4 @@ struct S6D1121
   bool csExternal;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* S6D1121_H_ */
+#endif /* DRIVERS_DISPLAYS_S6D1121_H_ */

@@ -19,6 +19,12 @@ enum displayOrientation
   DISPLAY_ORIENTATION_END
 };
 /*----------------------------------------------------------------------------*/
+struct DisplayPoint
+{
+  uint16_t x;
+  uint16_t y;
+};
+
 struct DisplayResolution
 {
   uint16_t width;
@@ -48,7 +54,7 @@ enum ifDisplayOption
   IF_DISPLAY_ORIENTATION,
   /** Display resolution. */
   IF_DISPLAY_RESOLUTION,
-  /** First and last addresses of the current display window. */
+  /** Set first and last addresses of the current display window. */
   IF_DISPLAY_WINDOW
 };
 /*----------------------------------------------------------------------------*/

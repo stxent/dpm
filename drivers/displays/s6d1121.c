@@ -78,23 +78,15 @@ enum displayRegister
   DELAY_MS                            = 0xFF
 };
 /*----------------------------------------------------------------------------*/
-struct DisplayPoint
-{
-  uint16_t x;
-  uint16_t y;
-};
-
 struct InitEntry
 {
   uint16_t address;
   uint16_t value;
 };
 /*----------------------------------------------------------------------------*/
-static struct DisplayPoint addressToPoint(uint32_t);
 static void deselectChip(struct S6D1121 *);
 static void selectChip(struct S6D1121 *);
 static void setOrientation(struct S6D1121 *, enum displayOrientation);
-static void setPosition(struct S6D1121 *, uint16_t, uint16_t);
 static void setWindow(struct S6D1121 *, uint16_t, uint16_t, uint16_t, uint16_t);
 static inline void writeAddress(struct S6D1121 *, enum displayRegister);
 static inline void writeData(struct S6D1121 *, uint16_t);
@@ -178,16 +170,6 @@ static const struct InitEntry initSequence[] = {
     {REG_PANEL_SIGNAL_CONTROL_1,        0x0000}
 };
 /*----------------------------------------------------------------------------*/
-static struct DisplayPoint addressToPoint(uint32_t address)
-{
-  address >>= 1; /* Each pixel is 16-bit wide */
-
-  const uint16_t y = address / DISPLAY_WIDTH;
-  const uint16_t x = address % DISPLAY_WIDTH;
-
-  return (struct DisplayPoint){x, y};
-}
-/*----------------------------------------------------------------------------*/
 static void deselectChip(struct S6D1121 *display)
 {
   if (!display->csExternal)
@@ -208,21 +190,16 @@ static void setOrientation(struct S6D1121 *display,
   deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
-static void setPosition(struct S6D1121 *display, uint16_t x, uint16_t y)
+static void setWindow(struct S6D1121 *display, uint16_t x0, uint16_t y0,
+    uint16_t x1, uint16_t y1)
 {
   selectChip(display);
-  writeRegister(display, REG_GRAM_ADDRESS_X, x);
-  writeRegister(display, REG_GRAM_ADDRESS_Y, y);
-  deselectChip(display);
-}
-/*----------------------------------------------------------------------------*/
-static void setWindow(struct S6D1121 *display, uint16_t beginX,
-    uint16_t beginY, uint16_t endX, uint16_t endY)
-{
-  selectChip(display);
-  writeRegister(display, REG_HORIZONTAL_WINDOW_ADDRESS, beginX | (endX << 8));
-  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_END, endY);
-  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_BEGIN, beginY);
+  writeRegister(display, REG_HORIZONTAL_WINDOW_ADDRESS, x0 | (x1 << 8));
+  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_END, y1);
+  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_BEGIN, y0);
+
+  writeRegister(display, REG_GRAM_ADDRESS_X, x0);
+  writeRegister(display, REG_GRAM_ADDRESS_Y, y0);
   deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
@@ -253,7 +230,7 @@ static void writeRegister(struct S6D1121 *display, enum displayRegister address,
 static enum result displayInit(void *object, const void *configPtr)
 {
   const struct S6D1121Config * const config = configPtr;
-  struct S6D1121 *display = object;
+  struct S6D1121 * const display = object;
 
   assert(config->bus);
 
@@ -279,7 +256,6 @@ static enum result displayInit(void *object, const void *configPtr)
     return E_VALUE;
   pinOutput(display->rs, 0);
 
-  display->callback = 0;
   display->bus = config->bus;
 
   /* Reset display */
@@ -304,7 +280,6 @@ static enum result displayInit(void *object, const void *configPtr)
   deselectChip(display);
 
   setWindow(display, 0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1);
-  setPosition(display, 0, 0);
 
   return E_OK;
 }
@@ -314,19 +289,16 @@ static void displayDeinit(void *object __attribute__((unused)))
 
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayCallback(void *object, void (*callback)(void *),
-    void *argument)
+static enum result displayCallback(void *object __attribute__((unused)),
+    void (*callback)(void *) __attribute__((unused)),
+    void *argument __attribute__((unused)))
 {
-  struct S6D1121 *display = object;
-
-  display->callbackArgument = argument;
-  display->callback = callback;
-  return E_OK;
+  return E_ERROR;
 }
 /*----------------------------------------------------------------------------*/
 static enum result displayGet(void *object, enum ifOption option, void *data)
 {
-  struct S6D1121 *display = object;
+  struct S6D1121 * const display = object;
 
   switch ((enum ifDisplayOption)option)
   {
@@ -357,7 +329,7 @@ static enum result displayGet(void *object, enum ifOption option, void *data)
 static enum result displaySet(void *object, enum ifOption option,
     const void *data)
 {
-  struct S6D1121 *display = object;
+  struct S6D1121 * const display = object;
 
   switch ((enum ifDisplayOption)option)
   {
@@ -365,15 +337,13 @@ static enum result displaySet(void *object, enum ifOption option,
     {
       const enum displayOrientation orientation = *(const uint32_t *)data;
 
-      if (orientation >= DISPLAY_ORIENTATION_END)
-      {
-        return E_VALUE;
-      }
-      else
+      if (orientation < DISPLAY_ORIENTATION_END)
       {
         setOrientation(display, orientation);
         return E_OK;
       }
+      else
+        return E_VALUE;
     }
 
     case IF_DISPLAY_WINDOW:
@@ -381,34 +351,15 @@ static enum result displaySet(void *object, enum ifOption option,
       const struct DisplayWindow * const window =
           (const struct DisplayWindow *)data;
 
-      if (window->begin.x >= window->end.x || window->begin.y >= window->end.y
-          || window->end.x >= DISPLAY_WIDTH || window->end.y >= DISPLAY_HEIGHT)
-      {
-        return E_VALUE;
-      }
-      else
+      if (window->begin.x < window->end.x && window->begin.y < window->end.y
+          && window->end.x < DISPLAY_WIDTH && window->end.y < DISPLAY_HEIGHT)
       {
         setWindow(display, window->begin.x, window->begin.y,
             window->end.x, window->end.y);
         return E_OK;
       }
-    }
-
-    default:
-      break;
-  }
-
-  switch (option)
-  {
-    case IF_POSITION:
-    {
-      const struct DisplayPoint point = addressToPoint(*(const uint32_t *)data);
-
-      if (point.y >= DISPLAY_HEIGHT)
+      else
         return E_VALUE;
-
-      setPosition(display, point.x, point.y);
-      return E_OK;
     }
 
     default:
@@ -418,7 +369,7 @@ static enum result displaySet(void *object, enum ifOption option,
 /*----------------------------------------------------------------------------*/
 static size_t displayRead(void *object, void *buffer, size_t length)
 {
-  struct S6D1121 *display = object;
+  struct S6D1121 * const display = object;
   size_t bytesRead;
 
   selectChip(display);
@@ -433,7 +384,7 @@ static size_t displayRead(void *object, void *buffer, size_t length)
 /*----------------------------------------------------------------------------*/
 static size_t displayWrite(void *object, const void *buffer, size_t length)
 {
-  struct S6D1121 *display = object;
+  struct S6D1121 * const display = object;
   size_t bytesWritten;
 
   selectChip(display);
