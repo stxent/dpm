@@ -17,6 +17,10 @@ ifeq ($(CONFIG_DRIVERS_DISPLAYS_S6D1121),y)
   CSOURCES += drivers/displays/s6d1121.c
 endif
 
+ifeq ($(CONFIG_DRIVERS_DISPLAYS_ST7735),y)
+  CSOURCES += drivers/displays/st7735.c
+endif
+
 ifeq ($(CONFIG_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO),y)
   CSOURCES += drivers/platform/nxp/memory_bus_gpio.c
   CSOURCES += drivers/platform/nxp/memory_bus_gpio_timer.c

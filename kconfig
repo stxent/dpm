@@ -58,6 +58,10 @@ config DRIVERS_DISPLAYS_S6D1121
 	bool "S6D1121 display"
 	default y
 
+config DRIVERS_DISPLAYS_ST7735
+	bool "ST7735 display"
+	default y
+
 config DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO
 	bool "Memory bus on GPIO"
 	default y
