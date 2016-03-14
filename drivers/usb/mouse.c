@@ -26,20 +26,20 @@ static void sendReport(struct Mouse *, uint8_t, int8_t, int8_t);
 /*----------------------------------------------------------------------------*/
 static enum result mouseInit(void *, const void *);
 static void mouseDeinit(void *);
+static void mouseEvent(void *, unsigned int);
 static enum result mouseGetReport(void *, uint8_t, uint8_t, uint8_t *,
     uint16_t *, uint16_t);
 static enum result mouseSetReport(void *, uint8_t, uint8_t, const uint8_t *,
     uint16_t);
-static void mouseUpdateStatus(void *, uint8_t);
 /*----------------------------------------------------------------------------*/
 static const struct HidClass mouseTable = {
     .size = sizeof(struct Mouse),
     .init = mouseInit,
     .deinit = mouseDeinit,
 
+    .event = mouseEvent,
     .getReport = mouseGetReport,
-    .setReport = mouseSetReport,
-    .updateStatus = mouseUpdateStatus
+    .setReport = mouseSetReport
 };
 /*----------------------------------------------------------------------------*/
 const struct HidClass * const Mouse = &mouseTable;
@@ -168,6 +168,17 @@ static void mouseDeinit(void *object)
   Hid->deinit(object);
 }
 /*----------------------------------------------------------------------------*/
+static void mouseEvent(void *object, unsigned int event)
+{
+  struct Mouse * const device = object;
+
+  if (event == DEVICE_EVENT_RESET)
+  {
+    usbEpClear(device->txDataEp);
+    usbTrace("hid: reset completed");
+  }
+}
+/*----------------------------------------------------------------------------*/
 static enum result mouseGetReport(void *object __attribute__((unused)),
     uint8_t reportType, uint8_t reportId __attribute__((unused)),
     uint8_t *report, uint16_t *reportLength, uint16_t maxReportLength)
@@ -201,17 +212,6 @@ static enum result mouseSetReport(void *object __attribute__((unused)),
 
     default:
       return E_INVALID;
-  }
-}
-/*----------------------------------------------------------------------------*/
-static void mouseUpdateStatus(void *object, uint8_t status)
-{
-  struct Mouse * const device = object;
-
-  if (status & DEVICE_STATUS_RESET)
-  {
-    usbEpClear(device->txDataEp);
-    usbTrace("hid: reset completed");
   }
 }
 /*----------------------------------------------------------------------------*/

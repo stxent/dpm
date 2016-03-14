@@ -127,12 +127,14 @@ static void setOrientation(struct ST7735 *display,
 {
   const uint8_t buffer[] = {0x00, orientation << 6};
 
+  ifSet(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
 
   sendCommand(display, CMD_MADCTL);
   sendData(display, buffer, sizeof(buffer));
 
   pinSet(display->cs);
+  ifSet(display->bus, IF_RELEASE, 0);
 }
 /*----------------------------------------------------------------------------*/
 static void setWindow(struct ST7735 *display, uint8_t x0, uint8_t y0,
@@ -141,6 +143,7 @@ static void setWindow(struct ST7735 *display, uint8_t x0, uint8_t y0,
   const uint8_t xBuffer[] = {0x00, x0, 0x00, x1};
   const uint8_t yBuffer[] = {0x00, y0, 0x00, y1};
 
+  ifSet(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
 
   sendCommand(display, CMD_CASET);
@@ -150,6 +153,7 @@ static void setWindow(struct ST7735 *display, uint8_t x0, uint8_t y0,
   sendData(display, yBuffer, sizeof(yBuffer));
 
   pinSet(display->cs);
+  ifSet(display->bus, IF_RELEASE, 0);
 }
 /*----------------------------------------------------------------------------*/
 static inline void sendCommand(struct ST7735 *display,
@@ -202,6 +206,7 @@ static enum result displayInit(void *object, const void *configPtr)
   mdelay(120);
 
   /* Start of the initialization */
+  ifSet(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
 
   /*
@@ -239,6 +244,7 @@ static enum result displayInit(void *object, const void *configPtr)
 
   /* End of the initialization */
   pinSet(display->cs);
+  ifSet(display->bus, IF_RELEASE, 0);
 
   setWindow(display, 0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1);
 
@@ -333,6 +339,7 @@ static size_t displayRead(void *object, void *buffer, size_t length)
   struct ST7735 * const display = object;
   size_t bytesRead;
 
+  ifSet(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
   if (!display->gramActive)
   {
@@ -343,6 +350,7 @@ static size_t displayRead(void *object, void *buffer, size_t length)
   pinSet(display->rs);
   bytesRead = ifRead(display->bus, buffer, length);
   pinSet(display->cs);
+  ifSet(display->bus, IF_RELEASE, 0);
 
   return bytesRead;
 }
@@ -352,6 +360,7 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   struct ST7735 * const display = object;
   size_t bytesWritten;
 
+  ifSet(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
   if (!display->gramActive)
   {
@@ -362,6 +371,7 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   pinSet(display->rs);
   bytesWritten = ifWrite(display->bus, buffer, length);
   pinSet(display->cs);
+  ifSet(display->bus, IF_RELEASE, 0);
 
   return bytesWritten;
 }
