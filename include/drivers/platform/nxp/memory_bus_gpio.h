@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_
-#define DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_
+#ifndef DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_
+#define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_
 /*----------------------------------------------------------------------------*/
 #include <interface.h>
 #include <gpio_bus.h>
@@ -52,4 +52,4 @@ struct MemoryBusGpio
   bool blocking;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_ */
+#endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_ */

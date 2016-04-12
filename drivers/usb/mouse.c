@@ -124,7 +124,8 @@ static enum result mouseInit(void *object, const void *configBase)
   if ((res = Hid->init(object, &baseConfig)) != E_OK)
     return res;
 
-  device->txDataEp = usbDevCreateEndpoint(config->device, config->endpoint.interrupt);
+  device->txDataEp = usbDevCreateEndpoint(config->device,
+      config->endpoint.interrupt);
   if (!device->txDataEp)
     return E_ERROR;
 
@@ -148,6 +149,10 @@ static enum result mouseInit(void *object, const void *configBase)
     queuePush(&device->txRequestQueue, &request);
     ++request;
   }
+
+  /* All parts have been initialized, bind driver */
+  if ((res = hidBind(object)) != E_OK)
+    return res;
 
   return E_OK;
 }

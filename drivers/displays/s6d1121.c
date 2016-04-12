@@ -112,7 +112,7 @@ static const struct InterfaceClass displayTable = {
     .write = displayWrite
 };
 /*----------------------------------------------------------------------------*/
-const struct InterfaceClass *S6D1121 = &displayTable;
+const struct InterfaceClass * const S6D1121 = &displayTable;
 /*----------------------------------------------------------------------------*/
 static const struct InitEntry initSequence[] = {
     // TODO Delays

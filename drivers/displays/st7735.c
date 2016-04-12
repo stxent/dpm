@@ -103,7 +103,7 @@ static const struct InterfaceClass displayTable = {
     .write = displayWrite
 };
 /*----------------------------------------------------------------------------*/
-const struct InterfaceClass *ST7735 = &displayTable;
+const struct InterfaceClass * const ST7735 = &displayTable;
 /*----------------------------------------------------------------------------*/
 static void loadLUT(struct ST7735 *display)
 {

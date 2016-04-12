@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_SOFTWARE_PWM_H_
-#define DRIVERS_SOFTWARE_PWM_H_
+#ifndef DPM_DRIVERS_SOFTWARE_PWM_H_
+#define DPM_DRIVERS_SOFTWARE_PWM_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <containers/list.h>
@@ -64,4 +64,4 @@ struct SoftwarePwm
 /*----------------------------------------------------------------------------*/
 void *softwarePwmCreate(void *, pinNumber, uint32_t);
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_SOFTWARE_PWM_H_ */
+#endif /* DPM_DRIVERS_SOFTWARE_PWM_H_ */

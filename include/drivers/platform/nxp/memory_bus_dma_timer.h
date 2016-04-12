@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_TIMER_H_
-#define DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_TIMER_H_
+#ifndef DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_TIMER_H_
+#define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_TIMER_H_
 /*----------------------------------------------------------------------------*/
 #include <platform/nxp/gptimer_base.h>
 /*----------------------------------------------------------------------------*/
@@ -56,4 +56,4 @@ struct MemoryBusDmaTimer
 /*----------------------------------------------------------------------------*/
 uint8_t memoryBusDmaTimerPrimaryChannel(const struct MemoryBusDmaTimer *);
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_TIMER_H_ */
+#endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_TIMER_H_ */

@@ -4,14 +4,14 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_DISPLAYS_ST7735_H_
-#define DRIVERS_DISPLAYS_ST7735_H_
+#ifndef DPM_DRIVERS_DISPLAYS_ST7735_H_
+#define DPM_DRIVERS_DISPLAYS_ST7735_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <interface.h>
 #include <pin.h>
 /*----------------------------------------------------------------------------*/
-extern const struct InterfaceClass *ST7735;
+extern const struct InterfaceClass * const ST7735;
 /*----------------------------------------------------------------------------*/
 struct ST7735Config
 {
@@ -41,4 +41,4 @@ struct ST7735
   bool gramActive;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_DISPLAYS_ST7735_H_ */
+#endif /* DPM_DRIVERS_DISPLAYS_ST7735_H_ */

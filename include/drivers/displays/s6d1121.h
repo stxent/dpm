@@ -4,14 +4,14 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_DISPLAYS_S6D1121_H_
-#define DRIVERS_DISPLAYS_S6D1121_H_
+#ifndef DPM_DRIVERS_DISPLAYS_S6D1121_H_
+#define DPM_DRIVERS_DISPLAYS_S6D1121_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <interface.h>
 #include <pin.h>
 /*----------------------------------------------------------------------------*/
-extern const struct InterfaceClass *S6D1121;
+extern const struct InterfaceClass * const S6D1121;
 /*----------------------------------------------------------------------------*/
 struct S6D1121Config
 {
@@ -42,4 +42,4 @@ struct S6D1121
   bool csExternal;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_DISPLAYS_S6D1121_H_ */
+#endif /* DPM_DRIVERS_DISPLAYS_S6D1121_H_ */

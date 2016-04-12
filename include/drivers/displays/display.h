@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_DISPLAYS_DISPLAY_H_
-#define DRIVERS_DISPLAYS_DISPLAY_H_
+#ifndef DPM_DRIVERS_DISPLAYS_DISPLAY_H_
+#define DPM_DRIVERS_DISPLAYS_DISPLAY_H_
 /*----------------------------------------------------------------------------*/
 #include <interface.h>
 /*----------------------------------------------------------------------------*/
@@ -58,4 +58,4 @@ enum ifDisplayOption
   IF_DISPLAY_WINDOW
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_DISPLAYS_DISPLAY_H_ */
+#endif /* DPM_DRIVERS_DISPLAYS_DISPLAY_H_ */

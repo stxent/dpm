@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_RGB_LED_H_
-#define DRIVERS_RGB_LED_H_
+#ifndef DPM_DRIVERS_RGB_LED_H_
+#define DPM_DRIVERS_RGB_LED_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
 #include <entity.h>
@@ -41,4 +41,4 @@ struct RgbLed
 /*----------------------------------------------------------------------------*/
 void rgbLedSet(struct RgbLed *, uint16_t, uint8_t, uint8_t);
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_RGB_LED_H_ */
+#endif /* DPM_DRIVERS_RGB_LED_H_ */

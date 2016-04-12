@@ -34,7 +34,6 @@ static const struct TimerClass timerTable = {
     .value = tmrValue
 };
 /*----------------------------------------------------------------------------*/
-extern const struct PinEntry gpTimerMatchPins[];
 const struct TimerClass * const MemoryBusDmaTimer = &timerTable;
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
@@ -87,7 +86,7 @@ static enum result tmrInit(void *object, const void *configPtr)
 
   if (config->input)
   {
-    const uint32_t captureChannel = gpTimerConfigCapturePin(config->channel,
+    const uint8_t captureChannel = gpTimerConfigCapturePin(config->channel,
         config->input, PIN_PULLDOWN);
 
     /* Clock polarity depends on control signal type */

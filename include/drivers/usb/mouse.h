@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_USB_MOUSE_H_
-#define DRIVERS_USB_MOUSE_H_
+#ifndef DPM_DRIVERS_USB_MOUSE_H_
+#define DPM_DRIVERS_USB_MOUSE_H_
 /*----------------------------------------------------------------------------*/
 #include <stdint.h>
 #include <containers/queue.h>
@@ -40,4 +40,4 @@ struct Mouse
 void mouseMovePointer(struct Mouse *, int8_t, int8_t);
 void mouseClick(struct Mouse *, uint8_t);
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_USB_MOUSE_H_ */
+#endif /* DPM_DRIVERS_USB_MOUSE_H_ */

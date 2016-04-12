@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_
-#define DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_
+#ifndef DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_
+#define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_
 /*----------------------------------------------------------------------------*/
 #include <dma.h>
 #include <drivers/platform/nxp/memory_bus_dma_timer.h>
@@ -37,4 +37,4 @@ struct MemoryBusDmaFinalizer
 enum result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *);
 void memoryBusDmaFinalizerStop(struct MemoryBusDmaFinalizer *);
 /*----------------------------------------------------------------------------*/
-#endif /* DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_ */
+#endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_ */
