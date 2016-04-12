@@ -54,6 +54,10 @@ config DRIVERS_USB_MOUSE
 	bool "USB Mouse"
 	default y
 
+config DRIVERS_DISPLAYS_HD44780
+	bool "HD44780 series"
+	default y
+
 config DRIVERS_DISPLAYS_S6D1121
 	bool "S6D1121 display"
 	default y

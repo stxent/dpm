@@ -13,6 +13,10 @@ ifeq ($(CONFIG_DRIVERS_USB_MOUSE),y)
   CSOURCES += drivers/usb/mouse.c
 endif
 
+ifeq ($(CONFIG_DRIVERS_DISPLAYS_HD44780),y)
+  CSOURCES += drivers/displays/hd44780.c
+endif
+
 ifeq ($(CONFIG_DRIVERS_DISPLAYS_S6D1121),y)
   CSOURCES += drivers/displays/s6d1121.c
 endif
