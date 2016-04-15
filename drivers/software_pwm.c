@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <error.h>
+#include <irq.h>
 #include <drivers/software_pwm.h>
 /*----------------------------------------------------------------------------*/
 #define FREQUENCY_MULTIPLIER 2
@@ -58,7 +59,7 @@ static void interruptHandler(void *object)
   while (current)
   {
     listData(&unit->channels, current, &pwm);
-    pinWrite(pwm->pin, iteration > pwm->duration);
+    pinWrite(pwm->pin, pwm->enabled && iteration > pwm->duration);
     current = listNext(current);
   }
 }
@@ -106,21 +107,19 @@ static enum result channelInit(void *object, const void *configBase)
   const struct SoftwarePwmConfig * const config = configBase;
   struct SoftwarePwm * const pwm = object;
   struct SoftwarePwmUnit * const unit = config->parent;
+  irqState state;
 
   pwm->pin = pinInit(config->pin);
-  if (!pinValid(pwm->pin))
-  {
-    /* Pin does not exist or cannot be used */
-    return E_VALUE;
-  }
+  assert(pinValid(pwm->pin));
   pinOutput(pwm->pin, 0);
 
   pwm->unit = unit;
-  pwm->duration = config->duration;
+  pwm->enabled = false;
+  pwm->duration = 0;
 
-  timerSetEnabled(unit->timer, false);
+  state = irqSave();
   listPush(&unit->channels, &pwm);
-  timerSetEnabled(unit->timer, true);
+  irqRestore(state);
 
   return E_OK;
 }
@@ -129,56 +128,62 @@ static void channelDeinit(void *object)
 {
   struct SoftwarePwmUnit * const unit = ((struct SoftwarePwm *)object)->unit;
 
-  timerSetEnabled(unit->timer, false);
-
+  const irqState state = irqSave();
   struct ListNode * const node = listFind(&unit->channels, &object);
 
   if (node)
     listErase(&unit->channels, node);
 
-  timerSetEnabled(unit->timer, true);
+  irqRestore(state);
 }
 /*----------------------------------------------------------------------------*/
 static uint32_t channelGetResolution(const void *object)
 {
-  const struct SoftwarePwmUnit * const unit =
-      ((struct SoftwarePwm *)object)->unit;
+  const struct SoftwarePwm * const pwm = object;
 
-  return unit->resolution;
+  return pwm->unit->resolution;
 }
 /*----------------------------------------------------------------------------*/
 static void channelSetDuration(void *object, uint32_t duration)
 {
   struct SoftwarePwm * const pwm = object;
+  const uint32_t resolution = pwm->unit->resolution;
 
-  pwm->duration = duration;
+  pwm->duration = duration <= resolution ? duration : resolution;
 }
 /*----------------------------------------------------------------------------*/
-static void channelSetEdges(void *object, uint32_t leading, uint32_t trailing)
+static void channelSetEdges(void *object,
+    uint32_t leading __attribute__((unused)), uint32_t trailing)
 {
-  struct SoftwarePwm * const pwm = object;
-
   assert(leading == 0);
-  pwm->duration = trailing;
+
+  channelSetDuration(object, trailing);
 }
 /*----------------------------------------------------------------------------*/
 static void channelSetEnabled(void *object, bool state)
 {
-  //TODO
+  struct SoftwarePwm * const pwm = object;
+
+  pwm->enabled = state;
 }
 /*----------------------------------------------------------------------------*/
 static enum result channelSetFrequency(void *object, uint32_t frequency)
 {
-  struct SoftwarePwmUnit * const unit = ((struct SoftwarePwm *)object)->unit;
+  struct SoftwarePwm * const pwm = object;
 
-  return updateFrequency(unit, frequency);
+  return updateFrequency(pwm->unit, frequency);
 }
 /*----------------------------------------------------------------------------*/
-void *softwarePwmCreate(void *unit, pinNumber pin, uint32_t duration)
+/**
+ * Create single edge software PWM channel.
+ * @param unit Pointer to a SoftwarePwmUnit object.
+ * @param pin Pin used as a signal output.
+ * @return Pointer to a new SoftwarePwm object on success or zero on error.
+ */
+void *softwarePwmCreate(void *unit, pinNumber pin)
 {
   const struct SoftwarePwmConfig channelConfig = {
       .parent = unit,
-      .duration = duration,
       .pin = pin
   };
 

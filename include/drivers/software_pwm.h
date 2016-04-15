@@ -44,8 +44,6 @@ struct SoftwarePwmConfig
 {
   /** Mandatory: peripheral unit. */
   struct SoftwarePwmUnit *parent;
-  /** Optional: initial duration in timer ticks. */
-  uint32_t duration;
   /** Mandatory: pin used as an output for modulated signal. */
   pinNumber pin;
 };
@@ -56,12 +54,14 @@ struct SoftwarePwm
 
   /* Pointer to a parent unit */
   struct SoftwarePwmUnit *unit;
-  /* Pin descriptor */
-  struct Pin pin;
   /* Current duration */
   uint32_t duration;
+  /* Pin descriptor */
+  struct Pin pin;
+  /* Enables generation  of the signal */
+  bool enabled;
 };
 /*----------------------------------------------------------------------------*/
-void *softwarePwmCreate(void *, pinNumber, uint32_t);
+void *softwarePwmCreate(void *, pinNumber);
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_SOFTWARE_PWM_H_ */

@@ -23,11 +23,10 @@ static enum result ledInit(void *object, const void *configBase)
   const struct RgbLedConfig * const config = configBase;
   struct RgbLed * const led = object;
 
-  led->inversion = config->inversion;
-  led->resolution = config->resolution;
   led->channels[0] = config->red;
   led->channels[1] = config->green;
   led->channels[2] = config->blue;
+  led->resolution = pwmGetResolution(led->channels[0]);
 
   return E_OK;
 }
@@ -67,13 +66,6 @@ void rgbLedSet(struct RgbLed *led, uint16_t hue, uint8_t saturation,
       (fill[mapping[hi][1]] * resolution) / (100 * 100),
       (fill[mapping[hi][2]] * resolution) / (100 * 100)
   };
-
-  if (led->inversion)
-  {
-    values[0] = resolution - values[0];
-    values[1] = resolution - values[1];
-    values[2] = resolution - values[2];
-  }
 
   pwmSetDuration(led->channels[0], values[0]);
   pwmSetDuration(led->channels[1], values[1]);

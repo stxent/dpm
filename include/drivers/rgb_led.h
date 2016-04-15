@@ -21,10 +21,6 @@ struct RgbLedConfig
   struct Pwm *green;
   /** Mandatory: blue channel. */
   struct Pwm *blue;
-  /** Mandatory: resolution. */
-  uint16_t resolution;
-  /** Optional: signal inversion. */
-  bool inversion;
 };
 /*----------------------------------------------------------------------------*/
 struct RgbLed
@@ -35,8 +31,6 @@ struct RgbLed
   struct Pwm *channels[3];
   /* Signal resolution */
   uint16_t resolution;
-  /* Enable signal inversion */
-  bool inversion;
 };
 /*----------------------------------------------------------------------------*/
 void rgbLedSet(struct RgbLed *, uint16_t, uint8_t, uint8_t);
