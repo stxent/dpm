@@ -67,27 +67,22 @@ void setupGpio(struct MemoryBusDma *interface,
 
   interface->width = (number >> 3) - 1;
 
-  uint8_t previousOffset = firstPinKey.offset;
-  bool firstPin = true;
-
   for (unsigned int index = 0; index < number; ++index)
   {
     const struct Pin pin = pinInit(config->pins[index]);
     assert(pinValid(pin));
 
-    pinOutput(pin, 0);
-
-    if (firstPin)
+    if (index)
     {
-      firstPin = false;
-      interface->gpioAddress = pinAddress(pin);
+      assert(pin.data.port == firstPinKey.port);
+      assert(pin.data.offset == firstPinKey.offset + index);
     }
     else
     {
-      assert(pin.data.offset == previousOffset + 1);
+      interface->gpioAddress = pinAddress(pin);
     }
 
-    previousOffset = pin.data.offset;
+    pinOutput(pin, 0);
   }
 }
 /*----------------------------------------------------------------------------*/

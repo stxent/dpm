@@ -59,11 +59,6 @@ static void interruptHandler(void *object)
 static enum result busInit(void *object, const void *configPtr)
 {
   const struct MemoryBusGpioConfig * const config = configPtr;
-  const struct GpioBusConfig busConfig = {
-      .pins = config->pins,
-      .initial = 0,
-      .direction = PIN_OUTPUT
-  };
   const struct MemoryBusGpioTimerConfig timerConfig = {
       .frequency = config->frequency,
       .cycle = config->cycle,
@@ -74,20 +69,16 @@ static enum result busInit(void *object, const void *configPtr)
   };
   struct MemoryBusGpio *interface = object;
 
-  interface->bus = init(GpioBus, &busConfig);
-  if (!interface->bus)
-    return E_ERROR;
+  assert(config->bus);
 
   interface->timer = init(MemoryBusGpioTimer, &timerConfig);
   if (!interface->timer)
-  {
-    deinit(interface->bus);
     return E_ERROR;
-  }
   timerCallback(interface->timer, interruptHandler, interface);
 
   interface->active = false;
   interface->blocking = true;
+  interface->bus = config->bus;
   interface->callback = 0;
 
   return E_OK;
@@ -98,7 +89,6 @@ static void busDeinit(void *object)
   struct MemoryBusGpio * const interface = object;
 
   deinit(interface->timer);
-  deinit(interface->bus);
 }
 /*----------------------------------------------------------------------------*/
 static enum result busCallback(void *object, void (*callback)(void *),

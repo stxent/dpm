@@ -16,12 +16,12 @@ extern const struct InterfaceClass *MemoryBusGpio;
 /*----------------------------------------------------------------------------*/
 struct MemoryBusGpioConfig
 {
-  /** Mandatory: timer frequency. */
-  uint32_t frequency;
+  /** Mandatory: external bus interface. */
+  struct GpioBus *bus;
   /** Mandatory: period of a memory cycle in timer ticks. */
   uint32_t cycle;
-  /** Mandatory: pointer to an array of data output pins. */
-  const pinNumber *pins;
+  /** Mandatory: timer frequency. */
+  uint32_t frequency;
   /** Mandatory: memory control signal. */
   pinNumber strobe;
   /** Optional: timer interrupt priority. */
@@ -42,9 +42,9 @@ struct MemoryBusGpio
   struct GpioBus *bus;
   struct Timer *timer;
 
-  /* Pointer to a buffer with outgoing data */
+  /* Pointer to a buffer to be transmitted */
   const uint8_t *buffer;
-  /* Bytes to be transmitted */
+  /* Number of bytes to be transmitted */
   uint32_t left;
   /* Transmission is currently active */
   bool active;
