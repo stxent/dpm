@@ -53,8 +53,9 @@ void setupGpio(struct MemoryBusDma *interface,
 {
   assert(config->pins);
 
-  union PinData firstPinKey;
-  firstPinKey.key = ~config->pins[0];
+  struct PinData firstPinKey;
+  firstPinKey.port = PIN_TO_PORT(config->pins[0]);
+  firstPinKey.offset = PIN_TO_OFFSET(config->pins[0]);
 
   /* First pin number should be aligned along byte boundary */
   assert(!(firstPinKey.offset & 0x07));

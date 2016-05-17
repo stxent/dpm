@@ -37,10 +37,10 @@ struct HD44780
   uint8_t *buffer;
   /* Command buffer */
   uint8_t command[4];
-  /* Cursor position on the screen */
-  struct DisplayPoint position;
   /* Display resolution */
   struct DisplayResolution resolution;
+  /* Active region of the display */
+  struct DisplayWindow window;
   /* Register Select output used to distinguish command and data modes */
   struct Pin rs;
 

@@ -17,8 +17,9 @@
 /*----------------------------------------------------------------------------*/
 struct ReportUsbRequest
 {
-  struct UsbRequestBase base;
-  uint8_t buffer[REPORT_PACKET_SIZE];
+  struct UsbRequest base;
+
+  uint8_t payload[REPORT_PACKET_SIZE];
 };
 /*----------------------------------------------------------------------------*/
 static void deviceDataSent(void *, struct UsbRequest *, enum usbRequestStatus);
@@ -96,7 +97,7 @@ static void sendReport(struct Mouse *device, uint8_t buttons,
     struct UsbRequest *request;
     queuePop(&device->txRequestQueue, &request);
 
-    request->base.length = 3;
+    request->length = 3;
     request->buffer[0] = buttons;
     request->buffer[1] = (uint8_t)dx;
     request->buffer[2] = (uint8_t)dy;
@@ -144,8 +145,8 @@ static enum result mouseInit(void *object, const void *configBase)
 
   for (uint8_t index = 0; index < REQUEST_QUEUE_SIZE; ++index)
   {
-    usbRequestInit((struct UsbRequest *)request, REPORT_PACKET_SIZE,
-        deviceDataSent, device);
+    usbRequestInit((struct UsbRequest *)request, request->payload,
+        sizeof(request->payload), deviceDataSent, device);
     queuePush(&device->txRequestQueue, &request);
     ++request;
   }
@@ -177,7 +178,7 @@ static void mouseEvent(void *object, unsigned int event)
 {
   struct Mouse * const device = object;
 
-  if (event == DEVICE_EVENT_RESET)
+  if (event == USB_DEVICE_EVENT_RESET)
   {
     usbEpClear(device->txDataEp);
     usbTrace("hid: reset completed");

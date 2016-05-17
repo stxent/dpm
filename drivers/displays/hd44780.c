@@ -41,13 +41,16 @@
 #define HD44780_2_LINES                 BIT(3)
 #define HD44780_BUS_4BIT                0
 #define HD44780_BUS_8BIT                BIT(4)
+
+/* Set position */
+#define HD44780_POSITION                0x80
 /*----------------------------------------------------------------------------*/
 enum state
 {
-  HD44780_IDLE = 0,
-  HD44780_RESET,
-  HD44780_WRITE_ADDRESS,
-  HD44780_WRITE_DATA
+  STATE_IDLE,
+  STATE_RESET,
+  STATE_WRITE_ADDRESS,
+  STATE_WRITE_DATA
 };
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
@@ -78,38 +81,38 @@ const struct InterfaceClass * const HD44780 = &displayTable;
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
 {
-  struct HD44780 *display = object;
+  struct HD44780 * const display = object;
 
   switch (display->state)
   {
-    case HD44780_WRITE_ADDRESS:
+    case STATE_WRITE_ADDRESS:
     {
-      const uint16_t offset = display->line * display->resolution.width;
+      const unsigned int offset = display->line * display->resolution.width;
 
-      display->state = HD44780_WRITE_DATA;
+      display->state = STATE_WRITE_DATA;
       pinSet(display->rs);
       ifWrite(display->bus, display->buffer + offset,
           display->resolution.width);
       break;
     }
 
-    case HD44780_WRITE_DATA:
+    case STATE_WRITE_DATA:
     {
       if (display->line < display->resolution.height - 1)
       {
         ++display->line;
 
-        display->state = HD44780_WRITE_ADDRESS;
+        display->state = STATE_WRITE_ADDRESS;
         setPosition(display, (struct DisplayPoint){0, display->line});
       }
       else
-        display->state = HD44780_IDLE;
+        display->state = STATE_IDLE;
       break;
     }
 
-    case HD44780_RESET:
+    case STATE_RESET:
     {
-      display->state = HD44780_IDLE;
+      display->state = STATE_IDLE;
       break;
     }
 
@@ -117,7 +120,7 @@ static void interruptHandler(void *object)
       break;
   }
 
-  if (display->state == HD44780_IDLE)
+  if (display->state == STATE_IDLE)
   {
     if (display->update)
     {
@@ -136,12 +139,11 @@ static void setPosition(struct HD44780 *display, struct DisplayPoint position)
 {
   pinReset(display->rs);
 
-  //TODO Remove magic numbers
-  display->command[0] = 0x80; /* Set DDRAM address */
-  display->command[0] |= position.x;
+  /* Set DDRAM address */
+  display->command[0] = HD44780_POSITION | position.x;
 
-  /* TODO Displays with height greater than two lines */
-  display->command[0] |= position.y ? 0x40 : 0x00;
+  if (position.y)
+    display->command[0] |= 0x40;
 
   ifWrite(display->bus, display->command, 1);
 }
@@ -149,14 +151,14 @@ static void setPosition(struct HD44780 *display, struct DisplayPoint position)
 static void updateDisplay(struct HD44780 *display)
 {
   display->line = 0;
-  display->state = HD44780_WRITE_ADDRESS;
+  display->state = STATE_WRITE_ADDRESS;
   setPosition(display, (struct DisplayPoint){0, 0});
 }
 /*----------------------------------------------------------------------------*/
 static enum result displayInit(void *object, const void *configPtr)
 {
   const struct HD44780Config * const config = configPtr;
-  struct HD44780 *display = object;
+  struct HD44780 * const display = object;
   enum result res;
 
   const size_t bufferSize =
@@ -183,10 +185,14 @@ static enum result displayInit(void *object, const void *configPtr)
   display->callback = 0;
   display->bus = config->bus;
   display->line = 0;
-  display->position = (struct DisplayPoint){0, 0};
-  display->resolution = config->resolution;
-  display->state = HD44780_RESET;
+  display->state = STATE_RESET;
   display->update = true;
+
+  display->resolution = config->resolution;
+  display->window = (struct DisplayWindow){
+      {0, 0},
+      {display->resolution.width - 1, display->resolution.height - 1}
+  };
 
   /* Function set */
   display->command[0] = HD44780_FUNCTION | HD44780_BUS_8BIT
@@ -206,7 +212,7 @@ static enum result displayInit(void *object, const void *configPtr)
 /*----------------------------------------------------------------------------*/
 static void displayDeinit(void *object)
 {
-  struct HD44780 *display = object;
+  struct HD44780 * const display = object;
 
   free(display->buffer);
 }
@@ -214,7 +220,7 @@ static void displayDeinit(void *object)
 static enum result displayCallback(void *object, void (*callback)(void *),
     void *argument)
 {
-  struct HD44780 *display = object;
+  struct HD44780 * const display = object;
 
   display->callbackArgument = argument;
   display->callback = callback;
@@ -223,7 +229,7 @@ static enum result displayCallback(void *object, void (*callback)(void *),
 /*----------------------------------------------------------------------------*/
 static enum result displayGet(void *object, enum ifOption option, void *data)
 {
-  struct HD44780 *display = object;
+  const struct HD44780 * const display = object;
 
   switch ((enum ifDisplayOption)option)
   {
@@ -239,7 +245,7 @@ static enum result displayGet(void *object, enum ifOption option, void *data)
 static enum result displaySet(void *object, enum ifOption option,
     const void *data)
 {
-  struct HD44780 *display = object;
+  struct HD44780 * const display = object;
 
   switch ((enum ifDisplayOption)option)
   {
@@ -248,10 +254,15 @@ static enum result displaySet(void *object, enum ifOption option,
       const struct DisplayWindow * const window =
           (const struct DisplayWindow *)data;
 
-      //FIXME
-      display->position.x = window->begin.x;
-      display->position.y = window->begin.y;
-      return E_OK;
+      if (window->begin.x < window->end.x && window->begin.y < window->end.y
+          && window->end.x < display->resolution.width
+          && window->end.y < display->resolution.height)
+      {
+        display->window = *window;
+        return E_OK;
+      }
+      else
+        return E_VALUE;
     }
 
     default:
@@ -268,24 +279,29 @@ static size_t displayRead(void *object __attribute__((unused)),
 /*----------------------------------------------------------------------------*/
 static size_t displayWrite(void *object, const void *buffer, size_t length)
 {
-  struct HD44780 *display = object;
+  struct HD44780 * const display = object;
+  const size_t sourceLength = length;
+  const uint8_t *bufferPosition = buffer;
 
-  //TODO Word wrap
-  uint16_t left, offset;
+  for (unsigned int row = display->window.begin.y;
+      length && row <= display->window.end.y; ++row)
+  {
+    const size_t offset = row * display->resolution.width
+        + display->window.begin.x;
+    size_t bytesToWrite = display->window.end.x - display->window.begin.x;
 
-  left = display->resolution.width - display->position.x;
-  left = length < left ? length : left;
+    if (bytesToWrite > length)
+      bytesToWrite = length;
 
-  offset = display->position.y * display->resolution.width
-      + display->position.x;
+    memcpy(display->buffer + offset, bufferPosition, bytesToWrite);
+    bufferPosition += bytesToWrite;
+    length -= bytesToWrite;
+  }
 
-  if (left)
-    memcpy(display->buffer + offset, buffer, left);
-
-  if (display->state == HD44780_IDLE)
+  if (display->state == STATE_IDLE)
     updateDisplay(display);
   else
     display->update = true;
 
-  return left;
+  return sourceLength - length;
 }
