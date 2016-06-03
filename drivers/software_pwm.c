@@ -5,9 +5,8 @@
  */
 
 #include <assert.h>
-#include <error.h>
-#include <irq.h>
-#include <drivers/software_pwm.h>
+#include <halm/irq.h>
+#include <dpm/drivers/software_pwm.h>
 /*----------------------------------------------------------------------------*/
 #define FREQUENCY_MULTIPLIER 2
 /*----------------------------------------------------------------------------*/

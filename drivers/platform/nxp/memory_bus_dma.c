@@ -5,11 +5,11 @@
  */
 
 #include <assert.h>
-#include <memory.h>
-#include <platform/nxp/gpdma.h>
-#include <drivers/platform/nxp/memory_bus_dma.h>
-#include <drivers/platform/nxp/memory_bus_dma_finalizer.h>
-#include <drivers/platform/nxp/memory_bus_dma_timer.h>
+#include <halm/platform/nxp/gpdma.h>
+#include <xcore/memory.h>
+#include <dpm/drivers/platform/nxp/memory_bus_dma.h>
+#include <dpm/drivers/platform/nxp/memory_bus_dma_finalizer.h>
+#include <dpm/drivers/platform/nxp/memory_bus_dma_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
 enum result setupDma(struct MemoryBusDma *, const struct MemoryBusDmaConfig *,

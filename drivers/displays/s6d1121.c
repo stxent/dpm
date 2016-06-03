@@ -5,10 +5,10 @@
  */
 
 #include <assert.h>
-#include <bits.h>
-#include <delay.h>
-#include <drivers/displays/display.h>
-#include <drivers/displays/s6d1121.h>
+#include <halm/delay.h>
+#include <xcore/bits.h>
+#include <dpm/drivers/displays/display.h>
+#include <dpm/drivers/displays/s6d1121.h>
 /*----------------------------------------------------------------------------*/
 #define DISPLAY_HEIGHT  320
 #define DISPLAY_WIDTH   240

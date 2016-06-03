@@ -7,8 +7,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <bits.h>
-#include <drivers/displays/hd44780.h>
+#include <xcore/bits.h>
+#include <dpm/drivers/displays/hd44780.h>
 /*----------------------------------------------------------------------------*/
 /*
  * Entry Mode Set: 0 0 0 0  0 1 I/D S/H

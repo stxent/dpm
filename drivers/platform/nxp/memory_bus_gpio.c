@@ -5,9 +5,9 @@
  */
 
 #include <assert.h>
-#include <memory.h>
-#include <drivers/platform/nxp/memory_bus_gpio.h>
-#include <drivers/platform/nxp/memory_bus_gpio_timer.h>
+#include <xcore/memory.h>
+#include <dpm/drivers/platform/nxp/memory_bus_gpio.h>
+#include <dpm/drivers/platform/nxp/memory_bus_gpio_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
 /*----------------------------------------------------------------------------*/

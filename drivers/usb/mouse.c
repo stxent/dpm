@@ -6,11 +6,11 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <irq.h>
-#include <usb/hid_defs.h>
-#include <usb/usb_defs.h>
-#include <usb/usb_trace.h>
-#include <drivers/usb/mouse.h>
+#include <halm/irq.h>
+#include <halm/usb/hid_defs.h>
+#include <halm/usb/usb_defs.h>
+#include <halm/usb/usb_trace.h>
+#include <dpm/drivers/usb/mouse.h>
 /*----------------------------------------------------------------------------*/
 #define REPORT_PACKET_SIZE  4
 #define REQUEST_QUEUE_SIZE  2

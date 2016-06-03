@@ -7,10 +7,10 @@
 #ifndef DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_
 #define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_
 /*----------------------------------------------------------------------------*/
-#include <interface.h>
-#include <gpio_bus.h>
-#include <irq.h>
-#include <timer.h>
+#include <halm/gpio_bus.h>
+#include <halm/irq.h>
+#include <halm/timer.h>
+#include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass *MemoryBusGpio;
 /*----------------------------------------------------------------------------*/

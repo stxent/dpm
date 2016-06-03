@@ -4,8 +4,7 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <error.h>
-#include <drivers/rgb_led.h>
+#include <dpm/drivers/rgb_led.h>
 /*----------------------------------------------------------------------------*/
 static enum result ledInit(void *, const void *);
 static void ledDeinit(void *);

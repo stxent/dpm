@@ -7,7 +7,7 @@
 #ifndef DPM_DRIVERS_DISPLAYS_DISPLAY_H_
 #define DPM_DRIVERS_DISPLAYS_DISPLAY_H_
 /*----------------------------------------------------------------------------*/
-#include <interface.h>
+#include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
 enum displayOrientation
 {

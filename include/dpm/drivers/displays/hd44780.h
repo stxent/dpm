@@ -8,9 +8,8 @@
 #define DPM_DRIVERS_DISPLAYS_HD44780_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
-#include <interface.h>
-#include <pin.h>
-#include <drivers/displays/display.h>
+#include <halm/pin.h>
+#include <dpm/drivers/displays/display.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const HD44780;
 /*----------------------------------------------------------------------------*/

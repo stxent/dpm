@@ -1,23 +1,23 @@
 /*
- * drivers/displays/st7735.h
- * Copyright (C) 2016 xent
+ * drivers/displays/s6d1121.h
+ * Copyright (C) 2014 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DPM_DRIVERS_DISPLAYS_ST7735_H_
-#define DPM_DRIVERS_DISPLAYS_ST7735_H_
+#ifndef DPM_DRIVERS_DISPLAYS_S6D1121_H_
+#define DPM_DRIVERS_DISPLAYS_S6D1121_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
-#include <interface.h>
-#include <pin.h>
+#include <halm/pin.h>
+#include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
-extern const struct InterfaceClass * const ST7735;
+extern const struct InterfaceClass * const S6D1121;
 /*----------------------------------------------------------------------------*/
-struct ST7735Config
+struct S6D1121Config
 {
   /** Mandatory: memory interface. */
   struct Interface *bus;
-  /** Mandatory: pin used as Chip Select output. */
+  /** Optional: pin used as Chip Select output. */
   pinNumber cs;
   /** Mandatory: pin used for display reset. */
   pinNumber reset;
@@ -25,7 +25,7 @@ struct ST7735Config
   pinNumber rs;
 };
 /*----------------------------------------------------------------------------*/
-struct ST7735
+struct S6D1121
 {
   struct Interface parent;
 
@@ -38,7 +38,8 @@ struct ST7735
   /* Register Select output used to distinguish command and data modes */
   struct Pin rs;
 
-  bool gramActive;
+  /* Chip Select pin is controlled externally */
+  bool csExternal;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_DRIVERS_DISPLAYS_ST7735_H_ */
+#endif /* DPM_DRIVERS_DISPLAYS_S6D1121_H_ */

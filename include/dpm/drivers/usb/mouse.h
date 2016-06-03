@@ -8,8 +8,8 @@
 #define DPM_DRIVERS_USB_MOUSE_H_
 /*----------------------------------------------------------------------------*/
 #include <stdint.h>
-#include <containers/queue.h>
-#include <usb/hid.h>
+#include <halm/usb/hid.h>
+#include <xcore/containers/queue.h>
 /*----------------------------------------------------------------------------*/
 extern const struct HidClass * const Mouse;
 /*----------------------------------------------------------------------------*/

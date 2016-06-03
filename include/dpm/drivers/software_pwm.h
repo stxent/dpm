@@ -8,10 +8,9 @@
 #define DPM_DRIVERS_SOFTWARE_PWM_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
-#include <containers/list.h>
-#include <entity.h>
-#include <pwm.h>
-#include <timer.h>
+#include <halm/pwm.h>
+#include <halm/timer.h>
+#include <xcore/containers/list.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const SoftwarePwmUnit;
 extern const struct PwmClass * const SoftwarePwm;

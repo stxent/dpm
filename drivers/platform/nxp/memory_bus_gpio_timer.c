@@ -5,8 +5,8 @@
  */
 
 #include <assert.h>
-#include <platform/nxp/gptimer_defs.h>
-#include <drivers/platform/nxp/memory_bus_gpio_timer.h>
+#include <halm/platform/nxp/gptimer_defs.h>
+#include <dpm/drivers/platform/nxp/memory_bus_gpio_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
 static enum result setupChannels(struct MemoryBusGpioTimer *,

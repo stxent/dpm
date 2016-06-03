@@ -5,10 +5,10 @@
  */
 
 #include <assert.h>
-#include <memory.h>
-#include <platform/nxp/gpdma.h>
-#include <platform/nxp/gptimer_defs.h>
-#include <drivers/platform/nxp/memory_bus_dma_finalizer.h>
+#include <halm/platform/nxp/gpdma.h>
+#include <halm/platform/nxp/gptimer_defs.h>
+#include <xcore/memory.h>
+#include <dpm/drivers/platform/nxp/memory_bus_dma_finalizer.h>
 /*----------------------------------------------------------------------------*/
 static enum result finalizerInit(void *, const void *);
 static void finalizerDeinit(void *);
