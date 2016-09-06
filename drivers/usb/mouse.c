@@ -117,7 +117,8 @@ static enum result mouseInit(void *object, const void *configBase)
       .descriptor = &mouseReportDescriptor,
       .descriptorSize = sizeof(mouseReportDescriptor),
       .reportSize = REPORT_PACKET_SIZE,
-      .endpoint.interrupt = config->endpoint.interrupt
+      .endpoints.interrupt = config->endpoints.interrupt,
+      .composite = false
   };
   struct Mouse * const device = object;
   enum result res;
@@ -126,7 +127,7 @@ static enum result mouseInit(void *object, const void *configBase)
     return res;
 
   device->txDataEp = usbDevCreateEndpoint(config->device,
-      config->endpoint.interrupt);
+      config->endpoints.interrupt);
   if (!device->txDataEp)
     return E_ERROR;
 
@@ -181,6 +182,7 @@ static void mouseEvent(void *object, unsigned int event)
   if (event == USB_DEVICE_EVENT_RESET)
   {
     usbEpClear(device->txDataEp);
+    usbEpEnable(device->txDataEp, ENDPOINT_TYPE_INTERRUPT, REPORT_PACKET_SIZE);
     usbTrace("hid: reset completed");
   }
 }

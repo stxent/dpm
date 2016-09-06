@@ -60,7 +60,7 @@ void rgbLedSet(struct RgbLed *led, uint16_t hue, uint8_t saturation,
 
   const uint8_t hi = (hue / 60) % 6;
   const uint32_t resolution = led->resolution;
-  uint32_t values[3] = {
+  const uint32_t values[3] = {
       (fill[mapping[hi][0]] * resolution) / (100 * 100),
       (fill[mapping[hi][1]] * resolution) / (100 * 100),
       (fill[mapping[hi][2]] * resolution) / (100 * 100)

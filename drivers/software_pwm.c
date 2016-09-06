@@ -58,7 +58,7 @@ static void interruptHandler(void *object)
   while (current)
   {
     listData(&unit->channels, current, &pwm);
-    pinWrite(pwm->pin, pwm->enabled && iteration > pwm->duration);
+    pinWrite(pwm->pin, pwm->enabled && iteration < pwm->duration);
     current = listNext(current);
   }
 }
@@ -89,6 +89,7 @@ static enum result unitInit(void *object, const void *configBase)
   if ((res = timerSetOverflow(unit->timer, FREQUENCY_MULTIPLIER)) != E_OK)
     return res;
   timerCallback(unit->timer, interruptHandler, unit);
+  timerSetEnabled(unit->timer, true);
 
   return E_OK;
 }
@@ -97,6 +98,7 @@ static void unitDeinit(void *object)
 {
   struct SoftwarePwmUnit * const unit = object;
 
+  timerSetEnabled(unit->timer, false);
   timerCallback(unit->timer, 0, 0);
   listDeinit(&unit->channels);
 }

@@ -22,7 +22,7 @@ struct MouseConfig
   {
     /** Mandatory: identifier of the notification endpoint. */
     uint8_t interrupt;
-  } endpoint;
+  } endpoints;
 };
 /*----------------------------------------------------------------------------*/
 struct Mouse

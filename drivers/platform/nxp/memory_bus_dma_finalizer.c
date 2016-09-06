@@ -25,12 +25,13 @@ enum result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *finalizer)
 {
   LPC_TIMER_Type * const reg = finalizer->sender->parent.reg;
 
-  return dmaStart(finalizer->dma, (void *)&reg->MCR, &finalizer->value, 1);
+  dmaAppend(finalizer->dma, (void *)&reg->MCR, &finalizer->value, 1);
+  return dmaEnable(finalizer->dma);
 }
 /*----------------------------------------------------------------------------*/
 void memoryBusDmaFinalizerStop(struct MemoryBusDmaFinalizer *finalizer)
 {
-  dmaStop(finalizer->dma);
+  dmaDisable(finalizer->dma);
 }
 /*----------------------------------------------------------------------------*/
 static enum result finalizerInit(void *object, const void *configPtr)
@@ -50,20 +51,29 @@ static enum result finalizerInit(void *object, const void *configPtr)
   /* Only channels 0 and 1 can be used as DMA events */
   assert(matchChannel < 2);
 
+  static const struct GpDmaSettings dmaSettings = {
+      .source = {
+          .burst = DMA_BURST_1,
+          .width = DMA_WIDTH_WORD,
+          .increment = false
+      },
+      .destination = {
+          .burst = DMA_BURST_1,
+          .width = DMA_WIDTH_WORD,
+          .increment = false
+      }
+  };
   const struct GpDmaConfig dmaConfig = {
-      .channel = config->channel,
-      .destination.increment = false,
-      .source.increment = false,
-      .burst = DMA_BURST_1,
       .event = GPDMA_MAT0_0 + matchChannel
           + finalizer->marshal->parent.channel * 2,
       .type = GPDMA_TYPE_M2P,
-      .width = DMA_WIDTH_WORD
+      .channel = config->channel
   };
 
   finalizer->dma = init(GpDma, &dmaConfig);
   if (!finalizer->dma)
     return E_ERROR;
+  dmaConfigure(finalizer->dma, &dmaSettings);
 
   finalizer->value = MCR_RESET(resetChannel) | MCR_INTERRUPT(resetChannel)
       | MCR_STOP(resetChannel);

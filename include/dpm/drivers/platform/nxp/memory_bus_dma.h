@@ -8,12 +8,14 @@
 #define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_H_
 /*----------------------------------------------------------------------------*/
 #include <halm/dma.h>
-#include <halm/gpio_bus.h>
 #include <halm/irq.h>
-#include <halm/timer.h>
+#include <halm/pin.h>
 #include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const MemoryBusDma;
+/*----------------------------------------------------------------------------*/
+struct MemoryBusDmaFinalizer;
+struct MemoryBusDmaTimer;
 /*----------------------------------------------------------------------------*/
 struct MemoryBusDmaConfig
 {

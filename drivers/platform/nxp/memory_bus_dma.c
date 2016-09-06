@@ -6,15 +6,16 @@
 
 #include <assert.h>
 #include <halm/platform/nxp/gpdma.h>
+#include <halm/platform/nxp/gpdma_base.h>
 #include <xcore/memory.h>
 #include <dpm/drivers/platform/nxp/memory_bus_dma.h>
 #include <dpm/drivers/platform/nxp/memory_bus_dma_finalizer.h>
 #include <dpm/drivers/platform/nxp/memory_bus_dma_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
-enum result setupDma(struct MemoryBusDma *, const struct MemoryBusDmaConfig *,
-    uint8_t, uint8_t);
-void setupGpio(struct MemoryBusDma *, const struct MemoryBusDmaConfig *);
+static enum result setupDma(struct MemoryBusDma *,
+    const struct MemoryBusDmaConfig *, uint8_t, uint8_t);
+static void setupGpio(struct MemoryBusDma *, const struct MemoryBusDmaConfig *);
 /*----------------------------------------------------------------------------*/
 static enum result busInit(void *, const void *);
 static void busDeinit(void *);
@@ -48,17 +49,13 @@ static void interruptHandler(void *object)
     interface->callback(interface->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
-void setupGpio(struct MemoryBusDma *interface,
+static void setupGpio(struct MemoryBusDma *interface,
     const struct MemoryBusDmaConfig *config)
 {
   assert(config->pins);
 
-  struct PinData firstPinKey;
-  firstPinKey.port = PIN_TO_PORT(config->pins[0]);
-  firstPinKey.offset = PIN_TO_OFFSET(config->pins[0]);
-
   /* First pin number should be aligned along byte boundary */
-  assert(!(firstPinKey.offset & 0x07));
+  assert(!(PIN_TO_OFFSET(config->pins[0]) & 0x07));
 
   unsigned int number = 0;
   while (config->pins[number] && ++number < 32);
@@ -75,8 +72,8 @@ void setupGpio(struct MemoryBusDma *interface,
 
     if (index)
     {
-      assert(pin.data.port == firstPinKey.port);
-      assert(pin.data.offset == firstPinKey.offset + index);
+      assert(pin.data.port == PIN_TO_PORT(config->pins[0]));
+      assert(pin.data.offset == PIN_TO_OFFSET(config->pins[0]) + index);
     }
     else
     {
@@ -87,31 +84,42 @@ void setupGpio(struct MemoryBusDma *interface,
   }
 }
 /*----------------------------------------------------------------------------*/
-enum result setupDma(struct MemoryBusDma *interface,
+static enum result setupDma(struct MemoryBusDma *interface,
     const struct MemoryBusDmaConfig *config, uint8_t matchChannel,
-    uint8_t width)
+    uint8_t busWidth)
 {
   /* Only channels 0 and 1 can be used as DMA events */
   assert(matchChannel < 2);
 
-  struct GpDmaConfig dmaConfig = {
-      .channel = config->clock.dma,
-      .destination.increment = false,
-      .source.increment = true,
-      .burst = DMA_BURST_1,
+  const enum dmaWidth width = !busWidth ? DMA_WIDTH_BYTE : DMA_WIDTH_HALFWORD;
+
+  const struct GpDmaSettings dmaSettings = {
+      .source = {
+          .burst = DMA_BURST_4,
+          .width = width,
+          .increment = true
+      },
+      .destination = {
+          .burst = DMA_BURST_1,
+          .width = width,
+          .increment = false
+      }
+  };
+  const struct GpDmaConfig dmaConfig = {
       .event = GPDMA_MAT0_0 + matchChannel + config->clock.channel * 2,
       .type = GPDMA_TYPE_M2P,
-      .width = !width ? DMA_WIDTH_BYTE : DMA_WIDTH_HALFWORD
+      .channel = config->clock.dma
   };
 
   /*
    * To improve performance DMA synchronization logic can be disabled.
-   * This will decrease data write time from 5 to 4 processor cycles.
+   * This will decrease data write time from 5 to 4 AHB cycles.
    */
 
   interface->dma = init(GpDma, &dmaConfig);
   if (!interface->dma)
     return E_ERROR;
+  dmaConfigure(interface->dma, &dmaSettings);
 
   return E_OK;
 }
@@ -147,8 +155,6 @@ static enum result busInit(void *object, const void *configPtr)
   interface->control = init(MemoryBusDmaTimer, &controlConfig);
   if (!interface->control)
     return E_ERROR;
-
-  timerSetEnabled(interface->control, false);
 
   interface->clock = init(MemoryBusDmaTimer, &clockConfig);
   if (!interface->clock)
@@ -208,7 +214,7 @@ static enum result busGet(void *object, enum ifOption option, void *data)
       return interface->active ? E_BUSY : E_OK;
 
     case IF_WIDTH:
-      *(uint32_t *)data = 1 << (interface->width + 3);
+      *(size_t *)data = 1 << (interface->width + 3);
       return E_OK;
 
     default:
@@ -261,7 +267,8 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
   if (memoryBusDmaFinalizerStart(interface->finalizer) != E_OK)
     return 0;
 
-  if (dmaStart(interface->dma, interface->gpioAddress, buffer, samples) != E_OK)
+  dmaAppend(interface->dma, interface->gpioAddress, buffer, samples);
+  if (dmaEnable(interface->dma) != E_OK)
   {
     memoryBusDmaFinalizerStop(interface->finalizer);
     timerSetEnabled(interface->control, false);
@@ -278,8 +285,8 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
 
     if (dmaStatus(interface->dma) != E_OK)
     {
-      /* Transmission has failed due to a noise on signal lines */
-      dmaStop(interface->dma);
+      /* Transmission has failed */
+      dmaDisable(interface->dma);
       return 0;
     }
   }
