@@ -45,10 +45,10 @@ struct DisplayWindow
 };
 /*----------------------------------------------------------------------------*/
 /** Display options extending common interface options. */
-enum ifDisplayOption
+enum IfDisplayParameter
 {
   /** Update information on the display immediately. */
-  IF_DISPLAY_UPDATE = IF_OPTION_END,
+  IF_DISPLAY_UPDATE = IF_PARAMETER_END,
 
   /** Display orientation. */
   IF_DISPLAY_ORIENTATION,

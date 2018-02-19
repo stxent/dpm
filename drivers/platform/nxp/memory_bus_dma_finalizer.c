@@ -5,12 +5,12 @@
  */
 
 #include <assert.h>
-#include <halm/platform/nxp/gpdma.h>
+#include <halm/platform/nxp/gpdma_oneshot.h>
 #include <halm/platform/nxp/gptimer_defs.h>
 #include <xcore/memory.h>
 #include <dpm/drivers/platform/nxp/memory_bus_dma_finalizer.h>
 /*----------------------------------------------------------------------------*/
-static enum result finalizerInit(void *, const void *);
+static enum Result finalizerInit(void *, const void *);
 static void finalizerDeinit(void *);
 /*----------------------------------------------------------------------------*/
 static const struct EntityClass finalizerTable = {
@@ -21,7 +21,7 @@ static const struct EntityClass finalizerTable = {
 /*----------------------------------------------------------------------------*/
 const struct EntityClass * const MemoryBusDmaFinalizer = &finalizerTable;
 /*----------------------------------------------------------------------------*/
-enum result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *finalizer)
+enum Result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *finalizer)
 {
   LPC_TIMER_Type * const reg = finalizer->sender->parent.reg;
 
@@ -34,7 +34,7 @@ void memoryBusDmaFinalizerStop(struct MemoryBusDmaFinalizer *finalizer)
   dmaDisable(finalizer->dma);
 }
 /*----------------------------------------------------------------------------*/
-static enum result finalizerInit(void *object, const void *configPtr)
+static enum Result finalizerInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaFinalizerConfig * const config = configPtr;
   struct MemoryBusDmaFinalizer * const finalizer = object;
@@ -63,14 +63,14 @@ static enum result finalizerInit(void *object, const void *configPtr)
           .increment = false
       }
   };
-  const struct GpDmaConfig dmaConfig = {
+  const struct GpDmaOneShotConfig dmaConfig = {
       .event = GPDMA_MAT0_0 + matchChannel
           + finalizer->marshal->parent.channel * 2,
       .type = GPDMA_TYPE_M2P,
       .channel = config->channel
   };
 
-  finalizer->dma = init(GpDma, &dmaConfig);
+  finalizer->dma = init(GpDmaOneShot, &dmaConfig);
   if (!finalizer->dma)
     return E_ERROR;
   dmaConfigure(finalizer->dma, &dmaSettings);

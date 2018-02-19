@@ -9,29 +9,33 @@
 #include <dpm/drivers/platform/nxp/memory_bus_dma_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
-static enum result setupChannels(struct MemoryBusDmaTimer *,
+static enum Result setupChannels(struct MemoryBusDmaTimer *,
     const struct MemoryBusDmaTimerConfig *);
 /*----------------------------------------------------------------------------*/
-static enum result tmrInit(void *, const void *);
+static enum Result tmrInit(void *, const void *);
 static void tmrDeinit(void *);
 static void tmrCallback(void *, void (*)(void *), void *);
-static void tmrSetEnabled(void *, bool);
-static enum result tmrSetFrequency(void *, uint32_t);
-static enum result tmrSetOverflow(void *, uint32_t);
-static enum result tmrSetValue(void *, uint32_t);
-static uint32_t tmrValue(const void *);
+static void tmrEnable(void *);
+static void tmrDisable(void *);
+static void tmrSetFrequency(void *, uint32_t);
+static void tmrSetOverflow(void *, uint32_t);
+static void tmrSetValue(void *, uint32_t);
+static uint32_t tmrGetValue(const void *);
 /*----------------------------------------------------------------------------*/
 static const struct TimerClass timerTable = {
     .size = sizeof(struct MemoryBusDmaTimer),
     .init = tmrInit,
     .deinit = tmrDeinit,
 
-    .callback = tmrCallback,
-    .setEnabled = tmrSetEnabled,
+    .enable = tmrEnable,
+    .disable = tmrDisable,
+    .setCallback = tmrCallback,
+    .getFrequency = 0,
     .setFrequency = tmrSetFrequency,
+    .getOverflow = 0,
     .setOverflow = tmrSetOverflow,
-    .setValue = tmrSetValue,
-    .value = tmrValue
+    .getValue = tmrGetValue,
+    .setValue = tmrSetValue
 };
 /*----------------------------------------------------------------------------*/
 const struct TimerClass * const MemoryBusDmaTimer = &timerTable;
@@ -49,7 +53,7 @@ static void interruptHandler(void *object)
     timer->callback(timer->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
-static enum result setupChannels(struct MemoryBusDmaTimer *timer,
+static enum Result setupChannels(struct MemoryBusDmaTimer *timer,
     const struct MemoryBusDmaTimerConfig *config)
 {
   uint8_t mask = 0;
@@ -74,7 +78,7 @@ static enum result setupChannels(struct MemoryBusDmaTimer *timer,
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result tmrInit(void *object, const void *configPtr)
+static enum Result tmrInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaTimerConfig * const config = configPtr;
   const struct GpTimerBaseConfig parentConfig = {
@@ -82,7 +86,7 @@ static enum result tmrInit(void *object, const void *configPtr)
   };
   struct MemoryBusDmaTimer * const timer = object;
   uint32_t captureControlValue;
-  enum result res;
+  enum Result res;
 
   if (config->input)
   {
@@ -157,28 +161,32 @@ static void tmrCallback(void *object, void (*callback)(void *), void *argument)
   timer->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static void tmrSetEnabled(void *object, bool state)
+static void tmrEnable(void *object)
 {
   struct MemoryBusDmaTimer * const timer = object;
   LPC_TIMER_Type * const reg = timer->parent.reg;
 
   reg->TCR = TCR_CRES;
   reg->IR = timer->interruptValue; /* Clear pending interrupt requests */
-
-  if (state)
-  {
-    reg->MCR = timer->matchValue;
-    reg->TCR = TCR_CEN;
-  }
+  reg->MCR = timer->matchValue;
+  reg->TCR = TCR_CEN;
 }
 /*----------------------------------------------------------------------------*/
-static enum result tmrSetFrequency(void *object __attribute__((unused)),
+static void tmrDisable(void *object)
+{
+  struct MemoryBusDmaTimer * const timer = object;
+  LPC_TIMER_Type * const reg = timer->parent.reg;
+
+  reg->TCR = TCR_CRES;
+  reg->IR = timer->interruptValue; /* Clear pending interrupt requests */
+}
+/*----------------------------------------------------------------------------*/
+static void tmrSetFrequency(void *object __attribute__((unused)),
     uint32_t frequency __attribute__((unused)))
 {
-  return E_ERROR;
 }
 /*----------------------------------------------------------------------------*/
-static enum result tmrSetOverflow(void *object, uint32_t overflow)
+static void tmrSetOverflow(void *object, uint32_t overflow)
 {
   struct MemoryBusDmaTimer * const timer = object;
   LPC_TIMER_Type * const reg = timer->parent.reg;
@@ -195,22 +203,19 @@ static enum result tmrSetOverflow(void *object, uint32_t overflow)
     reg->MR[timer->trailingChannel] = (overflow >> 2) + (overflow >> 1) - 1;
     reg->MR[timer->resetChannel] = overflow - 1;
   }
-
-  return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result tmrSetValue(void *object __attribute__((unused)),
-    uint32_t value __attribute__((unused)))
-{
-  return E_ERROR;
-}
-/*----------------------------------------------------------------------------*/
-static uint32_t tmrValue(const void *object)
+static uint32_t tmrGetValue(const void *object)
 {
   const struct MemoryBusDmaTimer * const timer = object;
   const LPC_TIMER_Type * const reg = timer->parent.reg;
 
   return reg->TC;
+}
+/*----------------------------------------------------------------------------*/
+static void tmrSetValue(void *object __attribute__((unused)),
+    uint32_t value __attribute__((unused)))
+{
 }
 /*----------------------------------------------------------------------------*/
 uint8_t memoryBusDmaTimerPrimaryChannel(const struct MemoryBusDmaTimer *timer)

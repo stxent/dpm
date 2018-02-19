@@ -11,11 +11,11 @@
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
 /*----------------------------------------------------------------------------*/
-static enum result busInit(void *, const void *);
+static enum Result busInit(void *, const void *);
 static void busDeinit(void *);
-static enum result busCallback(void *, void (*)(void *), void *);
-static enum result busGet(void *, enum ifOption, void *);
-static enum result busSet(void *, enum ifOption, const void *);
+static enum Result busSetCallback(void *, void (*)(void *), void *);
+static enum Result busGetParam(void *, enum IfParameter, void *);
+static enum Result busSetParam(void *, enum IfParameter, const void *);
 static size_t busRead(void *, void *, size_t);
 static size_t busWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
@@ -24,9 +24,9 @@ static const struct InterfaceClass busTable = {
     .init = busInit,
     .deinit = busDeinit,
 
-    .callback = busCallback,
-    .get = busGet,
-    .set = busSet,
+    .setCallback = busSetCallback,
+    .getParam = busGetParam,
+    .setParam = busSetParam,
     .read = busRead,
     .write = busWrite
 };
@@ -45,7 +45,7 @@ static void interruptHandler(void *object)
       ++interface->buffer;
     }
     else
-      timerSetEnabled(interface->timer, false);
+      timerDisable(interface->timer);
   }
   else
   {
@@ -56,7 +56,7 @@ static void interruptHandler(void *object)
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result busInit(void *object, const void *configPtr)
+static enum Result busInit(void *object, const void *configPtr)
 {
   const struct MemoryBusGpioConfig * const config = configPtr;
   const struct MemoryBusGpioTimerConfig timerConfig = {
@@ -74,7 +74,7 @@ static enum result busInit(void *object, const void *configPtr)
   interface->timer = init(MemoryBusGpioTimer, &timerConfig);
   if (!interface->timer)
     return E_ERROR;
-  timerCallback(interface->timer, interruptHandler, interface);
+  timerSetCallback(interface->timer, interruptHandler, interface);
 
   interface->active = false;
   interface->blocking = true;
@@ -91,7 +91,7 @@ static void busDeinit(void *object)
   deinit(interface->timer);
 }
 /*----------------------------------------------------------------------------*/
-static enum result busCallback(void *object, void (*callback)(void *),
+static enum Result busSetCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct MemoryBusGpio * const interface = object;
@@ -101,12 +101,12 @@ static enum result busCallback(void *object, void (*callback)(void *),
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result busGet(void *object, enum ifOption option,
+static enum Result busGetParam(void *object, enum IfParameter parameter,
     void *data __attribute__((unused)))
 {
   struct MemoryBusGpio * const interface = object;
 
-  switch (option)
+  switch (parameter)
   {
     case IF_STATUS:
       return interface->active ? E_BUSY : E_OK;
@@ -116,12 +116,12 @@ static enum result busGet(void *object, enum ifOption option,
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result busSet(void *object, enum ifOption option,
+static enum Result busSetParam(void *object, enum IfParameter parameter,
     const void *data __attribute__((unused)))
 {
   struct MemoryBusGpio * const interface = object;
 
-  switch (option)
+  switch (parameter)
   {
     case IF_BLOCKING:
       interface->blocking = true;
@@ -153,7 +153,7 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
   interface->left = length;
 
   gpioBusWrite(interface->bus, (uint32_t)(*interface->buffer++));
-  timerSetEnabled(interface->timer, true);
+  timerEnable(interface->timer);
 
   if (interface->blocking)
   {

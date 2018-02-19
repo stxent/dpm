@@ -5,23 +5,22 @@
  */
 
 #include <assert.h>
-#include <halm/platform/nxp/gpdma.h>
-#include <halm/platform/nxp/gpdma_base.h>
+#include <halm/platform/nxp/gpdma_oneshot.h>
 #include <xcore/memory.h>
 #include <dpm/drivers/platform/nxp/memory_bus_dma.h>
 #include <dpm/drivers/platform/nxp/memory_bus_dma_finalizer.h>
 #include <dpm/drivers/platform/nxp/memory_bus_dma_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
-static enum result setupDma(struct MemoryBusDma *,
+static enum Result setupDma(struct MemoryBusDma *,
     const struct MemoryBusDmaConfig *, uint8_t, uint8_t);
 static void setupGpio(struct MemoryBusDma *, const struct MemoryBusDmaConfig *);
 /*----------------------------------------------------------------------------*/
-static enum result busInit(void *, const void *);
+static enum Result busInit(void *, const void *);
 static void busDeinit(void *);
-static enum result busCallback(void *, void (*)(void *), void *);
-static enum result busGet(void *, enum ifOption, void *);
-static enum result busSet(void *, enum ifOption, const void *);
+static enum Result busSetCallback(void *, void (*)(void *), void *);
+static enum Result busGetParam(void *, enum IfParameter, void *);
+static enum Result busSetParam(void *, enum IfParameter, const void *);
 static size_t busRead(void *, void *, size_t);
 static size_t busWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
@@ -30,9 +29,9 @@ static const struct InterfaceClass busTable = {
     .init = busInit,
     .deinit = busDeinit,
 
-    .callback = busCallback,
-    .get = busGet,
-    .set = busSet,
+    .setCallback = busSetCallback,
+    .getParam = busGetParam,
+    .setParam = busSetParam,
     .read = busRead,
     .write = busWrite
 };
@@ -84,14 +83,14 @@ static void setupGpio(struct MemoryBusDma *interface,
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result setupDma(struct MemoryBusDma *interface,
+static enum Result setupDma(struct MemoryBusDma *interface,
     const struct MemoryBusDmaConfig *config, uint8_t matchChannel,
     uint8_t busWidth)
 {
   /* Only channels 0 and 1 can be used as DMA events */
   assert(matchChannel < 2);
 
-  const enum dmaWidth width = !busWidth ? DMA_WIDTH_BYTE : DMA_WIDTH_HALFWORD;
+  const enum DmaWidth width = !busWidth ? DMA_WIDTH_BYTE : DMA_WIDTH_HALFWORD;
 
   const struct GpDmaSettings dmaSettings = {
       .source = {
@@ -105,7 +104,7 @@ static enum result setupDma(struct MemoryBusDma *interface,
           .increment = false
       }
   };
-  const struct GpDmaConfig dmaConfig = {
+  const struct GpDmaOneShotConfig dmaConfig = {
       .event = GPDMA_MAT0_0 + matchChannel + config->clock.channel * 2,
       .type = GPDMA_TYPE_M2P,
       .channel = config->clock.dma
@@ -116,7 +115,7 @@ static enum result setupDma(struct MemoryBusDma *interface,
    * This will decrease data write time from 5 to 4 AHB cycles.
    */
 
-  interface->dma = init(GpDma, &dmaConfig);
+  interface->dma = init(GpDmaOneShot, &dmaConfig);
   if (!interface->dma)
     return E_ERROR;
   dmaConfigure(interface->dma, &dmaSettings);
@@ -124,7 +123,7 @@ static enum result setupDma(struct MemoryBusDma *interface,
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result busInit(void *object, const void *configPtr)
+static enum Result busInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaConfig * const config = configPtr;
   const struct MemoryBusDmaTimerConfig clockConfig = {
@@ -148,7 +147,7 @@ static enum result busInit(void *object, const void *configPtr)
       .inversion = config->control.inversion
   };
   struct MemoryBusDma * const interface = object;
-  enum result res;
+  enum Result res;
 
   setupGpio(interface, config);
 
@@ -160,7 +159,7 @@ static enum result busInit(void *object, const void *configPtr)
   if (!interface->clock)
     return E_ERROR;
 
-  timerCallback(interface->clock, interruptHandler, interface);
+  timerSetCallback(interface->clock, interruptHandler, interface);
 
   struct MemoryBusDmaFinalizerConfig finalizerConfig = {
       .marshal = interface->control,
@@ -173,7 +172,7 @@ static enum result busInit(void *object, const void *configPtr)
     return E_ERROR;
 
   res = setupDma(interface, config,
-      memoryBusDmaTimerPrimaryChannel(interface->clock), interface->width);
+      !memoryBusDmaTimerPrimaryChannel(interface->clock), interface->width);
   if (res != E_OK)
     return res;
 
@@ -194,7 +193,7 @@ static void busDeinit(void *object)
   deinit(interface->control);
 }
 /*----------------------------------------------------------------------------*/
-static enum result busCallback(void *object, void (*callback)(void *),
+static enum Result busSetCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct MemoryBusDma * const interface = object;
@@ -204,11 +203,12 @@ static enum result busCallback(void *object, void (*callback)(void *),
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result busGet(void *object, enum ifOption option, void *data)
+static enum Result busGetParam(void *object, enum IfParameter parameter,
+    void *data)
 {
   struct MemoryBusDma * const interface = object;
 
-  switch (option)
+  switch (parameter)
   {
     case IF_STATUS:
       return interface->active ? E_BUSY : E_OK;
@@ -222,12 +222,12 @@ static enum result busGet(void *object, enum ifOption option, void *data)
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result busSet(void *object, enum ifOption option,
+static enum Result busSetParam(void *object, enum IfParameter parameter,
     const void *data __attribute__((unused)))
 {
   struct MemoryBusDma * const interface = object;
 
-  switch (option)
+  switch (parameter)
   {
     case IF_BLOCKING:
       interface->blocking = true;
@@ -261,7 +261,7 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
 
   /* Configure and start control timer */
   timerSetOverflow(interface->control, samples + 2);
-  timerSetEnabled(interface->control, true);
+  timerEnable(interface->control);
 
   /* Finalization should be enabled after supervisor timer startup */
   if (memoryBusDmaFinalizerStart(interface->finalizer) != E_OK)
@@ -271,12 +271,12 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
   if (dmaEnable(interface->dma) != E_OK)
   {
     memoryBusDmaFinalizerStop(interface->finalizer);
-    timerSetEnabled(interface->control, false);
+    timerDisable(interface->control);
     return 0;
   }
 
   /* Start the transfer by enabling clock generation timer */
-  timerSetEnabled(interface->clock, true);
+  timerEnable(interface->clock);
 
   if (interface->blocking)
   {

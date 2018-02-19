@@ -12,7 +12,8 @@
 #include <xcore/containers/queue.h>
 /*----------------------------------------------------------------------------*/
 extern const struct HidClass * const Mouse;
-/*----------------------------------------------------------------------------*/
+struct Mouse;
+
 struct MouseConfig
 {
   /** Mandatory: USB device. */
@@ -23,18 +24,6 @@ struct MouseConfig
     /** Mandatory: identifier of the notification endpoint. */
     uint8_t interrupt;
   } endpoints;
-};
-/*----------------------------------------------------------------------------*/
-struct Mouse
-{
-  struct Hid base;
-
-  /* Request queue */
-  struct Queue txRequestQueue;
-  /* Pointer to the beginning of the request pool */
-  void *requests;
-
-  struct UsbEndpoint *txDataEp;
 };
 /*----------------------------------------------------------------------------*/
 void mouseMovePointer(struct Mouse *, int8_t, int8_t);

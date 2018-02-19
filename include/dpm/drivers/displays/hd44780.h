@@ -20,7 +20,7 @@ struct HD44780Config
   /** Mandatory: display resolution. */
   struct DisplayResolution resolution;
   /** Mandatory: pin used as Register Select output. */
-  pinNumber rs;
+  PinNumber rs;
 };
 /*----------------------------------------------------------------------------*/
 struct HD44780

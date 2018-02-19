@@ -9,28 +9,36 @@
 #include <halm/irq.h>
 #include <halm/usb/hid_defs.h>
 #include <halm/usb/usb_defs.h>
+#include <halm/usb/usb_request.h>
 #include <halm/usb/usb_trace.h>
 #include <dpm/drivers/usb/mouse.h>
 /*----------------------------------------------------------------------------*/
 #define REPORT_PACKET_SIZE  4
 #define REQUEST_QUEUE_SIZE  2
 /*----------------------------------------------------------------------------*/
-struct ReportUsbRequest
+struct Mouse
 {
-  struct UsbRequest base;
+  struct Hid base;
 
-  uint8_t payload[REPORT_PACKET_SIZE];
+  /* Request queue */
+  struct Queue txRequestQueue;
+  /* Request pool */
+  struct UsbRequest requests[REQUEST_QUEUE_SIZE];
+  /* Data pool */
+  uint8_t requestData[REPORT_PACKET_SIZE * REQUEST_QUEUE_SIZE];
+
+  struct UsbEndpoint *txDataEp;
 };
 /*----------------------------------------------------------------------------*/
-static void deviceDataSent(void *, struct UsbRequest *, enum usbRequestStatus);
+static void deviceDataSent(void *, struct UsbRequest *, enum UsbRequestStatus);
 static void sendReport(struct Mouse *, uint8_t, int8_t, int8_t);
 /*----------------------------------------------------------------------------*/
-static enum result mouseInit(void *, const void *);
+static enum Result mouseInit(void *, const void *);
 static void mouseDeinit(void *);
 static void mouseEvent(void *, unsigned int);
-static enum result mouseGetReport(void *, uint8_t, uint8_t, uint8_t *,
+static enum Result mouseGetReport(void *, uint8_t, uint8_t, uint8_t *,
     uint16_t *, uint16_t);
-static enum result mouseSetReport(void *, uint8_t, uint8_t, const uint8_t *,
+static enum Result mouseSetReport(void *, uint8_t, uint8_t, const uint8_t *,
     uint16_t);
 /*----------------------------------------------------------------------------*/
 static const struct HidClass mouseTable = {
@@ -80,17 +88,16 @@ static const uint8_t mouseReportDescriptor[] = {
 };
 /*----------------------------------------------------------------------------*/
 static void deviceDataSent(void *argument, struct UsbRequest *request,
-    enum usbRequestStatus status __attribute__((unused)))
+    enum UsbRequestStatus status __attribute__((unused)))
 {
   struct Mouse * const device = argument;
-
   queuePush(&device->txRequestQueue, &request);
 }
 /*----------------------------------------------------------------------------*/
 static void sendReport(struct Mouse *device, uint8_t buttons,
     int8_t dx, int8_t dy)
 {
-  const irqState state = irqSave();
+  const IrqState state = irqSave();
 
   if (!queueEmpty(&device->txRequestQueue))
   {
@@ -109,7 +116,7 @@ static void sendReport(struct Mouse *device, uint8_t buttons,
   irqRestore(state);
 }
 /*----------------------------------------------------------------------------*/
-static enum result mouseInit(void *object, const void *configBase)
+static enum Result mouseInit(void *object, const void *configBase)
 {
   const struct MouseConfig * const config = configBase;
   const struct HidConfig baseConfig = {
@@ -117,13 +124,13 @@ static enum result mouseInit(void *object, const void *configBase)
       .descriptor = &mouseReportDescriptor,
       .descriptorSize = sizeof(mouseReportDescriptor),
       .reportSize = REPORT_PACKET_SIZE,
-      .endpoints.interrupt = config->endpoints.interrupt,
-      .composite = false
+      .endpoints.interrupt = config->endpoints.interrupt
   };
   struct Mouse * const device = object;
-  enum result res;
+  enum Result res;
 
-  if ((res = Hid->init(object, &baseConfig)) != E_OK)
+  res = Hid->init(object, &baseConfig);
+  if (res != E_OK)
     return res;
 
   device->txDataEp = usbDevCreateEndpoint(config->device,
@@ -136,27 +143,21 @@ static enum result mouseInit(void *object, const void *configBase)
   if (res != E_OK)
     return res;
 
-  /* Allocate requests */
-  device->requests = malloc(REQUEST_QUEUE_SIZE
-      * sizeof(struct ReportUsbRequest));
-  if (!device->requests)
-    return E_MEMORY;
+  /* Prepare requests */
+  struct UsbRequest *request = device->requests;
+  uint8_t *requestData = device->requestData;
 
-  struct ReportUsbRequest *request = device->requests;
-
-  for (uint8_t index = 0; index < REQUEST_QUEUE_SIZE; ++index)
+  for (size_t index = 0; index < REQUEST_QUEUE_SIZE; ++index)
   {
-    usbRequestInit((struct UsbRequest *)request, request->payload,
-        sizeof(request->payload), deviceDataSent, device);
+    usbRequestInit(request, requestData, REPORT_PACKET_SIZE,
+        deviceDataSent, device);
     queuePush(&device->txRequestQueue, &request);
+    requestData += REPORT_PACKET_SIZE;
     ++request;
   }
 
   /* All parts have been initialized, bind driver */
-  if ((res = hidBind(object)) != E_OK)
-    return res;
-
-  return E_OK;
+  return hidBind(object);
 }
 /*----------------------------------------------------------------------------*/
 static void mouseDeinit(void *object)
@@ -166,10 +167,7 @@ static void mouseDeinit(void *object)
   usbEpClear(device->txDataEp);
   assert(queueSize(&device->txRequestQueue) == REQUEST_QUEUE_SIZE);
   queueDeinit(&device->txRequestQueue);
-
   deinit(device->txDataEp);
-
-  free(device->requests);
 
   /* Call base class destructor */
   Hid->deinit(object);
@@ -187,7 +185,7 @@ static void mouseEvent(void *object, unsigned int event)
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result mouseGetReport(void *object __attribute__((unused)),
+static enum Result mouseGetReport(void *object __attribute__((unused)),
     uint8_t reportType, uint8_t reportId __attribute__((unused)),
     uint8_t *report, uint16_t *reportLength, uint16_t maxReportLength)
 {
@@ -208,7 +206,7 @@ static enum result mouseGetReport(void *object __attribute__((unused)),
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result mouseSetReport(void *object __attribute__((unused)),
+static enum Result mouseSetReport(void *object __attribute__((unused)),
     uint8_t reportType, uint8_t reportId __attribute__((unused)),
     const uint8_t *report __attribute__((unused)),
     uint16_t reportLength __attribute__((unused)))

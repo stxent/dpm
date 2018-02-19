@@ -22,15 +22,15 @@ struct MemoryBusDmaConfig
   /** Mandatory: period of a memory cycle in timer ticks. */
   uint32_t cycle;
   /** Mandatory: pointer to an array of data output pins. */
-  const pinNumber *pins;
+  const PinNumber *pins;
   /** Optional: interrupt priority. */
-  irqPriority priority;
+  IrqPriority priority;
 
   struct {
     /** Mandatory: memory control signal. */
-    pinNumber leading;
+    PinNumber leading;
     /** Mandatory: memory control signal. */
-    pinNumber trailing;
+    PinNumber trailing;
     /** Mandatory: timer peripheral identifier. */
     uint8_t channel;
     /** Mandatory: DMA channel for data transfers. */
@@ -41,11 +41,11 @@ struct MemoryBusDmaConfig
 
   struct {
     /** Mandatory: clock capture pin. */
-    pinNumber capture;
+    PinNumber capture;
     /** Mandatory: memory control signal. */
-    pinNumber leading;
+    PinNumber leading;
     /** Mandatory: memory control signal. */
-    pinNumber trailing;
+    PinNumber trailing;
     /** Mandatory: timer peripheral identifier. */
     uint8_t channel;
     /** Mandatory: DMA channel for control transfers. */

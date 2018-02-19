@@ -45,7 +45,7 @@
 /* Set position */
 #define HD44780_POSITION                0x80
 /*----------------------------------------------------------------------------*/
-enum state
+enum State
 {
   STATE_IDLE,
   STATE_RESET,
@@ -57,11 +57,11 @@ static void interruptHandler(void *);
 static void setPosition(struct HD44780 *, struct DisplayPoint);
 static void updateDisplay(struct HD44780 *);
 /*----------------------------------------------------------------------------*/
-static enum result displayInit(void *, const void *);
+static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
-static enum result displayCallback(void *, void (*)(void *), void *);
-static enum result displayGet(void *, enum ifOption, void *);
-static enum result displaySet(void *, enum ifOption, const void *);
+static enum Result displaySetCallback(void *, void (*)(void *), void *);
+static enum Result displayGetParam(void *, enum IfParameter, void *);
+static enum Result displaySetParam(void *, enum IfParameter, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
@@ -70,9 +70,9 @@ static const struct InterfaceClass displayTable = {
     .init = displayInit,
     .deinit = displayDeinit,
 
-    .callback = displayCallback,
-    .get = displayGet,
-    .set = displaySet,
+    .setCallback = displaySetCallback,
+    .getParam = displayGetParam,
+    .setParam = displaySetParam,
     .read = displayRead,
     .write = displayWrite
 };
@@ -155,11 +155,11 @@ static void updateDisplay(struct HD44780 *display)
   setPosition(display, (struct DisplayPoint){0, 0});
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayInit(void *object, const void *configPtr)
+static enum Result displayInit(void *object, const void *configPtr)
 {
   const struct HD44780Config * const config = configPtr;
   struct HD44780 * const display = object;
-  enum result res;
+  enum Result res;
 
   const size_t bufferSize =
       config->resolution.width * config->resolution.height;
@@ -167,9 +167,9 @@ static enum result displayInit(void *object, const void *configPtr)
   assert(config->bus);
   assert(config->resolution.width && config->resolution.height);
 
-  if ((res = ifSet(config->bus, IF_ZEROCOPY, 0)) != E_OK)
+  if ((res = ifSetParam(config->bus, IF_ZEROCOPY, 0)) != E_OK)
     return res;
-  if ((res = ifCallback(config->bus, interruptHandler, display)) != E_OK)
+  if ((res = ifSetCallback(config->bus, interruptHandler, display)) != E_OK)
     return res;
 
   display->rs = pinInit(config->rs);
@@ -178,7 +178,8 @@ static enum result displayInit(void *object, const void *configPtr)
   /* Initialize and select instruction registers */
   pinOutput(display->rs, 0);
 
-  if (!(display->buffer = malloc(bufferSize)))
+  display->buffer = malloc(bufferSize);
+  if (!display->buffer)
     return E_MEMORY;
   memset(display->buffer, ' ', bufferSize);
 
@@ -213,11 +214,10 @@ static enum result displayInit(void *object, const void *configPtr)
 static void displayDeinit(void *object)
 {
   struct HD44780 * const display = object;
-
   free(display->buffer);
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayCallback(void *object, void (*callback)(void *),
+static enum Result displaySetCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct HD44780 * const display = object;
@@ -227,11 +227,12 @@ static enum result displayCallback(void *object, void (*callback)(void *),
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayGet(void *object, enum ifOption option, void *data)
+static enum Result displayGetParam(void *object, enum IfParameter parameter,
+    void *data)
 {
   const struct HD44780 * const display = object;
 
-  switch ((enum ifDisplayOption)option)
+  switch ((enum IfDisplayParameter)parameter)
   {
     case IF_DISPLAY_RESOLUTION:
       *(struct DisplayResolution *)data = display->resolution;
@@ -242,12 +243,12 @@ static enum result displayGet(void *object, enum ifOption option, void *data)
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result displaySet(void *object, enum ifOption option,
+static enum Result displaySetParam(void *object, enum IfParameter parameter,
     const void *data)
 {
   struct HD44780 * const display = object;
 
-  switch ((enum ifDisplayOption)option)
+  switch ((enum IfDisplayParameter)parameter)
   {
     case IF_DISPLAY_WINDOW:
     {
@@ -271,8 +272,7 @@ static enum result displaySet(void *object, enum ifOption option,
 }
 /*----------------------------------------------------------------------------*/
 static size_t displayRead(void *object __attribute__((unused)),
-    void *buffer __attribute__((unused)),
-    size_t length __attribute__((unused)))
+    void *buffer __attribute__((unused)), size_t length __attribute__((unused)))
 {
   return 0;
 }

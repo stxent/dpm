@@ -44,7 +44,7 @@ struct SoftwarePwmConfig
   /** Mandatory: peripheral unit. */
   struct SoftwarePwmUnit *parent;
   /** Mandatory: pin used as an output for modulated signal. */
-  pinNumber pin;
+  PinNumber pin;
 };
 /*----------------------------------------------------------------------------*/
 struct SoftwarePwm
@@ -61,6 +61,6 @@ struct SoftwarePwm
   bool enabled;
 };
 /*----------------------------------------------------------------------------*/
-void *softwarePwmCreate(void *, pinNumber);
+void *softwarePwmCreate(void *, PinNumber);
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_SOFTWARE_PWM_H_ */

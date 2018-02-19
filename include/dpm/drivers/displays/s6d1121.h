@@ -18,11 +18,11 @@ struct S6D1121Config
   /** Mandatory: memory interface. */
   struct Interface *bus;
   /** Optional: pin used as Chip Select output. */
-  pinNumber cs;
+  PinNumber cs;
   /** Mandatory: pin used for display reset. */
-  pinNumber reset;
+  PinNumber reset;
   /** Mandatory: pin used as Register Select output. */
-  pinNumber rs;
+  PinNumber rs;
 };
 /*----------------------------------------------------------------------------*/
 struct S6D1121

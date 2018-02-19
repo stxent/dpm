@@ -18,11 +18,11 @@ struct ST7735Config
   /** Mandatory: memory interface. */
   struct Interface *bus;
   /** Mandatory: pin used as Chip Select output. */
-  pinNumber cs;
+  PinNumber cs;
   /** Mandatory: pin used for display reset. */
-  pinNumber reset;
+  PinNumber reset;
   /** Mandatory: pin used as Register Select output. */
-  pinNumber rs;
+  PinNumber rs;
 };
 /*----------------------------------------------------------------------------*/
 struct ST7735

@@ -13,7 +13,7 @@
 #define DISPLAY_HEIGHT  160
 #define DISPLAY_WIDTH   128
 /*----------------------------------------------------------------------------*/
-enum displayCommand
+enum DisplayCommand
 {
   /* System function commands */
   CMD_NOP       = 0x00,
@@ -80,14 +80,14 @@ enum displayCommand
 static void loadLUT(struct ST7735 *);
 static void setOrientation(struct ST7735 *, enum displayOrientation);
 static void setWindow(struct ST7735 *, uint8_t, uint8_t, uint8_t, uint8_t);
-static inline void sendCommand(struct ST7735 *, enum displayCommand);
+static inline void sendCommand(struct ST7735 *, enum DisplayCommand);
 static inline void sendData(struct ST7735 *, const uint8_t *, size_t);
 /*----------------------------------------------------------------------------*/
-static enum result displayInit(void *, const void *);
+static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
-static enum result displayCallback(void *, void (*)(void *), void *);
-static enum result displayGet(void *, enum ifOption, void *);
-static enum result displaySet(void *, enum ifOption, const void *);
+static enum Result displaySetCallback(void *, void (*)(void *), void *);
+static enum Result displayGetParam(void *, enum IfParameter, void *);
+static enum Result displaySetParam(void *, enum IfParameter, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
@@ -96,9 +96,9 @@ static const struct InterfaceClass displayTable = {
     .init = displayInit,
     .deinit = displayDeinit,
 
-    .callback = displayCallback,
-    .get = displayGet,
-    .set = displaySet,
+    .setCallback = displaySetCallback,
+    .getParam = displayGetParam,
+    .setParam = displaySetParam,
     .read = displayRead,
     .write = displayWrite
 };
@@ -127,14 +127,14 @@ static void setOrientation(struct ST7735 *display,
 {
   const uint8_t buffer[] = {0x00, orientation << 6};
 
-  ifSet(display->bus, IF_ACQUIRE, 0);
+  ifSetParam(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
 
   sendCommand(display, CMD_MADCTL);
   sendData(display, buffer, sizeof(buffer));
 
   pinSet(display->cs);
-  ifSet(display->bus, IF_RELEASE, 0);
+  ifSetParam(display->bus, IF_RELEASE, 0);
 }
 /*----------------------------------------------------------------------------*/
 static void setWindow(struct ST7735 *display, uint8_t x0, uint8_t y0,
@@ -143,7 +143,7 @@ static void setWindow(struct ST7735 *display, uint8_t x0, uint8_t y0,
   const uint8_t xBuffer[] = {0x00, x0, 0x00, x1};
   const uint8_t yBuffer[] = {0x00, y0, 0x00, y1};
 
-  ifSet(display->bus, IF_ACQUIRE, 0);
+  ifSetParam(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
 
   sendCommand(display, CMD_CASET);
@@ -153,11 +153,11 @@ static void setWindow(struct ST7735 *display, uint8_t x0, uint8_t y0,
   sendData(display, yBuffer, sizeof(yBuffer));
 
   pinSet(display->cs);
-  ifSet(display->bus, IF_RELEASE, 0);
+  ifSetParam(display->bus, IF_RELEASE, 0);
 }
 /*----------------------------------------------------------------------------*/
 static inline void sendCommand(struct ST7735 *display,
-    enum displayCommand address)
+    enum DisplayCommand address)
 {
   const uint8_t buffer = address;
 
@@ -175,7 +175,7 @@ static inline void sendData(struct ST7735 *display, const uint8_t *data,
   ifWrite(display->bus, data, length);
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayInit(void *object, const void *configPtr)
+static enum Result displayInit(void *object, const void *configPtr)
 {
   const struct ST7735Config * const config = configPtr;
   struct ST7735 * const display = object;
@@ -206,7 +206,7 @@ static enum result displayInit(void *object, const void *configPtr)
   mdelay(120);
 
   /* Start of the initialization */
-  ifSet(display->bus, IF_ACQUIRE, 0);
+  ifSetParam(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
 
   /*
@@ -244,7 +244,7 @@ static enum result displayInit(void *object, const void *configPtr)
 
   /* End of the initialization */
   pinSet(display->cs);
-  ifSet(display->bus, IF_RELEASE, 0);
+  ifSetParam(display->bus, IF_RELEASE, 0);
 
   setWindow(display, 0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1);
 
@@ -256,18 +256,19 @@ static void displayDeinit(void *object __attribute__((unused)))
 
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayCallback(void *object __attribute__((unused)),
+static enum Result displaySetCallback(void *object __attribute__((unused)),
     void (*callback)(void *) __attribute__((unused)),
     void *argument __attribute__((unused)))
 {
   return E_ERROR;
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayGet(void *object, enum ifOption option, void *data)
+static enum Result displayGetParam(void *object, enum IfParameter parameter,
+    void *data)
 {
   struct ST7735 * const display = object;
 
-  switch ((enum ifDisplayOption)option)
+  switch ((enum IfDisplayParameter)parameter)
   {
     case IF_DISPLAY_RESOLUTION:
     {
@@ -283,22 +284,22 @@ static enum result displayGet(void *object, enum ifOption option, void *data)
       break;
   }
 
-  switch (option)
+  switch (parameter)
   {
     case IF_STATUS:
-      return ifGet(display->bus, IF_STATUS, 0);
+      return ifGetParam(display->bus, IF_STATUS, 0);
 
     default:
       return E_ERROR;
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result displaySet(void *object, enum ifOption option,
+static enum Result displaySetParam(void *object, enum IfParameter parameter,
     const void *data)
 {
   struct ST7735 * const display = object;
 
-  switch ((enum ifDisplayOption)option)
+  switch ((enum IfDisplayParameter)parameter)
   {
     case IF_DISPLAY_ORIENTATION:
     {
@@ -339,7 +340,7 @@ static size_t displayRead(void *object, void *buffer, size_t length)
   struct ST7735 * const display = object;
   size_t bytesRead;
 
-  ifSet(display->bus, IF_ACQUIRE, 0);
+  ifSetParam(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
   if (!display->gramActive)
   {
@@ -350,7 +351,7 @@ static size_t displayRead(void *object, void *buffer, size_t length)
   pinSet(display->rs);
   bytesRead = ifRead(display->bus, buffer, length);
   pinSet(display->cs);
-  ifSet(display->bus, IF_RELEASE, 0);
+  ifSetParam(display->bus, IF_RELEASE, 0);
 
   return bytesRead;
 }
@@ -360,7 +361,7 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   struct ST7735 * const display = object;
   size_t bytesWritten;
 
-  ifSet(display->bus, IF_ACQUIRE, 0);
+  ifSetParam(display->bus, IF_ACQUIRE, 0);
   pinReset(display->cs);
   if (!display->gramActive)
   {
@@ -371,7 +372,7 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   pinSet(display->rs);
   bytesWritten = ifWrite(display->bus, buffer, length);
   pinSet(display->cs);
-  ifSet(display->bus, IF_RELEASE, 0);
+  ifSetParam(display->bus, IF_RELEASE, 0);
 
   return bytesWritten;
 }

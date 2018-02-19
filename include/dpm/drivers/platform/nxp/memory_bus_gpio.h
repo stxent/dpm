@@ -23,9 +23,9 @@ struct MemoryBusGpioConfig
   /** Mandatory: timer frequency. */
   uint32_t frequency;
   /** Mandatory: memory control signal. */
-  pinNumber strobe;
+  PinNumber strobe;
   /** Optional: timer interrupt priority. */
-  irqPriority priority;
+  IrqPriority priority;
   /** Mandatory: timer block. */
   uint8_t timer;
   /** Mandatory: enables inversion of control signal. */

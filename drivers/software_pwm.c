@@ -11,18 +11,19 @@
 #define FREQUENCY_MULTIPLIER 2
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
-static enum result updateFrequency(struct SoftwarePwmUnit *, uint32_t);
+static void updateFrequency(struct SoftwarePwmUnit *, uint32_t);
 /*----------------------------------------------------------------------------*/
-static enum result unitInit(void *, const void *);
+static enum Result unitInit(void *, const void *);
 static void unitDeinit(void *);
 /*----------------------------------------------------------------------------*/
-static enum result channelInit(void *, const void *);
+static enum Result channelInit(void *, const void *);
 static void channelDeinit(void *);
+static void channelEnable(void *);
+static void channelDisable(void *);
 static uint32_t channelGetResolution(const void *);
 static void channelSetDuration(void *, uint32_t);
 static void channelSetEdges(void *, uint32_t, uint32_t);
-static void channelSetEnabled(void *, bool);
-static enum result channelSetFrequency(void *, uint32_t);
+static enum Result channelSetFrequency(void *, uint32_t);
 /*----------------------------------------------------------------------------*/
 static const struct EntityClass unitTable = {
     .size = sizeof(struct SoftwarePwmUnit),
@@ -35,10 +36,11 @@ static const struct PwmClass channelTable = {
     .init = channelInit,
     .deinit = channelDeinit,
 
+    .enable = channelEnable,
+    .disable = channelDisable,
     .getResolution = channelGetResolution,
     .setDuration = channelSetDuration,
     .setEdges = channelSetEdges,
-    .setEnabled = channelSetEnabled,
     .setFrequency = channelSetFrequency
 };
 /*----------------------------------------------------------------------------*/
@@ -63,18 +65,17 @@ static void interruptHandler(void *object)
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result updateFrequency(struct SoftwarePwmUnit *unit,
-    uint32_t frequency)
+static void updateFrequency(struct SoftwarePwmUnit *unit, uint32_t frequency)
 {
-  return timerSetFrequency(unit->timer,
+  timerSetFrequency(unit->timer,
       FREQUENCY_MULTIPLIER * frequency * unit->resolution);
 }
 /*----------------------------------------------------------------------------*/
-static enum result unitInit(void *object, const void *configBase)
+static enum Result unitInit(void *object, const void *configBase)
 {
   const struct SoftwarePwmUnitConfig * const config = configBase;
   struct SoftwarePwmUnit * const unit = object;
-  enum result res;
+  enum Result res;
 
   res = listInit(&unit->channels, sizeof(struct SoftwarePwm *));
   if (res != E_OK)
@@ -84,12 +85,10 @@ static enum result unitInit(void *object, const void *configBase)
   unit->resolution = config->resolution;
   unit->timer = config->timer;
 
-  if ((res = updateFrequency(unit, config->frequency)) != E_OK)
-    return res;
-  if ((res = timerSetOverflow(unit->timer, FREQUENCY_MULTIPLIER)) != E_OK)
-    return res;
-  timerCallback(unit->timer, interruptHandler, unit);
-  timerSetEnabled(unit->timer, true);
+  updateFrequency(unit, config->frequency);
+  timerSetOverflow(unit->timer, FREQUENCY_MULTIPLIER);
+  timerSetCallback(unit->timer, interruptHandler, unit);
+  timerEnable(unit->timer);
 
   return E_OK;
 }
@@ -98,17 +97,17 @@ static void unitDeinit(void *object)
 {
   struct SoftwarePwmUnit * const unit = object;
 
-  timerSetEnabled(unit->timer, false);
-  timerCallback(unit->timer, 0, 0);
+  timerDisable(unit->timer);
+  timerSetCallback(unit->timer, 0, 0);
   listDeinit(&unit->channels);
 }
 /*----------------------------------------------------------------------------*/
-static enum result channelInit(void *object, const void *configBase)
+static enum Result channelInit(void *object, const void *configBase)
 {
   const struct SoftwarePwmConfig * const config = configBase;
   struct SoftwarePwm * const pwm = object;
   struct SoftwarePwmUnit * const unit = config->parent;
-  irqState state;
+  IrqState state;
 
   pwm->pin = pinInit(config->pin);
   assert(pinValid(pwm->pin));
@@ -129,7 +128,7 @@ static void channelDeinit(void *object)
 {
   struct SoftwarePwmUnit * const unit = ((struct SoftwarePwm *)object)->unit;
 
-  const irqState state = irqSave();
+  const IrqState state = irqSave();
   struct ListNode * const node = listFind(&unit->channels, &object);
 
   if (node)
@@ -138,10 +137,21 @@ static void channelDeinit(void *object)
   irqRestore(state);
 }
 /*----------------------------------------------------------------------------*/
+static void channelEnable(void *object)
+{
+  struct SoftwarePwm * const pwm = object;
+  pwm->enabled = true;
+}
+/*----------------------------------------------------------------------------*/
+static void channelDisable(void *object)
+{
+  struct SoftwarePwm * const pwm = object;
+  pwm->enabled = false;
+}
+/*----------------------------------------------------------------------------*/
 static uint32_t channelGetResolution(const void *object)
 {
   const struct SoftwarePwm * const pwm = object;
-
   return pwm->unit->resolution;
 }
 /*----------------------------------------------------------------------------*/
@@ -157,22 +167,14 @@ static void channelSetEdges(void *object,
     uint32_t leading __attribute__((unused)), uint32_t trailing)
 {
   assert(leading == 0);
-
   channelSetDuration(object, trailing);
 }
 /*----------------------------------------------------------------------------*/
-static void channelSetEnabled(void *object, bool state)
+static enum Result channelSetFrequency(void *object, uint32_t frequency)
 {
   struct SoftwarePwm * const pwm = object;
-
-  pwm->enabled = state;
-}
-/*----------------------------------------------------------------------------*/
-static enum result channelSetFrequency(void *object, uint32_t frequency)
-{
-  struct SoftwarePwm * const pwm = object;
-
-  return updateFrequency(pwm->unit, frequency);
+  updateFrequency(pwm->unit, frequency);
+  return E_OK;
 }
 /*----------------------------------------------------------------------------*/
 /**
@@ -181,7 +183,7 @@ static enum result channelSetFrequency(void *object, uint32_t frequency)
  * @param pin Pin used as a signal output.
  * @return Pointer to a new SoftwarePwm object on success or zero on error.
  */
-void *softwarePwmCreate(void *unit, pinNumber pin)
+void *softwarePwmCreate(void *unit, PinNumber pin)
 {
   const struct SoftwarePwmConfig channelConfig = {
       .parent = unit,

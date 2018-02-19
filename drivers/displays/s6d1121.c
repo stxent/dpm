@@ -13,7 +13,7 @@
 #define DISPLAY_HEIGHT  320
 #define DISPLAY_WIDTH   240
 /*----------------------------------------------------------------------------*/
-enum displayRegister
+enum DisplayRegister
 {
   REG_PRODUCTION_CODE                 = 0x00,
   REG_DRIVER_OUTPUT_CONTROL           = 0x01,
@@ -88,15 +88,15 @@ static void deselectChip(struct S6D1121 *);
 static void selectChip(struct S6D1121 *);
 static void setOrientation(struct S6D1121 *, enum displayOrientation);
 static void setWindow(struct S6D1121 *, uint16_t, uint16_t, uint16_t, uint16_t);
-static inline void writeAddress(struct S6D1121 *, enum displayRegister);
+static inline void writeAddress(struct S6D1121 *, enum DisplayRegister);
 static inline void writeData(struct S6D1121 *, uint16_t);
-static void writeRegister(struct S6D1121 *, enum displayRegister, uint16_t);
+static void writeRegister(struct S6D1121 *, enum DisplayRegister, uint16_t);
 /*----------------------------------------------------------------------------*/
-static enum result displayInit(void *, const void *);
+static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
-static enum result displayCallback(void *, void (*)(void *), void *);
-static enum result displayGet(void *, enum ifOption, void *);
-static enum result displaySet(void *, enum ifOption, const void *);
+static enum Result displaySetCallback(void *, void (*)(void *), void *);
+static enum Result displayGetParam(void *, enum IfParameter, void *);
+static enum Result displaySetParam(void *, enum IfParameter, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
@@ -105,9 +105,9 @@ static const struct InterfaceClass displayTable = {
     .init = displayInit,
     .deinit = displayDeinit,
 
-    .callback = displayCallback,
-    .get = displayGet,
-    .set = displaySet,
+    .setCallback = displaySetCallback,
+    .getParam = displayGetParam,
+    .setParam = displaySetParam,
     .read = displayRead,
     .write = displayWrite
 };
@@ -204,7 +204,7 @@ static void setWindow(struct S6D1121 *display, uint16_t x0, uint16_t y0,
 }
 /*----------------------------------------------------------------------------*/
 static inline void writeAddress(struct S6D1121 *display,
-    enum displayRegister address)
+    enum DisplayRegister address)
 {
   const uint8_t buffer[2] = {(uint8_t)(address >> 8), (uint8_t)address};
 
@@ -220,14 +220,14 @@ static inline void writeData(struct S6D1121 *display, uint16_t data)
   ifWrite(display->bus, buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
-static void writeRegister(struct S6D1121 *display, enum displayRegister address,
+static void writeRegister(struct S6D1121 *display, enum DisplayRegister address,
     uint16_t data)
 {
   writeAddress(display, address);
   writeData(display, data);
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayInit(void *object, const void *configPtr)
+static enum Result displayInit(void *object, const void *configPtr)
 {
   const struct S6D1121Config * const config = configPtr;
   struct S6D1121 * const display = object;
@@ -264,8 +264,13 @@ static enum result displayInit(void *object, const void *configPtr)
   pinSet(display->reset);
   mdelay(20);
 
+  uint8_t arr[16];
+  for (unsigned i = 0; i < sizeof(arr); ++i)
+    arr[i] = i & 1 ? 0xAA : 0x55;
+  ifWrite(display->bus, arr, sizeof(arr));
+
   selectChip(display);
-  for (unsigned int index = 0; index < ARRAY_SIZE(initSequence); ++index)
+  for (size_t index = 0; index < ARRAY_SIZE(initSequence); ++index)
   {
     if (initSequence[index].address != DELAY_MS)
     {
@@ -286,21 +291,21 @@ static enum result displayInit(void *object, const void *configPtr)
 /*----------------------------------------------------------------------------*/
 static void displayDeinit(void *object __attribute__((unused)))
 {
-
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayCallback(void *object __attribute__((unused)),
+static enum Result displaySetCallback(void *object __attribute__((unused)),
     void (*callback)(void *) __attribute__((unused)),
     void *argument __attribute__((unused)))
 {
   return E_ERROR;
 }
 /*----------------------------------------------------------------------------*/
-static enum result displayGet(void *object, enum ifOption option, void *data)
+static enum Result displayGetParam(void *object, enum IfParameter parameter,
+    void *data)
 {
   struct S6D1121 * const display = object;
 
-  switch ((enum ifDisplayOption)option)
+  switch ((enum IfDisplayParameter)parameter)
   {
     case IF_DISPLAY_RESOLUTION:
     {
@@ -316,22 +321,22 @@ static enum result displayGet(void *object, enum ifOption option, void *data)
       break;
   }
 
-  switch (option)
+  switch (parameter)
   {
     case IF_STATUS:
-      return ifGet(display->bus, IF_STATUS, 0);
+      return ifGetParam(display->bus, IF_STATUS, 0);
 
     default:
       return E_ERROR;
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum result displaySet(void *object, enum ifOption option,
+static enum Result displaySetParam(void *object, enum IfParameter parameter,
     const void *data)
 {
   struct S6D1121 * const display = object;
 
-  switch ((enum ifDisplayOption)option)
+  switch ((enum IfDisplayParameter)parameter)
   {
     case IF_DISPLAY_ORIENTATION:
     {

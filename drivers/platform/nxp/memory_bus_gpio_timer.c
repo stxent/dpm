@@ -9,29 +9,33 @@
 #include <dpm/drivers/platform/nxp/memory_bus_gpio_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
-static enum result setupChannels(struct MemoryBusGpioTimer *,
+static enum Result setupChannels(struct MemoryBusGpioTimer *,
     const struct MemoryBusGpioTimerConfig *);
 /*----------------------------------------------------------------------------*/
-static enum result tmrInit(void *, const void *);
+static enum Result tmrInit(void *, const void *);
 static void tmrDeinit(void *);
-static void tmrCallback(void *, void (*)(void *), void *);
-static void tmrSetEnabled(void *, bool);
-static enum result tmrSetFrequency(void *, uint32_t);
-static enum result tmrSetOverflow(void *, uint32_t);
-static enum result tmrSetValue(void *, uint32_t);
-static uint32_t tmrValue(const void *);
+static void tmrSetCallback(void *, void (*)(void *), void *);
+static void tmrEnable(void *);
+static void tmrDisable(void *);
+static void tmrSetFrequency(void *, uint32_t);
+static void tmrSetOverflow(void *, uint32_t);
+static uint32_t tmrGetValue(const void *);
+static void tmrSetValue(void *, uint32_t);
 /*----------------------------------------------------------------------------*/
 static const struct TimerClass timerTable = {
     .size = sizeof(struct MemoryBusGpioTimer),
     .init = tmrInit,
     .deinit = tmrDeinit,
 
-    .callback = tmrCallback,
-    .setEnabled = tmrSetEnabled,
+    .enable = tmrEnable,
+    .disable = tmrDisable,
+    .setCallback = tmrSetCallback,
+    .getFrequency = 0,
     .setFrequency = tmrSetFrequency,
+    .getOverflow = 0,
     .setOverflow = tmrSetOverflow,
-    .setValue = tmrSetValue,
-    .value = tmrValue
+    .getValue = tmrGetValue,
+    .setValue = tmrSetValue
 };
 /*----------------------------------------------------------------------------*/
 const struct TimerClass *MemoryBusGpioTimer = &timerTable;
@@ -50,7 +54,7 @@ static void interruptHandler(void *object)
     timer->callback(timer->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
-static enum result setupChannels(struct MemoryBusGpioTimer *timer,
+static enum Result setupChannels(struct MemoryBusGpioTimer *timer,
     const struct MemoryBusGpioTimerConfig *config)
 {
   uint8_t mask = 0;
@@ -70,14 +74,14 @@ static enum result setupChannels(struct MemoryBusGpioTimer *timer,
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result tmrInit(void *object, const void *configPtr)
+static enum Result tmrInit(void *object, const void *configPtr)
 {
   const struct MemoryBusGpioTimerConfig * const config = configPtr;
   const struct GpTimerBaseConfig parentConfig = {
       .channel = config->channel
   };
   struct MemoryBusGpioTimer * const timer = object;
-  enum result res;
+  enum Result res;
 
   assert(config->frequency);
 
@@ -127,7 +131,7 @@ static void tmrDeinit(void *object)
   GpTimerBase->deinit(timer);
 }
 /*----------------------------------------------------------------------------*/
-static void tmrCallback(void *object, void (*callback)(void *), void *argument)
+static void tmrSetCallback(void *object, void (*callback)(void *), void *argument)
 {
   struct MemoryBusGpioTimer * const timer = object;
 
@@ -135,27 +139,28 @@ static void tmrCallback(void *object, void (*callback)(void *), void *argument)
   timer->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static void tmrSetEnabled(void *object, bool state)
+static void tmrEnable(void *object)
 {
   struct MemoryBusGpioTimer * const timer = object;
   LPC_TIMER_Type * const reg = timer->parent.reg;
 
-  if (state)
-  {
-    reg->PC = reg->TC = 0;
-    reg->MCR &= ~(MCR_INTERRUPT(timer->resetChannel)
-        | MCR_STOP(timer->resetChannel));
-    reg->TCR = TCR_CEN;
-  }
-  else
-  {
-    /* Complete current operation and stop */
-    reg->MCR |= MCR_INTERRUPT(timer->resetChannel)
-        | MCR_STOP(timer->resetChannel);
-  }
+  reg->PC = reg->TC = 0;
+  reg->MCR &= ~(MCR_INTERRUPT(timer->resetChannel)
+      | MCR_STOP(timer->resetChannel));
+  reg->TCR = TCR_CEN;
 }
 /*----------------------------------------------------------------------------*/
-static enum result tmrSetFrequency(void *object, uint32_t frequency)
+static void tmrDisable(void *object)
+{
+  struct MemoryBusGpioTimer * const timer = object;
+  LPC_TIMER_Type * const reg = timer->parent.reg;
+
+  /* Complete current operation and stop */
+  reg->MCR |= MCR_INTERRUPT(timer->resetChannel)
+      | MCR_STOP(timer->resetChannel);
+}
+/*----------------------------------------------------------------------------*/
+static void tmrSetFrequency(void *object, uint32_t frequency)
 {
   struct MemoryBusGpioTimer * const timer = object;
   LPC_TIMER_Type * const reg = timer->parent.reg;
@@ -163,11 +168,9 @@ static enum result tmrSetFrequency(void *object, uint32_t frequency)
   assert(frequency);
 
   reg->PR = gpTimerGetClock(object) / frequency - 1;
-
-  return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result tmrSetOverflow(void *object, uint32_t overflow)
+static void tmrSetOverflow(void *object, uint32_t overflow)
 {
   struct MemoryBusGpioTimer * const timer = object;
   LPC_TIMER_Type * const reg = timer->parent.reg;
@@ -177,20 +180,17 @@ static enum result tmrSetOverflow(void *object, uint32_t overflow)
   reg->MR[timer->eventChannel] = (overflow >> 2) - 1;
   reg->MR[timer->callbackChannel] = (overflow >> 1) + (overflow >> 2) - 1;
   reg->MR[timer->resetChannel] = overflow - 1;
-
-  return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static enum result tmrSetValue(void *object __attribute__((unused)),
-    uint32_t value __attribute__((unused)))
-{
-  return E_ERROR;
-}
-/*----------------------------------------------------------------------------*/
-static uint32_t tmrValue(const void *object)
+static uint32_t tmrGetValue(const void *object)
 {
   const struct MemoryBusGpioTimer * const timer = object;
   const LPC_TIMER_Type * const reg = timer->parent.reg;
 
   return reg->TC;
+}
+/*----------------------------------------------------------------------------*/
+static void tmrSetValue(void *object __attribute__((unused)),
+    uint32_t value __attribute__((unused)))
+{
 }

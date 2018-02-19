@@ -16,13 +16,13 @@ struct MemoryBusDmaTimerConfig
   /** Optional: memory operation cycle in timer ticks. */
   uint32_t cycle;
   /** Optional: external clock input. */
-  pinNumber input;
+  PinNumber input;
   /** Mandatory: pin used as output for memory control signal. */
-  pinNumber leading;
+  PinNumber leading;
   /** Mandatory: pin used as output for memory control signal. */
-  pinNumber trailing;
+  PinNumber trailing;
   /** Optional: interrupt priority. */
-  irqPriority priority;
+  IrqPriority priority;
   /** Mandatory: peripheral identifier. */
   uint8_t channel;
   /** Optional: selects control mode timings. */

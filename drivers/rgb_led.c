@@ -6,7 +6,7 @@
 
 #include <dpm/drivers/rgb_led.h>
 /*----------------------------------------------------------------------------*/
-static enum result ledInit(void *, const void *);
+static enum Result ledInit(void *, const void *);
 static void ledDeinit(void *);
 /*----------------------------------------------------------------------------*/
 static const struct EntityClass ledTable = {
@@ -17,7 +17,7 @@ static const struct EntityClass ledTable = {
 /*----------------------------------------------------------------------------*/
 const struct EntityClass * const RgbLed = &ledTable;
 /*----------------------------------------------------------------------------*/
-static enum result ledInit(void *object, const void *configBase)
+static enum Result ledInit(void *object, const void *configBase)
 {
   const struct RgbLedConfig * const config = configBase;
   struct RgbLed * const led = object;

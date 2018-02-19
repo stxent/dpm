@@ -18,9 +18,9 @@ struct MemoryBusGpioTimerConfig
   /** Mandatory: period of a memory cycle in timer ticks. */
   uint32_t cycle;
   /** Mandatory: pin used as output for memory control signal. */
-  pinNumber pin;
+  PinNumber pin;
   /** Optional: timer interrupt priority. */
-  irqPriority priority;
+  IrqPriority priority;
   /** Mandatory: timer block. */
   uint8_t channel;
   /** Mandatory: enables inversion of the control signal. */

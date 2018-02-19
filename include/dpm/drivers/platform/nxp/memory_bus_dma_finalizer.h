@@ -34,7 +34,7 @@ struct MemoryBusDmaFinalizer
   uint32_t value;
 };
 /*----------------------------------------------------------------------------*/
-enum result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *);
+enum Result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *);
 void memoryBusDmaFinalizerStop(struct MemoryBusDmaFinalizer *);
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_ */
