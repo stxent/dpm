@@ -42,6 +42,10 @@ config PLATFORM_TYPE
 
 menu "Drivers"
 
+config DRIVERS_DS18B20
+	bool "DS18B20"
+	default y
+
 config DRIVERS_RGB_LED
 	bool "RGB LED driver"
 	default y
