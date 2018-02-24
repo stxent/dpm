@@ -78,7 +78,7 @@ enum DisplayCommand
 };
 /*----------------------------------------------------------------------------*/
 static void loadLUT(struct ST7735 *);
-static void setOrientation(struct ST7735 *, enum displayOrientation);
+static void setOrientation(struct ST7735 *, enum DisplayOrientation);
 static void setWindow(struct ST7735 *, uint8_t, uint8_t, uint8_t, uint8_t);
 static inline void sendCommand(struct ST7735 *, enum DisplayCommand);
 static inline void sendData(struct ST7735 *, const uint8_t *, size_t);
@@ -123,7 +123,7 @@ static void loadLUT(struct ST7735 *display)
 }
 /*----------------------------------------------------------------------------*/
 static void setOrientation(struct ST7735 *display,
-    enum displayOrientation orientation)
+    enum DisplayOrientation orientation)
 {
   const uint8_t buffer[] = {0x00, orientation << 6};
 
@@ -303,7 +303,7 @@ static enum Result displaySetParam(void *object, enum IfParameter parameter,
   {
     case IF_DISPLAY_ORIENTATION:
     {
-      const enum displayOrientation orientation = *(const uint32_t *)data;
+      const enum DisplayOrientation orientation = *(const uint8_t *)data;
 
       if (orientation < DISPLAY_ORIENTATION_END)
       {
@@ -319,11 +319,10 @@ static enum Result displaySetParam(void *object, enum IfParameter parameter,
       const struct DisplayWindow * const window =
           (const struct DisplayWindow *)data;
 
-      if (window->begin.x < window->end.x && window->begin.y < window->end.y
-          && window->end.x < DISPLAY_WIDTH && window->end.y < DISPLAY_HEIGHT)
+      if (window->ax < window->bx && window->ay < window->by
+          && window->bx < DISPLAY_WIDTH && window->by < DISPLAY_HEIGHT)
       {
-        setWindow(display, window->begin.x, window->begin.y,
-            window->end.x, window->end.y);
+        setWindow(display, window->ax, window->ay, window->bx, window->by);
         return E_OK;
       }
       else

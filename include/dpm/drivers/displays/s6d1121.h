@@ -38,6 +38,10 @@ struct S6D1121
   /* Register Select output used to distinguish command and data modes */
   struct Pin rs;
 
+  /* Current window size */
+  struct DisplayWindow window;
+  /* Current orientation */
+  uint8_t orientation;
   /* Chip Select pin is controlled externally */
   bool csExternal;
 };

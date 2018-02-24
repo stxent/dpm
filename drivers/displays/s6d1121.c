@@ -86,8 +86,8 @@ struct InitEntry
 /*----------------------------------------------------------------------------*/
 static void deselectChip(struct S6D1121 *);
 static void selectChip(struct S6D1121 *);
-static void setOrientation(struct S6D1121 *, enum displayOrientation);
-static void setWindow(struct S6D1121 *, uint16_t, uint16_t, uint16_t, uint16_t);
+static void setOrientation(struct S6D1121 *, enum DisplayOrientation);
+static void setWindow(struct S6D1121 *, const struct DisplayWindow *);
 static inline void writeAddress(struct S6D1121 *, enum DisplayRegister);
 static inline void writeData(struct S6D1121 *, uint16_t);
 static void writeRegister(struct S6D1121 *, enum DisplayRegister, uint16_t);
@@ -183,23 +183,24 @@ static void selectChip(struct S6D1121 *display)
 }
 /*----------------------------------------------------------------------------*/
 static void setOrientation(struct S6D1121 *display,
-    enum displayOrientation orientation)
+    enum DisplayOrientation orientation)
 {
   selectChip(display);
   writeRegister(display, REG_ENTRY_MODE, (uint16_t)orientation);
   deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
-static void setWindow(struct S6D1121 *display, uint16_t x0, uint16_t y0,
-    uint16_t x1, uint16_t y1)
+static void setWindow(struct S6D1121 *display,
+    const struct DisplayWindow *window)
 {
   selectChip(display);
-  writeRegister(display, REG_HORIZONTAL_WINDOW_ADDRESS, x0 | (x1 << 8));
-  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_END, y1);
-  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_BEGIN, y0);
+  writeRegister(display, REG_HORIZONTAL_WINDOW_ADDRESS,
+      window->ax | (window->bx << 8));
+  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_END, window->by);
+  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_BEGIN, window->ay);
 
-  writeRegister(display, REG_GRAM_ADDRESS_X, x0);
-  writeRegister(display, REG_GRAM_ADDRESS_Y, y0);
+  writeRegister(display, REG_GRAM_ADDRESS_X, window->ax);
+  writeRegister(display, REG_GRAM_ADDRESS_Y, window->ay);
   deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
@@ -264,11 +265,6 @@ static enum Result displayInit(void *object, const void *configPtr)
   pinSet(display->reset);
   mdelay(20);
 
-  uint8_t arr[16];
-  for (unsigned i = 0; i < sizeof(arr); ++i)
-    arr[i] = i & 1 ? 0xAA : 0x55;
-  ifWrite(display->bus, arr, sizeof(arr));
-
   selectChip(display);
   for (size_t index = 0; index < ARRAY_SIZE(initSequence); ++index)
   {
@@ -284,7 +280,11 @@ static enum Result displayInit(void *object, const void *configPtr)
   }
   deselectChip(display);
 
-  setWindow(display, 0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1);
+  display->orientation = DISPLAY_ORIENTATION_NORMAL;
+  display->window = (struct DisplayWindow){
+      0, 0, DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1
+  };
+  setWindow(display, &display->window);
 
   return E_OK;
 }
@@ -307,13 +307,24 @@ static enum Result displayGetParam(void *object, enum IfParameter parameter,
 
   switch ((enum IfDisplayParameter)parameter)
   {
+    case IF_DISPLAY_ORIENTATION:
+    {
+      *(uint8_t *)data = display->orientation;
+      return E_OK;
+    }
+
     case IF_DISPLAY_RESOLUTION:
     {
-      struct DisplayResolution * const resolution =
-          (struct DisplayResolution *)data;
+      struct DisplayResolution * const resolution = data;
 
       resolution->width = DISPLAY_WIDTH;
       resolution->height = DISPLAY_HEIGHT;
+      return E_OK;
+    }
+
+    case IF_DISPLAY_WINDOW:
+    {
+      *(struct DisplayWindow *)data = display->window;
       return E_OK;
     }
 
@@ -340,10 +351,11 @@ static enum Result displaySetParam(void *object, enum IfParameter parameter,
   {
     case IF_DISPLAY_ORIENTATION:
     {
-      const enum displayOrientation orientation = *(const uint32_t *)data;
+      const enum DisplayOrientation orientation = *(const uint8_t *)data;
 
       if (orientation < DISPLAY_ORIENTATION_END)
       {
+        display->orientation = (uint8_t)orientation;
         setOrientation(display, orientation);
         return E_OK;
       }
@@ -353,14 +365,13 @@ static enum Result displaySetParam(void *object, enum IfParameter parameter,
 
     case IF_DISPLAY_WINDOW:
     {
-      const struct DisplayWindow * const window =
-          (const struct DisplayWindow *)data;
+      const struct DisplayWindow * const window = data;
 
-      if (window->begin.x < window->end.x && window->begin.y < window->end.y
-          && window->end.x < DISPLAY_WIDTH && window->end.y < DISPLAY_HEIGHT)
+      if (window->ax < window->bx && window->ay < window->by
+          && window->bx < DISPLAY_WIDTH && window->by < DISPLAY_HEIGHT)
       {
-        setWindow(display, window->begin.x, window->begin.y,
-            window->end.x, window->end.y);
+        display->window = *window;
+        setWindow(display, &display->window);
         return E_OK;
       }
       else

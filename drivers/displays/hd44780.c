@@ -191,8 +191,10 @@ static enum Result displayInit(void *object, const void *configPtr)
 
   display->resolution = config->resolution;
   display->window = (struct DisplayWindow){
-      {0, 0},
-      {display->resolution.width - 1, display->resolution.height - 1}
+      0,
+      0,
+      display->resolution.width - 1,
+      display->resolution.height - 1
   };
 
   /* Function set */
@@ -255,9 +257,9 @@ static enum Result displaySetParam(void *object, enum IfParameter parameter,
       const struct DisplayWindow * const window =
           (const struct DisplayWindow *)data;
 
-      if (window->begin.x < window->end.x && window->begin.y < window->end.y
-          && window->end.x < display->resolution.width
-          && window->end.y < display->resolution.height)
+      if (window->ax < window->bx && window->ay < window->by
+          && window->bx < display->resolution.width
+          && window->by < display->resolution.height)
       {
         display->window = *window;
         return E_OK;
@@ -283,12 +285,11 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   const size_t sourceLength = length;
   const uint8_t *bufferPosition = buffer;
 
-  for (unsigned int row = display->window.begin.y;
-      length && row <= display->window.end.y; ++row)
+  for (unsigned int row = display->window.ay;
+      length && row <= display->window.by; ++row)
   {
-    const size_t offset = row * display->resolution.width
-        + display->window.begin.x;
-    size_t bytesToWrite = display->window.end.x - display->window.begin.x;
+    const size_t offset = row * display->resolution.width + display->window.ax;
+    size_t bytesToWrite = display->window.bx - display->window.ax;
 
     if (bytesToWrite > length)
       bytesToWrite = length;

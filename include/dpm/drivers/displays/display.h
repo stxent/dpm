@@ -7,9 +7,10 @@
 #ifndef DPM_DRIVERS_DISPLAYS_DISPLAY_H_
 #define DPM_DRIVERS_DISPLAYS_DISPLAY_H_
 /*----------------------------------------------------------------------------*/
+#include <stdint.h>
 #include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
-enum displayOrientation
+enum DisplayOrientation
 {
   DISPLAY_ORIENTATION_NORMAL,
   DISPLAY_ORIENTATION_MIRROR_X,
@@ -33,15 +34,10 @@ struct DisplayResolution
 
 struct DisplayWindow
 {
-  struct {
-    uint16_t x;
-    uint16_t y;
-  } begin;
-
-  struct {
-    uint16_t x;
-    uint16_t y;
-  } end;
+  uint16_t ax;
+  uint16_t ay;
+  uint16_t bx;
+  uint16_t by;
 };
 /*----------------------------------------------------------------------------*/
 /** Display options extending common interface options. */
