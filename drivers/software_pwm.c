@@ -23,7 +23,7 @@ static void channelDisable(void *);
 static uint32_t channelGetResolution(const void *);
 static void channelSetDuration(void *, uint32_t);
 static void channelSetEdges(void *, uint32_t, uint32_t);
-static enum Result channelSetFrequency(void *, uint32_t);
+static void channelSetFrequency(void *, uint32_t);
 /*----------------------------------------------------------------------------*/
 static const struct EntityClass unitTable = {
     .size = sizeof(struct SoftwarePwmUnit),
@@ -170,11 +170,10 @@ static void channelSetEdges(void *object,
   channelSetDuration(object, trailing);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result channelSetFrequency(void *object, uint32_t frequency)
+static void channelSetFrequency(void *object, uint32_t frequency)
 {
   struct SoftwarePwm * const pwm = object;
   updateFrequency(pwm->unit, frequency);
-  return E_OK;
 }
 /*----------------------------------------------------------------------------*/
 /**
