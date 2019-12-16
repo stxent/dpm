@@ -9,7 +9,6 @@
 /*----------------------------------------------------------------------------*/
 #include <stdint.h>
 #include <halm/usb/hid.h>
-#include <xcore/containers/queue.h>
 /*----------------------------------------------------------------------------*/
 extern const struct HidClass * const Mouse;
 struct Mouse;

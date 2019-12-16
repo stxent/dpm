@@ -65,7 +65,7 @@ static enum Result displaySetParam(void *, enum IfParameter, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
-static const struct InterfaceClass displayTable = {
+const struct InterfaceClass * const HD44780 = &(const struct InterfaceClass){
     .size = sizeof(struct HD44780),
     .init = displayInit,
     .deinit = displayDeinit,
@@ -76,8 +76,6 @@ static const struct InterfaceClass displayTable = {
     .read = displayRead,
     .write = displayWrite
 };
-/*----------------------------------------------------------------------------*/
-const struct InterfaceClass * const HD44780 = &displayTable;
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
 {
@@ -257,7 +255,7 @@ static enum Result displaySetParam(void *object, enum IfParameter parameter,
       const struct DisplayWindow * const window =
           (const struct DisplayWindow *)data;
 
-      if (window->ax < window->bx && window->ay < window->by
+      if (window->ax <= window->bx && window->ay <= window->by
           && window->bx < display->resolution.width
           && window->by < display->resolution.height)
       {
@@ -282,11 +280,10 @@ static size_t displayRead(void *object __attribute__((unused)),
 static size_t displayWrite(void *object, const void *buffer, size_t length)
 {
   struct HD44780 * const display = object;
-  const size_t sourceLength = length;
-  const uint8_t *bufferPosition = buffer;
+  const uint8_t *position = buffer;
+  size_t row = display->window.ay;
 
-  for (unsigned int row = display->window.ay;
-      length && row <= display->window.by; ++row)
+  while (length && row <= display->window.by)
   {
     const size_t offset = row * display->resolution.width + display->window.ax;
     size_t bytesToWrite = display->window.bx - display->window.ax;
@@ -294,9 +291,10 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
     if (bytesToWrite > length)
       bytesToWrite = length;
 
-    memcpy(display->buffer + offset, bufferPosition, bytesToWrite);
-    bufferPosition += bytesToWrite;
+    memcpy(display->buffer + offset, position, bytesToWrite);
+    position += bytesToWrite;
     length -= bytesToWrite;
+    ++row;
   }
 
   if (display->state == STATE_IDLE)
@@ -304,5 +302,5 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   else
     display->update = true;
 
-  return sourceLength - length;
+  return position - (const uint8_t *)buffer;
 }

@@ -1,13 +1,13 @@
 /*
- * drivers/platform/nxp/memory_bus_gpio_timer.h
- * Copyright (C) 2014 xent
+ * drivers/platform/stm/memory_bus_gpio_timer.h
+ * Copyright (C) 2019 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_TIMER_H_
-#define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_TIMER_H_
+#ifndef DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_TIMER_H_
+#define DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_TIMER_H_
 /*----------------------------------------------------------------------------*/
-#include <halm/platform/nxp/gptimer_base.h>
+#include <halm/platform/stm/gptimer_base.h>
 /*----------------------------------------------------------------------------*/
 extern const struct TimerClass * const MemoryBusGpioTimer;
 
@@ -34,14 +34,11 @@ struct MemoryBusGpioTimer
   void (*callback)(void *);
   void *callbackArgument;
 
-  /* Callback event channel */
-  uint8_t callbackChannel;
-  /* Match result output channel */
-  uint8_t eventChannel;
-  /* Counter reset event */
-  uint8_t resetChannel;
-  /* Memory control signal inversion */
-  bool inversion;
+  /* Current timer frequency */
+  uint32_t frequency;
+
+  /* Output compare channel */
+  uint8_t channel;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_TIMER_H_ */
+#endif /* DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_TIMER_H_ */

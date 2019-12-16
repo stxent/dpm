@@ -1,11 +1,11 @@
 /*
- * drivers/platform/nxp/memory_bus_gpio.h
- * Copyright (C) 2014 xent
+ * drivers/platform/stm/memory_bus_gpio.h
+ * Copyright (C) 2019 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_
-#define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_
+#ifndef DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_H_
+#define DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_H_
 /*----------------------------------------------------------------------------*/
 #include <halm/gpio_bus.h>
 #include <halm/irq.h>
@@ -52,4 +52,4 @@ struct MemoryBusGpio
   bool blocking;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_GPIO_H_ */
+#endif /* DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_H_ */

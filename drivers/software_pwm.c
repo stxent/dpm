@@ -5,6 +5,7 @@
  */
 
 #include <assert.h>
+#include <halm/generic/pointer_list.h>
 #include <halm/irq.h>
 #include <dpm/drivers/software_pwm.h>
 /*----------------------------------------------------------------------------*/
@@ -25,13 +26,13 @@ static void channelSetDuration(void *, uint32_t);
 static void channelSetEdges(void *, uint32_t, uint32_t);
 static void channelSetFrequency(void *, uint32_t);
 /*----------------------------------------------------------------------------*/
-static const struct EntityClass unitTable = {
+const struct EntityClass * const SoftwarePwmUnit = &(const struct EntityClass){
     .size = sizeof(struct SoftwarePwmUnit),
     .init = unitInit,
     .deinit = unitDeinit
 };
-/*----------------------------------------------------------------------------*/
-static const struct PwmClass channelTable = {
+
+const struct PwmClass * const SoftwarePwm = &(const struct PwmClass){
     .size = sizeof(struct SoftwarePwm),
     .init = channelInit,
     .deinit = channelDeinit,
@@ -44,24 +45,21 @@ static const struct PwmClass channelTable = {
     .setFrequency = channelSetFrequency
 };
 /*----------------------------------------------------------------------------*/
-const struct EntityClass * const SoftwarePwmUnit = &unitTable;
-const struct PwmClass * const SoftwarePwm = &channelTable;
-/*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
 {
   struct SoftwarePwmUnit * const unit = object;
   const uint32_t iteration = unit->iteration;
-  struct ListNode *current = listFirst(&unit->channels);
-  struct SoftwarePwm *pwm;
+  PointerListNode *current = pointerListFront(&unit->channels);
 
   if (++unit->iteration >= unit->resolution)
     unit->iteration = 0;
 
   while (current)
   {
-    listData(&unit->channels, current, &pwm);
+    const struct SoftwarePwm * const pwm = *pointerListData(current);
+
     pinWrite(pwm->pin, pwm->enabled && iteration < pwm->duration);
-    current = listNext(current);
+    current = pointerListNext(current);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -75,11 +73,8 @@ static enum Result unitInit(void *object, const void *configBase)
 {
   const struct SoftwarePwmUnitConfig * const config = configBase;
   struct SoftwarePwmUnit * const unit = object;
-  enum Result res;
 
-  res = listInit(&unit->channels, sizeof(struct SoftwarePwm *));
-  if (res != E_OK)
-    return res;
+  pointerListInit(&unit->channels);
 
   unit->iteration = 0;
   unit->resolution = config->resolution;
@@ -99,7 +94,7 @@ static void unitDeinit(void *object)
 
   timerDisable(unit->timer);
   timerSetCallback(unit->timer, 0, 0);
-  listDeinit(&unit->channels);
+  pointerListDeinit(&unit->channels);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result channelInit(void *object, const void *configBase)
@@ -107,7 +102,6 @@ static enum Result channelInit(void *object, const void *configBase)
   const struct SoftwarePwmConfig * const config = configBase;
   struct SoftwarePwm * const pwm = object;
   struct SoftwarePwmUnit * const unit = config->parent;
-  IrqState state;
 
   pwm->pin = pinInit(config->pin);
   assert(pinValid(pwm->pin));
@@ -117,8 +111,8 @@ static enum Result channelInit(void *object, const void *configBase)
   pwm->enabled = false;
   pwm->duration = 0;
 
-  state = irqSave();
-  listPush(&unit->channels, &pwm);
+  const IrqState state = irqSave();
+  pointerListPushBack(&unit->channels, pwm);
   irqRestore(state);
 
   return E_OK;
@@ -129,11 +123,8 @@ static void channelDeinit(void *object)
   struct SoftwarePwmUnit * const unit = ((struct SoftwarePwm *)object)->unit;
 
   const IrqState state = irqSave();
-  struct ListNode * const node = listFind(&unit->channels, &object);
-
-  if (node)
-    listErase(&unit->channels, node);
-
+  assert(pointerListFind(&unit->channels, object));
+  pointerListErase(&unit->channels, object);
   irqRestore(state);
 }
 /*----------------------------------------------------------------------------*/

@@ -1,13 +1,13 @@
 /*
  * memory_bus_gpio.c
- * Copyright (C) 2014 xent
+ * Copyright (C) 2019 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
 #include <assert.h>
 #include <xcore/memory.h>
-#include <dpm/drivers/platform/nxp/memory_bus_gpio.h>
-#include <dpm/drivers/platform/nxp/memory_bus_gpio_timer.h>
+#include <dpm/drivers/platform/stm/memory_bus_gpio.h>
+#include <dpm/drivers/platform/stm/memory_bus_gpio_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
 /*----------------------------------------------------------------------------*/
@@ -39,13 +39,10 @@ static void interruptHandler(void *object)
 
   if (interface->left)
   {
-    if (--interface->left)
-    {
-      gpioBusWrite(interface->bus, (uint32_t)(*interface->buffer));
-      ++interface->buffer;
-    }
-    else
+    if (!--interface->left)
       timerDisable(interface->timer);
+
+    gpioBusWrite(interface->bus, (uint32_t)(*interface->buffer++));
   }
   else
   {
@@ -146,22 +143,21 @@ static size_t busRead(void *object __attribute__((unused)),
 /*----------------------------------------------------------------------------*/
 static size_t busWrite(void *object, const void *buffer, size_t length)
 {
-  if (!length)
-    return 0;
-
-  struct MemoryBusGpio * const interface = object;
-
-  interface->active = true;
-  interface->buffer = buffer;
-  interface->left = length;
-
-  gpioBusWrite(interface->bus, (uint32_t)(*interface->buffer++));
-  timerEnable(interface->timer);
-
-  if (interface->blocking)
+  if (length)
   {
-    while (interface->active)
-      barrier();
+    struct MemoryBusGpio * const interface = object;
+
+    interface->active = true;
+    interface->buffer = buffer;
+    interface->left = length;
+
+    timerEnable(interface->timer);
+
+    if (interface->blocking)
+    {
+      while (interface->active)
+        barrier();
+    }
   }
 
   return length;

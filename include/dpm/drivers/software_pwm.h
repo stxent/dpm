@@ -8,9 +8,9 @@
 #define DPM_DRIVERS_SOFTWARE_PWM_H_
 /*----------------------------------------------------------------------------*/
 #include <stdbool.h>
+#include <halm/generic/pointer_list.h>
 #include <halm/pwm.h>
 #include <halm/timer.h>
-#include <xcore/containers/list.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const SoftwarePwmUnit;
 extern const struct PwmClass * const SoftwarePwm;
@@ -24,7 +24,7 @@ struct SoftwarePwmUnitConfig
   /** Mandatory: cycle resolution. */
   uint32_t resolution;
 };
-/*----------------------------------------------------------------------------*/
+
 struct SoftwarePwmUnit
 {
   struct Entity base;
@@ -32,7 +32,7 @@ struct SoftwarePwmUnit
   /* Hardware timer */
   struct Timer *timer;
   /* Channels */
-  struct List channels;
+  PointerList channels;
   /* Current value */
   uint32_t iteration;
   /* Unit resolution */
@@ -46,7 +46,7 @@ struct SoftwarePwmConfig
   /** Mandatory: pin used as an output for modulated signal. */
   PinNumber pin;
 };
-/*----------------------------------------------------------------------------*/
+
 struct SoftwarePwm
 {
   struct Pwm base;
@@ -60,7 +60,7 @@ struct SoftwarePwm
   /* Enables generation  of the signal */
   bool enabled;
 };
-/*----------------------------------------------------------------------------*/
+
 void *softwarePwmCreate(void *, PinNumber);
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_SOFTWARE_PWM_H_ */

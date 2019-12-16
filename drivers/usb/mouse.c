@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <halm/generic/pointer_queue.h>
 #include <halm/irq.h>
 #include <halm/usb/hid_defs.h>
 #include <halm/usb/usb_defs.h>
@@ -21,7 +22,7 @@ struct Mouse
   struct Hid base;
 
   /* Request queue */
-  struct Queue txRequestQueue;
+  PointerQueue txQueue;
   /* Request pool */
   struct UsbRequest requests[REQUEST_QUEUE_SIZE];
   /* Data pool */
@@ -91,7 +92,7 @@ static void deviceDataSent(void *argument, struct UsbRequest *request,
     enum UsbRequestStatus status __attribute__((unused)))
 {
   struct Mouse * const device = argument;
-  queuePush(&device->txRequestQueue, &request);
+  pointerQueuePushBack(&device->txQueue, request);
 }
 /*----------------------------------------------------------------------------*/
 static void sendReport(struct Mouse *device, uint8_t buttons,
@@ -99,10 +100,10 @@ static void sendReport(struct Mouse *device, uint8_t buttons,
 {
   const IrqState state = irqSave();
 
-  if (!queueEmpty(&device->txRequestQueue))
+  if (!pointerQueueEmpty(&device->txQueue))
   {
-    struct UsbRequest *request;
-    queuePop(&device->txRequestQueue, &request);
+    struct UsbRequest * const request = pointerQueueFront(&device->txQueue);
+    pointerQueuePopFront(&device->txQueue);
 
     request->length = 3;
     request->buffer[0] = buttons;
@@ -110,7 +111,7 @@ static void sendReport(struct Mouse *device, uint8_t buttons,
     request->buffer[2] = (uint8_t)dy;
 
     if (usbEpEnqueue(device->txDataEp, request) != E_OK)
-      queuePush(&device->txRequestQueue, &request);
+      pointerQueuePushBack(&device->txQueue, request);
   }
 
   irqRestore(state);
@@ -129,8 +130,7 @@ static enum Result mouseInit(void *object, const void *configBase)
   struct Mouse * const device = object;
   enum Result res;
 
-  res = Hid->init(object, &baseConfig);
-  if (res != E_OK)
+  if ((res = Hid->init(object, &baseConfig)) != E_OK)
     return res;
 
   device->txDataEp = usbDevCreateEndpoint(config->device,
@@ -138,10 +138,8 @@ static enum Result mouseInit(void *object, const void *configBase)
   if (!device->txDataEp)
     return E_ERROR;
 
-  res = queueInit(&device->txRequestQueue, sizeof(struct UsbRequest *),
-      REQUEST_QUEUE_SIZE);
-  if (res != E_OK)
-    return res;
+  if (!pointerQueueInit(&device->txQueue, REQUEST_QUEUE_SIZE))
+    return E_MEMORY;
 
   /* Prepare requests */
   struct UsbRequest *request = device->requests;
@@ -151,7 +149,7 @@ static enum Result mouseInit(void *object, const void *configBase)
   {
     usbRequestInit(request, requestData, REPORT_PACKET_SIZE,
         deviceDataSent, device);
-    queuePush(&device->txRequestQueue, &request);
+    pointerQueuePushBack(&device->txQueue, request);
     requestData += REPORT_PACKET_SIZE;
     ++request;
   }
@@ -165,8 +163,8 @@ static void mouseDeinit(void *object)
   struct Mouse * const device = object;
 
   usbEpClear(device->txDataEp);
-  assert(queueSize(&device->txRequestQueue) == REQUEST_QUEUE_SIZE);
-  queueDeinit(&device->txRequestQueue);
+  assert(pointerQueueSize(&device->txQueue) == REQUEST_QUEUE_SIZE);
+  pointerQueueDeinit(&device->txQueue);
   deinit(device->txDataEp);
 
   /* Call base class destructor */
@@ -192,14 +190,16 @@ static enum Result mouseGetReport(void *object __attribute__((unused)),
   switch (reportType)
   {
     case HID_REPORT_INPUT:
-      if (maxReportLength < 3)
+      if (maxReportLength >= 3)
+      {
+        report[0] = 0;
+        report[1] = 0;
+        report[2] = 0;
+        *reportLength = 3;
+        return E_OK;
+      }
+      else
         return E_VALUE;
-
-      report[0] = 0;
-      report[1] = 0;
-      report[2] = 0;
-      *reportLength = 3;
-      return E_OK;
 
     default:
       return E_INVALID;

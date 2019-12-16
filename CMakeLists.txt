@@ -26,18 +26,32 @@ if(${USE_LTO})
 endif()
 
 if(DEFINED PLATFORM)
-    add_definitions(-D${PLATFORM})
+    set(DEFINITION_LIST ${DEFINITION_LIST} -D${PLATFORM})
+elseif(UNIX)
+    set(DEFINITION_LIST ${DEFINITION_LIST} -D_POSIX_C_SOURCE=200809L)
 else()
-    if(UNIX)
-        add_definitions(-D_POSIX_C_SOURCE=200809L)
-    endif()
+    set(DEFINITION_LIST "")
 endif()
 
-include_directories("${PATH_XCORE}/include")
-include_directories("${PATH_HALM}/include")
-include_directories("${PROJECT_SOURCE_DIR}/include")
-
-# Gather files for the library
+set(TARGET_LIST generic platform)
+set(LIBRARY_OBJECTS "")
 add_subdirectory(drivers)
-add_library(${PROJECT_NAME} $<TARGET_OBJECTS:drivers>)
+
+foreach(ENTRY ${TARGET_LIST})
+    if(TARGET dpm_${ENTRY})
+        set(LIBRARY_OBJECTS ${LIBRARY_OBJECTS} $<TARGET_OBJECTS:dpm_${ENTRY}>)
+        target_compile_definitions(dpm_${ENTRY}
+                PRIVATE ${DEFINITION_LIST}
+        )
+        target_include_directories(dpm_${ENTRY}
+                PRIVATE "${PROJECT_SOURCE_DIR}/include"
+                PRIVATE "${PATH_XCORE}/include"
+                PRIVATE "${PATH_HALM}/include"
+        )
+    endif()
+endforeach()
+
+add_library(${PROJECT_NAME} ${LIBRARY_OBJECTS})
+target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/include")
+
 install(TARGETS ${PROJECT_NAME} ARCHIVE DESTINATION lib)
