@@ -11,7 +11,7 @@
 #include <dpm/drivers/platform/nxp/memory_bus_dma_timer.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const MemoryBusDmaFinalizer;
-/*----------------------------------------------------------------------------*/
+
 struct MemoryBusDmaFinalizerConfig
 {
   /** Mandatory: memory bus control timer. */
@@ -21,10 +21,10 @@ struct MemoryBusDmaFinalizerConfig
   /** Mandatory: direct memory access channel for timer control. */
   uint8_t channel;
 };
-/*----------------------------------------------------------------------------*/
+
 struct MemoryBusDmaFinalizer
 {
-  struct Entity parent;
+  struct Entity base;
 
   struct Dma *dma;
   struct MemoryBusDmaTimer *marshal;
@@ -34,7 +34,11 @@ struct MemoryBusDmaFinalizer
   uint32_t value;
 };
 /*----------------------------------------------------------------------------*/
+BEGIN_DECLS
+
 enum Result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *);
 void memoryBusDmaFinalizerStop(struct MemoryBusDmaFinalizer *);
+
+END_DECLS
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_ */

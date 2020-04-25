@@ -12,8 +12,8 @@
 #include <dpm/drivers/platform/nxp/memory_bus_dma_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
-static enum Result setupDma(struct MemoryBusDma *,
-    const struct MemoryBusDmaConfig *, uint8_t, uint8_t);
+static bool setupDma(struct MemoryBusDma *, const struct MemoryBusDmaConfig *,
+    uint8_t, uint8_t);
 static void setupGpio(struct MemoryBusDma *, const struct MemoryBusDmaConfig *);
 /*----------------------------------------------------------------------------*/
 static enum Result busInit(void *, const void *);
@@ -56,15 +56,14 @@ static void setupGpio(struct MemoryBusDma *interface,
   /* First pin number should be aligned along byte boundary */
   assert(!(PIN_TO_OFFSET(config->pins[0]) & 0x07));
 
-  unsigned int number = 0;
+  size_t number = 0;
   while (config->pins[number] && ++number < 32);
 
   /* Only byte and halfword are available */
   assert(number == 8 || number == 16);
-
   interface->width = (number >> 3) - 1;
 
-  for (unsigned int index = 0; index < number; ++index)
+  for (size_t index = 0; index < number; ++index)
   {
     const struct Pin pin = pinInit(config->pins[index]);
     assert(pinValid(pin));
@@ -75,15 +74,13 @@ static void setupGpio(struct MemoryBusDma *interface,
       assert(pin.data.offset == PIN_TO_OFFSET(config->pins[0]) + index);
     }
     else
-    {
-      interface->gpioAddress = pinAddress(pin);
-    }
+      interface->address = pinAddress(pin);
 
     pinOutput(pin, 0);
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result setupDma(struct MemoryBusDma *interface,
+static bool setupDma(struct MemoryBusDma *interface,
     const struct MemoryBusDmaConfig *config, uint8_t matchChannel,
     uint8_t busWidth)
 {
@@ -116,50 +113,46 @@ static enum Result setupDma(struct MemoryBusDma *interface,
    */
 
   interface->dma = init(GpDmaOneShot, &dmaConfig);
-  if (!interface->dma)
-    return E_ERROR;
-  dmaConfigure(interface->dma, &dmaSettings);
 
-  return E_OK;
+  if (interface->dma)
+  {
+    dmaConfigure(interface->dma, &dmaSettings);
+    return true;
+  }
+  else
+    return false;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaConfig * const config = configPtr;
-  const struct MemoryBusDmaTimerConfig clockConfig = {
+  const struct MemoryBusDmaClockConfig clockConfig = {
       .cycle = config->cycle,
-      .input = 0,
       .leading = config->clock.leading,
       .trailing = config->clock.trailing,
       .priority = config->priority,
       .channel = config->clock.channel,
-      .control = false,
       .inversion = config->clock.inversion
   };
-  const struct MemoryBusDmaTimerConfig controlConfig = {
-      .cycle = 0,
+  const struct MemoryBusDmaControlConfig controlConfig = {
       .input = config->control.capture,
+      .select = config->control.select,
       .leading = config->control.leading,
       .trailing = config->control.trailing,
-      .priority = config->priority,
       .channel = config->control.channel,
-      .control = true,
       .inversion = config->control.inversion
   };
   struct MemoryBusDma * const interface = object;
-  enum Result res;
 
   setupGpio(interface, config);
 
-  interface->control = init(MemoryBusDmaTimer, &controlConfig);
-  if (!interface->control)
-    return E_ERROR;
-
-  interface->clock = init(MemoryBusDmaTimer, &clockConfig);
+  interface->clock = init(MemoryBusDmaClock, &clockConfig);
   if (!interface->clock)
     return E_ERROR;
 
-  timerSetCallback(interface->clock, interruptHandler, interface);
+  interface->control = init(MemoryBusDmaControl, &controlConfig);
+  if (!interface->control)
+    return E_ERROR;
 
   struct MemoryBusDmaFinalizerConfig finalizerConfig = {
       .marshal = interface->control,
@@ -171,16 +164,21 @@ static enum Result busInit(void *object, const void *configPtr)
   if (!interface->finalizer)
     return E_ERROR;
 
-  res = setupDma(interface, config,
-      !memoryBusDmaTimerPrimaryChannel(interface->clock), interface->width);
-  if (res != E_OK)
-    return res;
+  const uint8_t dmaEvent = config->clock.swap ?
+      interface->clock->trailing : interface->clock->leading;
 
-  interface->active = false;
-  interface->blocking = true;
-  interface->callback = 0;
+  if (setupDma(interface, config, dmaEvent, interface->width))
+  {
+    timerSetCallback(interface->clock, interruptHandler, interface);
 
-  return E_OK;
+    interface->active = false;
+    interface->blocking = true;
+    interface->callback = 0;
+
+    return E_OK;
+  }
+  else
+    return E_ERROR;
 }
 /*----------------------------------------------------------------------------*/
 static void busDeinit(void *object)
@@ -189,8 +187,8 @@ static void busDeinit(void *object)
 
   deinit(interface->dma);
   deinit(interface->finalizer);
-  deinit(interface->clock);
   deinit(interface->control);
+  deinit(interface->clock);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busSetCallback(void *object, void (*callback)(void *),
@@ -260,14 +258,14 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
   interface->active = true;
 
   /* Configure and start control timer */
-  timerSetOverflow(interface->control, samples + 2);
+  timerSetOverflow(interface->control, samples + 1);
   timerEnable(interface->control);
 
   /* Finalization should be enabled after supervisor timer startup */
   if (memoryBusDmaFinalizerStart(interface->finalizer) != E_OK)
     return 0;
 
-  dmaAppend(interface->dma, interface->gpioAddress, buffer, samples);
+  dmaAppend(interface->dma, interface->address, buffer, samples);
   if (dmaEnable(interface->dma) != E_OK)
   {
     memoryBusDmaFinalizerStop(interface->finalizer);

@@ -9,14 +9,13 @@
 /*----------------------------------------------------------------------------*/
 #include <halm/platform/nxp/gptimer_base.h>
 /*----------------------------------------------------------------------------*/
-extern const struct TimerClass * const MemoryBusDmaTimer;
-/*----------------------------------------------------------------------------*/
-struct MemoryBusDmaTimerConfig
+extern const struct TimerClass * const MemoryBusDmaClock;
+extern const struct TimerClass * const MemoryBusDmaControl;
+
+struct MemoryBusDmaClockConfig
 {
-  /** Optional: memory operation cycle in timer ticks. */
+  /** Mandatory: memory operation cycle in timer ticks. */
   uint32_t cycle;
-  /** Optional: external clock input. */
-  PinNumber input;
   /** Mandatory: pin used as output for memory control signal. */
   PinNumber leading;
   /** Mandatory: pin used as output for memory control signal. */
@@ -25,35 +24,43 @@ struct MemoryBusDmaTimerConfig
   IrqPriority priority;
   /** Mandatory: peripheral identifier. */
   uint8_t channel;
-  /** Optional: selects control mode timings. */
-  bool control;
   /** Optional: enables inversion of control signal. */
   bool inversion;
 };
-/*----------------------------------------------------------------------------*/
+
+struct MemoryBusDmaControlConfig
+{
+  /** Mandatory: external clock input. */
+  PinNumber input;
+  /** Optional: chip select output. */
+  PinNumber select;
+  /** Mandatory: pin used as output for memory control signal. */
+  PinNumber leading;
+  /** Mandatory: pin used as output for memory control signal. */
+  PinNumber trailing;
+  /** Mandatory: peripheral identifier. */
+  uint8_t channel;
+  /** Optional: enables inversion of control signal. */
+  bool inversion;
+};
+
 struct MemoryBusDmaTimer
 {
-  struct GpTimerBase parent;
+  struct GpTimerBase base;
 
   void (*callback)(void *);
   void *callbackArgument;
 
-  uint32_t interruptValue;
-  uint32_t matchValue;
-  uint32_t offset;
+  uint32_t match;
 
-  /* Callback event channel */
-  uint8_t leadingChannel;
-  /* Match result output channel */
-  uint8_t trailingChannel;
+  /* Match event for a leading edge of a signal */
+  uint8_t leading;
+  /* Match event for a trailing edge of a signal */
+  uint8_t trailing;
   /* Counter reset event */
-  uint8_t resetChannel;
-  /* Select control mode */
-  bool control;
-  /* Primary channel type */
-  bool leading;
+  uint8_t reset;
+  /* Match event for a chip select signal */
+  uint8_t select;
 };
-/*----------------------------------------------------------------------------*/
-uint8_t memoryBusDmaTimerPrimaryChannel(const struct MemoryBusDmaTimer *);
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_TIMER_H_ */

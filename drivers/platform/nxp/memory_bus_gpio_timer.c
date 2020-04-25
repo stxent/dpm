@@ -9,8 +9,7 @@
 #include <dpm/drivers/platform/nxp/memory_bus_gpio_timer.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
-static enum Result setupChannels(struct MemoryBusGpioTimer *,
-    const struct MemoryBusGpioTimerConfig *);
+static void setupChannels(struct MemoryBusGpioTimer *, uint8_t, PinNumber);
 /*----------------------------------------------------------------------------*/
 static enum Result tmrInit(void *, const void *);
 static void tmrDeinit(void *);
@@ -19,8 +18,6 @@ static void tmrEnable(void *);
 static void tmrDisable(void *);
 static void tmrSetFrequency(void *, uint32_t);
 static void tmrSetOverflow(void *, uint32_t);
-static uint32_t tmrGetValue(const void *);
-static void tmrSetValue(void *, uint32_t);
 /*----------------------------------------------------------------------------*/
 const struct TimerClass * const MemoryBusGpioTimer = &(const struct TimerClass){
     .size = sizeof(struct MemoryBusGpioTimer),
@@ -34,8 +31,8 @@ const struct TimerClass * const MemoryBusGpioTimer = &(const struct TimerClass){
     .setFrequency = tmrSetFrequency,
     .getOverflow = 0,
     .setOverflow = tmrSetOverflow,
-    .getValue = tmrGetValue,
-    .setValue = tmrSetValue
+    .getValue = 0,
+    .setValue = 0
 };
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
@@ -44,32 +41,28 @@ static void interruptHandler(void *object)
   LPC_TIMER_Type * const reg = timer->base.reg;
 
   if (reg->TCR & TCR_CEN)
-    reg->EMR ^= EMR_EXTERNAL_MATCH(timer->eventChannel);
+    reg->EMR ^= EMR_EXTERNAL_MATCH(timer->trailing);
 
-  reg->IR = reg->IR;
+  /* Clear all pending interrupts */
+  reg->IR = IR_MATCH_MASK;
 
   if (timer->callback)
     timer->callback(timer->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result setupChannels(struct MemoryBusGpioTimer *timer,
-    const struct MemoryBusGpioTimerConfig *config)
+static void setupChannels(struct MemoryBusGpioTimer *timer, uint8_t channel,
+    PinNumber trailing)
 {
   uint8_t mask = 0;
 
-  const int eventChannel = gpTimerConfigMatchPin(config->channel, config->pin);
-  if (eventChannel == -1)
-    return E_VALUE;
-  timer->eventChannel = eventChannel;
-  mask |= 1 << timer->eventChannel;
+  timer->trailing = gpTimerConfigMatchPin(channel, trailing);
+  mask |= 1 << timer->trailing;
 
   /* Only 3 channels are used, allocation always succeeds */
-  timer->callbackChannel = gpTimerAllocateChannel(mask);
-  mask |= 1 << timer->callbackChannel;
+  timer->leading = gpTimerAllocateChannel(mask);
+  mask |= 1 << timer->leading;
 
-  timer->resetChannel = gpTimerAllocateChannel(mask);
-
-  return E_OK;
+  timer->reset = gpTimerAllocateChannel(mask);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result tmrInit(void *object, const void *configPtr)
@@ -90,8 +83,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
   timer->base.handler = interruptHandler;
   timer->inversion = config->inversion;
 
-  if ((res = setupChannels(timer, config)) != E_OK)
-    return res;
+  setupChannels(timer, config->channel, config->pin);
 
   LPC_TIMER_Type * const reg = timer->base.reg;
 
@@ -100,18 +92,21 @@ static enum Result tmrInit(void *object, const void *configPtr)
   reg->CTCR = 0;
   reg->CCR = 0;
 
+  /* Clear all pending interrupts */
+  reg->IR = IR_MATCH_MASK;
+
   /* Configure interrupts */
-  reg->IR = reg->IR; /* Clear pending interrupts */
-  reg->MCR = MCR_RESET(timer->resetChannel)
-      | MCR_INTERRUPT(timer->callbackChannel);
+  reg->MCR = MCR_RESET(timer->reset)
+      | MCR_INTERRUPT(timer->leading);
 
   /* Configure timings */
-  reg->PR = gpTimerGetClock(object) / config->frequency - 1;
-  reg->EMR = EMR_CONTROL(timer->eventChannel, CONTROL_TOGGLE);
-  if (timer->inversion)
-    reg->EMR |= EMR_EXTERNAL_MATCH(timer->eventChannel);
-
+  tmrSetFrequency(timer, config->frequency);
   tmrSetOverflow(timer, config->cycle);
+
+  /* Configure match output */
+  reg->EMR = EMR_CONTROL(timer->trailing, CONTROL_TOGGLE);
+  if (timer->inversion)
+    reg->EMR |= EMR_EXTERNAL_MATCH(timer->trailing);
 
   irqSetPriority(timer->base.irq, config->priority);
   irqEnable(timer->base.irq);
@@ -144,8 +139,8 @@ static void tmrEnable(void *object)
   LPC_TIMER_Type * const reg = timer->base.reg;
 
   reg->PC = reg->TC = 0;
-  reg->MCR &= ~(MCR_INTERRUPT(timer->resetChannel)
-      | MCR_STOP(timer->resetChannel));
+  reg->MCR &= ~(MCR_INTERRUPT(timer->reset)
+      | MCR_STOP(timer->reset));
   reg->TCR = TCR_CEN;
 }
 /*----------------------------------------------------------------------------*/
@@ -155,8 +150,8 @@ static void tmrDisable(void *object)
   LPC_TIMER_Type * const reg = timer->base.reg;
 
   /* Complete current operation and stop */
-  reg->MCR |= MCR_INTERRUPT(timer->resetChannel)
-      | MCR_STOP(timer->resetChannel);
+  reg->MCR |= MCR_INTERRUPT(timer->reset)
+      | MCR_STOP(timer->reset);
 }
 /*----------------------------------------------------------------------------*/
 static void tmrSetFrequency(void *object, uint32_t frequency)
@@ -176,20 +171,7 @@ static void tmrSetOverflow(void *object, uint32_t overflow)
 
   assert(overflow);
 
-  reg->MR[timer->eventChannel] = (overflow >> 2) - 1;
-  reg->MR[timer->callbackChannel] = (overflow >> 1) + (overflow >> 2) - 1;
-  reg->MR[timer->resetChannel] = overflow - 1;
-}
-/*----------------------------------------------------------------------------*/
-static uint32_t tmrGetValue(const void *object)
-{
-  const struct MemoryBusGpioTimer * const timer = object;
-  const LPC_TIMER_Type * const reg = timer->base.reg;
-
-  return reg->TC;
-}
-/*----------------------------------------------------------------------------*/
-static void tmrSetValue(void *object __attribute__((unused)),
-    uint32_t value __attribute__((unused)))
-{
+  reg->MR[timer->trailing] = (overflow >> 2) - 1;
+  reg->MR[timer->leading] = (overflow >> 1) + (overflow >> 2) - 1;
+  reg->MR[timer->reset] = overflow - 1;
 }

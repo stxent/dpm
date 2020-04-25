@@ -34,7 +34,7 @@ struct MemoryBusGpioConfig
 
 struct MemoryBusGpio
 {
-  struct Interface parent;
+  struct Interface base;
 
   void (*callback)(void *);
   void *callbackArgument;

@@ -35,12 +35,12 @@ struct MemoryBusGpioTimer
   void *callbackArgument;
 
   /* Callback event channel */
-  uint8_t callbackChannel;
-  /* Match result output channel */
-  uint8_t eventChannel;
+  uint8_t leading;
+  /* Clock channel */
+  uint8_t trailing;
   /* Counter reset event */
-  uint8_t resetChannel;
-  /* Memory control signal inversion */
+  uint8_t reset;
+  /* Clock inversion */
   bool inversion;
 };
 /*----------------------------------------------------------------------------*/

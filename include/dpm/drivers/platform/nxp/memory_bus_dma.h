@@ -12,11 +12,11 @@
 #include <halm/pin.h>
 #include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
-extern const struct InterfaceClass * const MemoryBusDma;
-/*----------------------------------------------------------------------------*/
 struct MemoryBusDmaFinalizer;
 struct MemoryBusDmaTimer;
 /*----------------------------------------------------------------------------*/
+extern const struct InterfaceClass * const MemoryBusDma;
+
 struct MemoryBusDmaConfig
 {
   /** Mandatory: period of a memory cycle in timer ticks. */
@@ -27,47 +27,51 @@ struct MemoryBusDmaConfig
   IrqPriority priority;
 
   struct {
-    /** Mandatory: memory control signal. */
+    /** Mandatory: leading memory control signal. */
     PinNumber leading;
-    /** Mandatory: memory control signal. */
+    /** Mandatory: trailing memory control signal. */
     PinNumber trailing;
     /** Mandatory: timer peripheral identifier. */
     uint8_t channel;
     /** Mandatory: DMA channel for data transfers. */
     uint8_t dma;
-    /** Mandatory: enable inversion of signal. */
+    /** Optional: enable inversion of signal. */
     bool inversion;
+    /** Optional: swap leading and trailing DMA events. */
+    bool swap;
   } clock;
 
   struct {
     /** Mandatory: clock capture pin. */
     PinNumber capture;
-    /** Mandatory: memory control signal. */
+    /** Optional: chip select pin. */
+    PinNumber select;
+    /** Mandatory: leading memory control signal. */
     PinNumber leading;
-    /** Mandatory: memory control signal. */
+    /** Mandatory: trailing memory control signal. */
     PinNumber trailing;
     /** Mandatory: timer peripheral identifier. */
     uint8_t channel;
     /** Mandatory: DMA channel for control transfers. */
     uint8_t dma;
-    /** Mandatory: enable inversion of signal. */
+    /** Optional: enable inversion of signal. */
     bool inversion;
   } control;
 };
-/*----------------------------------------------------------------------------*/
+
 struct MemoryBusDma
 {
-  struct Interface parent;
+  struct Interface base;
 
   void (*callback)(void *);
   void *callbackArgument;
 
   struct Dma *dma;
   struct MemoryBusDmaFinalizer *finalizer;
-  struct MemoryBusDmaTimer *control;
   struct MemoryBusDmaTimer *clock;
+  struct MemoryBusDmaTimer *control;
 
-  void *gpioAddress;
+  void *address;
 
   /* Bus width in power of two */
   uint8_t width;
