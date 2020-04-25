@@ -10,6 +10,15 @@ else()
     set(HAS_NXP_GPDMA FALSE)
 endif()
 
+if("${PLATFORM}" MATCHES "LPC11EXX|LPC13UXX|LPC17XX|LPC43XX")
+    set(HAS_NXP_IRDA TRUE)
+else()
+    set(HAS_NXP_IRDA FALSE)
+endif()
+
+if(${HAS_NXP_GPTIMER} AND ${HAS_NXP_IRDA})
+    list(APPEND SOURCE_FILES "irda.c")
+    list(APPEND SOURCE_FILES "irda_timer.c")
 endif()
 
 if(${HAS_NXP_GPTIMER})
