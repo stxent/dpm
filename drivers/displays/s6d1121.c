@@ -6,7 +6,7 @@
 
 #include <assert.h>
 #include <halm/delay.h>
-#include <xcore/bits.h>
+#include <xcore/memory.h>
 #include <dpm/drivers/displays/display.h>
 #include <dpm/drivers/displays/s6d1121.h>
 /*----------------------------------------------------------------------------*/
@@ -88,8 +88,8 @@ static void deselectChip(struct S6D1121 *);
 static void selectChip(struct S6D1121 *);
 static void setOrientation(struct S6D1121 *, enum DisplayOrientation);
 static void setWindow(struct S6D1121 *, const struct DisplayWindow *);
-static inline void writeAddress(struct S6D1121 *, enum DisplayRegister);
-static inline void writeData(struct S6D1121 *, uint16_t);
+static void writeAddress(struct S6D1121 *, enum DisplayRegister);
+static void writeData(struct S6D1121 *, uint16_t);
 static void writeRegister(struct S6D1121 *, enum DisplayRegister, uint16_t);
 /*----------------------------------------------------------------------------*/
 static enum Result displayInit(void *, const void *);
@@ -100,7 +100,7 @@ static enum Result displaySetParam(void *, enum IfParameter, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
-static const struct InterfaceClass displayTable = {
+const struct InterfaceClass * const S6D1121 = &(const struct InterfaceClass){
     .size = sizeof(struct S6D1121),
     .init = displayInit,
     .deinit = displayDeinit,
@@ -111,8 +111,6 @@ static const struct InterfaceClass displayTable = {
     .read = displayRead,
     .write = displayWrite
 };
-/*----------------------------------------------------------------------------*/
-const struct InterfaceClass * const S6D1121 = &displayTable;
 /*----------------------------------------------------------------------------*/
 static const struct InitEntry initSequence[] = {
     // TODO Delays
@@ -194,31 +192,34 @@ static void setWindow(struct S6D1121 *display,
     const struct DisplayWindow *window)
 {
   selectChip(display);
+
   writeRegister(display, REG_HORIZONTAL_WINDOW_ADDRESS,
       window->ax | (window->bx << 8));
+
   writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_END, window->by);
   writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_BEGIN, window->ay);
 
   writeRegister(display, REG_GRAM_ADDRESS_X, window->ax);
   writeRegister(display, REG_GRAM_ADDRESS_Y, window->ay);
+
   deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
-static inline void writeAddress(struct S6D1121 *display,
+static void writeAddress(struct S6D1121 *display,
     enum DisplayRegister address)
 {
-  const uint8_t buffer[2] = {(uint8_t)(address >> 8), (uint8_t)address};
+  const uint16_t buffer = toBigEndian16((uint16_t)address);
 
   pinReset(display->rs);
-  ifWrite(display->bus, buffer, sizeof(buffer));
+  ifWrite(display->bus, &buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
-static inline void writeData(struct S6D1121 *display, uint16_t data)
+static void writeData(struct S6D1121 *display, uint16_t data)
 {
-  const uint8_t buffer[2] = {(uint8_t)(data >> 8), (uint8_t)data};
+  const uint16_t buffer = toBigEndian16(data);
 
   pinSet(display->rs);
-  ifWrite(display->bus, buffer, sizeof(buffer));
+  ifWrite(display->bus, &buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
 static void writeRegister(struct S6D1121 *display, enum DisplayRegister address,

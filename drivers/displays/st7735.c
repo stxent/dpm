@@ -91,7 +91,7 @@ static enum Result displaySetParam(void *, enum IfParameter, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
-static const struct InterfaceClass displayTable = {
+const struct InterfaceClass * const ST7735 = &(const struct InterfaceClass){
     .size = sizeof(struct ST7735),
     .init = displayInit,
     .deinit = displayDeinit,
@@ -102,8 +102,6 @@ static const struct InterfaceClass displayTable = {
     .read = displayRead,
     .write = displayWrite
 };
-/*----------------------------------------------------------------------------*/
-const struct InterfaceClass * const ST7735 = &displayTable;
 /*----------------------------------------------------------------------------*/
 static void loadLUT(struct ST7735 *display)
 {

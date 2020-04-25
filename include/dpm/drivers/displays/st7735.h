@@ -12,7 +12,7 @@
 #include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const ST7735;
-/*----------------------------------------------------------------------------*/
+
 struct ST7735Config
 {
   /** Mandatory: memory interface. */
@@ -24,7 +24,7 @@ struct ST7735Config
   /** Mandatory: pin used as Register Select output. */
   PinNumber rs;
 };
-/*----------------------------------------------------------------------------*/
+
 struct ST7735
 {
   struct Interface parent;

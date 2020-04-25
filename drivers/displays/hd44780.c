@@ -286,7 +286,7 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   while (length && row <= display->window.by)
   {
     const size_t offset = row * display->resolution.width + display->window.ax;
-    size_t bytesToWrite = display->window.bx - display->window.ax;
+    size_t bytesToWrite = display->window.bx - display->window.ax + 1;
 
     if (bytesToWrite > length)
       bytesToWrite = length;

@@ -12,7 +12,7 @@
 #include <dpm/drivers/displays/display.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const HD44780;
-/*----------------------------------------------------------------------------*/
+
 struct HD44780Config
 {
   /** Mandatory: memory interface. */
@@ -22,7 +22,7 @@ struct HD44780Config
   /** Mandatory: pin used as Register Select output. */
   PinNumber rs;
 };
-/*----------------------------------------------------------------------------*/
+
 struct HD44780
 {
   struct Interface parent;
