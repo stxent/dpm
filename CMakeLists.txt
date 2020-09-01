@@ -2,12 +2,9 @@
 # Project is distributed under the terms of the GNU General Public License v3.0
 
 project(dpm C)
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0054 NEW)
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build: Debug Release." FORCE)
-endif()
+cmake_policy(SET CMP0069 NEW)
 
 option(USE_LTO "Enable Link Time Optimization." OFF)
 
@@ -22,36 +19,32 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS_DEFAULT} ${FLAGS_CPU}")
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 
 if(${USE_LTO})
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto -ffat-lto-objects")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        set(CMAKE_C_COMPILE_OPTIONS_IPO -flto -ffat-lto-objects)
+    endif()
 endif()
 
-if(DEFINED PLATFORM)
-    set(DEFINITION_LIST ${DEFINITION_LIST} -D${PLATFORM})
-elseif(UNIX)
-    set(DEFINITION_LIST ${DEFINITION_LIST} -D_POSIX_C_SOURCE=200809L)
-else()
-    set(DEFINITION_LIST "")
-endif()
-
-set(TARGET_LIST generic platform)
+set(DIRECTORY_LIST generic platform)
 set(LIBRARY_OBJECTS "")
+set(LIBRARY_TARGETS "")
+
 add_subdirectory(drivers)
 
-foreach(ENTRY ${TARGET_LIST})
+foreach(ENTRY ${DIRECTORY_LIST})
     if(TARGET dpm_${ENTRY})
-        set(LIBRARY_OBJECTS ${LIBRARY_OBJECTS} $<TARGET_OBJECTS:dpm_${ENTRY}>)
-        target_compile_definitions(dpm_${ENTRY}
-                PRIVATE ${DEFINITION_LIST}
-        )
+        list(APPEND LIBRARY_TARGETS dpm_${ENTRY})
+        list(APPEND LIBRARY_OBJECTS $<TARGET_OBJECTS:dpm_${ENTRY}>)
         target_include_directories(dpm_${ENTRY}
-                PRIVATE "${PROJECT_SOURCE_DIR}/include"
-                PRIVATE "${PATH_XCORE}/include"
-                PRIVATE "${PATH_HALM}/include"
+                PUBLIC "${PROJECT_SOURCE_DIR}/include"
+        )
+        target_link_libraries(dpm_${ENTRY}
+                PUBLIC halm
         )
     endif()
 endforeach()
 
 add_library(${PROJECT_NAME} ${LIBRARY_OBJECTS})
-target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${LIBRARY_TARGETS})
 
 install(TARGETS ${PROJECT_NAME} ARCHIVE DESTINATION lib)
