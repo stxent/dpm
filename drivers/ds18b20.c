@@ -100,12 +100,8 @@ void ds18b20RequestTemperature(struct DS18B20 *sensor)
     sensor->state = SENSOR_ERROR;
     return;
   }
-  if (ifSetCallback(sensor->bus, sensorCallback, sensor) != E_OK)
-  {
-    sensor->state = SENSOR_ERROR;
-    return;
-  }
 
+  ifSetCallback(sensor->bus, sensorCallback, sensor);
   sensor->state = SENSOR_READ_TEMPERATURE;
 
   const uint32_t count = ifWrite(sensor->bus, readScratchpadCommand,
@@ -122,12 +118,8 @@ void ds18b20StartConversion(struct DS18B20 *sensor)
     sensor->state = SENSOR_ERROR;
     return;
   }
-  if (ifSetCallback(sensor->bus, sensorCallback, sensor) != E_OK)
-  {
-    sensor->state = SENSOR_ERROR;
-    return;
-  }
 
+  ifSetCallback(sensor->bus, sensorCallback, sensor);
   sensor->state = SENSOR_START_CONVERSION;
 
   const uint32_t count = ifWrite(sensor->bus, startConversionCommand,

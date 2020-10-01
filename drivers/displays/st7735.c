@@ -85,7 +85,6 @@ static inline void sendData(struct ST7735 *, const uint8_t *, size_t);
 /*----------------------------------------------------------------------------*/
 static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
-static enum Result displaySetCallback(void *, void (*)(void *), void *);
 static enum Result displayGetParam(void *, enum IfParameter, void *);
 static enum Result displaySetParam(void *, enum IfParameter, const void *);
 static size_t displayRead(void *, void *, size_t);
@@ -96,7 +95,7 @@ const struct InterfaceClass * const ST7735 = &(const struct InterfaceClass){
     .init = displayInit,
     .deinit = displayDeinit,
 
-    .setCallback = displaySetCallback,
+    .setCallback = 0,
     .getParam = displayGetParam,
     .setParam = displaySetParam,
     .read = displayRead,
@@ -251,14 +250,6 @@ static enum Result displayInit(void *object, const void *configPtr)
 /*----------------------------------------------------------------------------*/
 static void displayDeinit(void *object __attribute__((unused)))
 {
-
-}
-/*----------------------------------------------------------------------------*/
-static enum Result displaySetCallback(void *object __attribute__((unused)),
-    void (*callback)(void *) __attribute__((unused)),
-    void *argument __attribute__((unused)))
-{
-  return E_ERROR;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result displayGetParam(void *object, enum IfParameter parameter,
