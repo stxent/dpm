@@ -4,9 +4,9 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <assert.h>
-#include <halm/platform/stm/gptimer_defs.h>
 #include <dpm/drivers/platform/stm/memory_bus_gpio_timer.h>
+#include <halm/platform/stm/gptimer_defs.h>
+#include <assert.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
 static enum Result setupChannels(struct MemoryBusGpioTimer *,

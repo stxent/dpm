@@ -7,10 +7,9 @@
 #ifndef DPM_DRIVERS_DS18B20_H_
 #define DPM_DRIVERS_DS18B20_H_
 /*----------------------------------------------------------------------------*/
-#include <stdbool.h>
-#include <stdint.h>
 #include <xcore/entity.h>
 #include <xcore/interface.h>
+#include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const DS18B20;
 /*----------------------------------------------------------------------------*/

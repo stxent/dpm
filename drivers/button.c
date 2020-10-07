@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <assert.h>
 #include <dpm/drivers/button.h>
+#include <assert.h>
 /*----------------------------------------------------------------------------*/
 static void onPinInterrupt(void *);
 static void onTimerOverflow(void *);

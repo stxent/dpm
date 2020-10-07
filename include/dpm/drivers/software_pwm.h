@@ -7,10 +7,10 @@
 #ifndef DPM_DRIVERS_SOFTWARE_PWM_H_
 #define DPM_DRIVERS_SOFTWARE_PWM_H_
 /*----------------------------------------------------------------------------*/
-#include <stdbool.h>
 #include <halm/generic/pointer_list.h>
 #include <halm/pwm.h>
 #include <halm/timer.h>
+#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const SoftwarePwmUnit;
 extern const struct PwmClass * const SoftwarePwm;

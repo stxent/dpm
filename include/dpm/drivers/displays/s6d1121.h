@@ -7,9 +7,9 @@
 #ifndef DPM_DRIVERS_DISPLAYS_S6D1121_H_
 #define DPM_DRIVERS_DISPLAYS_S6D1121_H_
 /*----------------------------------------------------------------------------*/
-#include <stdbool.h>
 #include <halm/pin.h>
 #include <xcore/interface.h>
+#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const S6D1121;
 /*----------------------------------------------------------------------------*/

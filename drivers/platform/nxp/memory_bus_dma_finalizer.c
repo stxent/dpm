@@ -4,11 +4,11 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <assert.h>
+#include <dpm/drivers/platform/nxp/memory_bus_dma_finalizer.h>
 #include <halm/platform/nxp/gpdma_oneshot.h>
 #include <halm/platform/nxp/gptimer_defs.h>
 #include <xcore/memory.h>
-#include <dpm/drivers/platform/nxp/memory_bus_dma_finalizer.h>
+#include <assert.h>
 /*----------------------------------------------------------------------------*/
 static enum Result finalizerInit(void *, const void *);
 static void finalizerDeinit(void *);

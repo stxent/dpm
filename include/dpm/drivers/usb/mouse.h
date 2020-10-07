@@ -7,8 +7,8 @@
 #ifndef DPM_DRIVERS_USB_MOUSE_H_
 #define DPM_DRIVERS_USB_MOUSE_H_
 /*----------------------------------------------------------------------------*/
-#include <stdint.h>
 #include <halm/usb/hid.h>
+#include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct HidClass * const Mouse;
 struct Mouse;

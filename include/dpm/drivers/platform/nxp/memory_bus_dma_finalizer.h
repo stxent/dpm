@@ -7,8 +7,8 @@
 #ifndef DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_
 #define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_FINALIZER_H_
 /*----------------------------------------------------------------------------*/
-#include <halm/dma.h>
 #include <dpm/drivers/platform/nxp/memory_bus_dma_timer.h>
+#include <halm/dma.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const MemoryBusDmaFinalizer;
 

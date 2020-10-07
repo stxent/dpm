@@ -4,10 +4,10 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <assert.h>
+#include <dpm/drivers/software_pwm.h>
 #include <halm/generic/pointer_list.h>
 #include <halm/irq.h>
-#include <dpm/drivers/software_pwm.h>
+#include <assert.h>
 /*----------------------------------------------------------------------------*/
 #define FREQUENCY_MULTIPLIER 2
 /*----------------------------------------------------------------------------*/

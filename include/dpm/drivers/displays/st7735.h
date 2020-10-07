@@ -7,9 +7,9 @@
 #ifndef DPM_DRIVERS_DISPLAYS_ST7735_H_
 #define DPM_DRIVERS_DISPLAYS_ST7735_H_
 /*----------------------------------------------------------------------------*/
-#include <stdbool.h>
 #include <halm/pin.h>
 #include <xcore/interface.h>
+#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const ST7735;
 

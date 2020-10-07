@@ -7,7 +7,6 @@
 #ifndef DPM_DRIVERS_RGB_LED_H_
 #define DPM_DRIVERS_RGB_LED_H_
 /*----------------------------------------------------------------------------*/
-#include <stdbool.h>
 #include <halm/pwm.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const RgbLed;

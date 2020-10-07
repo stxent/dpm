@@ -4,15 +4,15 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <assert.h>
-#include <stdlib.h>
+#include <dpm/drivers/usb/mouse.h>
 #include <halm/generic/pointer_queue.h>
 #include <halm/irq.h>
 #include <halm/usb/hid_defs.h>
 #include <halm/usb/usb_defs.h>
 #include <halm/usb/usb_request.h>
 #include <halm/usb/usb_trace.h>
-#include <dpm/drivers/usb/mouse.h>
+#include <assert.h>
+#include <stdlib.h>
 /*----------------------------------------------------------------------------*/
 #define REPORT_PACKET_SIZE  4
 #define REQUEST_QUEUE_SIZE  2

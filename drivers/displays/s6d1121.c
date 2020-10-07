@@ -4,11 +4,11 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <assert.h>
-#include <halm/delay.h>
-#include <xcore/memory.h>
 #include <dpm/drivers/displays/display.h>
 #include <dpm/drivers/displays/s6d1121.h>
+#include <halm/delay.h>
+#include <xcore/memory.h>
+#include <assert.h>
 /*----------------------------------------------------------------------------*/
 #define DISPLAY_HEIGHT  320
 #define DISPLAY_WIDTH   240

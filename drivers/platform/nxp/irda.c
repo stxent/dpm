@@ -4,9 +4,9 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <halm/platform/nxp/gen_1/uart_defs.h>
 #include <dpm/drivers/platform/nxp/irda.h>
 #include <dpm/drivers/platform/nxp/irda_timer.h>
+#include <halm/platform/nxp/gen_1/uart_defs.h>
 /*----------------------------------------------------------------------------*/
 #define FRAME_WIDTH  10
 #define TX_FIFO_SIZE 16

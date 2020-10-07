@@ -4,9 +4,9 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <assert.h>
-#include <halm/platform/nxp/gptimer_defs.h>
 #include <dpm/drivers/platform/nxp/irda_timer.h>
+#include <halm/platform/nxp/gptimer_defs.h>
+#include <assert.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
 static void setupChannels(struct IrdaTimer *);

@@ -4,11 +4,11 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
+#include <dpm/drivers/displays/hd44780.h>
+#include <xcore/bits.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <xcore/bits.h>
-#include <dpm/drivers/displays/hd44780.h>
 /*----------------------------------------------------------------------------*/
 /*
  * Entry Mode Set: 0 0 0 0  0 1 I/D S/H

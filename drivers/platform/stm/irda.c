@@ -4,9 +4,9 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
+#include <dpm/drivers/platform/stm/irda.h>
 #include <halm/platform/stm/gptimer.h>
 #include <halm/platform/stm/uart_defs.h>
-#include <dpm/drivers/platform/stm/irda.h>
 /*----------------------------------------------------------------------------*/
 #define FRAME_WIDTH 10
 /*----------------------------------------------------------------------------*/
