@@ -9,13 +9,11 @@
 static enum Result ledInit(void *, const void *);
 static void ledDeinit(void *);
 /*----------------------------------------------------------------------------*/
-static const struct EntityClass ledTable = {
+const struct EntityClass * const RgbLed = &(const struct EntityClass){
     .size = sizeof(struct RgbLed),
     .init = ledInit,
     .deinit = ledDeinit
 };
-/*----------------------------------------------------------------------------*/
-const struct EntityClass * const RgbLed = &ledTable;
 /*----------------------------------------------------------------------------*/
 static enum Result ledInit(void *object, const void *configBase)
 {
@@ -32,7 +30,6 @@ static enum Result ledInit(void *object, const void *configBase)
 /*----------------------------------------------------------------------------*/
 static void ledDeinit(void *object __attribute__((unused)))
 {
-
 }
 /*----------------------------------------------------------------------------*/
 void rgbLedSet(struct RgbLed *led, uint16_t hue, uint8_t saturation,

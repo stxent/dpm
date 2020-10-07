@@ -42,7 +42,7 @@ static enum Result mouseGetReport(void *, uint8_t, uint8_t, uint8_t *,
 static enum Result mouseSetReport(void *, uint8_t, uint8_t, const uint8_t *,
     uint16_t);
 /*----------------------------------------------------------------------------*/
-static const struct HidClass mouseTable = {
+const struct HidClass * const Mouse = &(const struct HidClass){
     .size = sizeof(struct Mouse),
     .init = mouseInit,
     .deinit = mouseDeinit,
@@ -51,8 +51,6 @@ static const struct HidClass mouseTable = {
     .getReport = mouseGetReport,
     .setReport = mouseSetReport
 };
-/*----------------------------------------------------------------------------*/
-const struct HidClass * const Mouse = &mouseTable;
 /*----------------------------------------------------------------------------*/
 static const uint8_t mouseReportDescriptor[] = {
     REPORT_USAGE_PAGE(HID_USAGE_PAGE_GENERIC),

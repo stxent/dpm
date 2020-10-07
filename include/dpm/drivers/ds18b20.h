@@ -12,7 +12,7 @@
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const DS18B20;
-/*----------------------------------------------------------------------------*/
+
 struct DS18B20Config
 {
   /** Mandatory: sensor bus. */
@@ -20,7 +20,7 @@ struct DS18B20Config
   /** Optional: device address. */
   uint64_t address;
 };
-/*----------------------------------------------------------------------------*/
+
 struct DS18B20
 {
   struct Entity base;
@@ -39,10 +39,14 @@ struct DS18B20
   uint8_t state;
 };
 /*----------------------------------------------------------------------------*/
+BEGIN_DECLS
+
 void ds18b20Callback(struct DS18B20 *, void (*)(void *), void *);
 enum Result ds18b20ReadTemperature(const struct DS18B20 *, int16_t *);
 void ds18b20RequestTemperature(struct DS18B20 *);
 void ds18b20StartConversion(struct DS18B20 *);
 enum Result ds18b20Status(const struct DS18B20 *);
+
+END_DECLS
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_DS18B20_H_ */

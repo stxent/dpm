@@ -13,8 +13,7 @@
 #include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const SoftwarePwmUnit;
-extern const struct PwmClass * const SoftwarePwm;
-/*----------------------------------------------------------------------------*/
+
 struct SoftwarePwmUnitConfig
 {
   /** Mandatory: hardware timer. */
@@ -39,6 +38,8 @@ struct SoftwarePwmUnit
   uint32_t resolution;
 };
 /*----------------------------------------------------------------------------*/
+extern const struct PwmClass * const SoftwarePwm;
+
 struct SoftwarePwmConfig
 {
   /** Mandatory: peripheral unit. */
@@ -60,7 +61,11 @@ struct SoftwarePwm
   /* Enables generation  of the signal */
   bool enabled;
 };
+/*----------------------------------------------------------------------------*/
+BEGIN_DECLS
 
 void *softwarePwmCreate(void *, PinNumber);
+
+END_DECLS
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_SOFTWARE_PWM_H_ */

@@ -19,6 +19,20 @@ enum DisplayOrientation
 
   DISPLAY_ORIENTATION_END
 };
+
+/** Display options extending common interface options. */
+enum IfDisplayParameter
+{
+  /** Update information on the display immediately. */
+  IF_DISPLAY_UPDATE = IF_PARAMETER_END,
+
+  /** Display orientation. */
+  IF_DISPLAY_ORIENTATION,
+  /** Display resolution. */
+  IF_DISPLAY_RESOLUTION,
+  /** Set first and last addresses of the current display window. */
+  IF_DISPLAY_WINDOW
+};
 /*----------------------------------------------------------------------------*/
 struct DisplayPoint
 {
@@ -38,20 +52,6 @@ struct DisplayWindow
   uint16_t ay;
   uint16_t bx;
   uint16_t by;
-};
-/*----------------------------------------------------------------------------*/
-/** Display options extending common interface options. */
-enum IfDisplayParameter
-{
-  /** Update information on the display immediately. */
-  IF_DISPLAY_UPDATE = IF_PARAMETER_END,
-
-  /** Display orientation. */
-  IF_DISPLAY_ORIENTATION,
-  /** Display resolution. */
-  IF_DISPLAY_RESOLUTION,
-  /** Set first and last addresses of the current display window. */
-  IF_DISPLAY_WINDOW
 };
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_DISPLAYS_DISPLAY_H_ */

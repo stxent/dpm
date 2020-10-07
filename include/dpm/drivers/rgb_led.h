@@ -10,7 +10,7 @@
 #include <halm/pwm.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const RgbLed;
-/*----------------------------------------------------------------------------*/
+
 struct RgbLedConfig
 {
   /** Mandatory: red channel. */
@@ -20,7 +20,7 @@ struct RgbLedConfig
   /** Mandatory: blue channel. */
   struct Pwm *blue;
 };
-/*----------------------------------------------------------------------------*/
+
 struct RgbLed
 {
   struct Entity base;
@@ -31,6 +31,10 @@ struct RgbLed
   uint16_t resolution;
 };
 /*----------------------------------------------------------------------------*/
+BEGIN_DECLS
+
 void rgbLedSet(struct RgbLed *, uint16_t, uint8_t, uint8_t);
+
+END_DECLS
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DRIVERS_RGB_LED_H_ */

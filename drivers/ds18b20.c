@@ -21,13 +21,11 @@ static void sensorCallback(void *);
 static enum Result sensorInit(void *, const void *);
 static void sensorDeinit(void *);
 /*----------------------------------------------------------------------------*/
-static const struct EntityClass sensorTable = {
+const struct EntityClass * const DS18B20 = &(const struct EntityClass){
     .size = sizeof(struct DS18B20),
     .init = sensorInit,
     .deinit = sensorDeinit
 };
-/*----------------------------------------------------------------------------*/
-const struct EntityClass * const DS18B20 = &sensorTable;
 /*----------------------------------------------------------------------------*/
 static const uint8_t readScratchpadCommand[] = {0xBE};
 static const uint8_t startConversionCommand[] = {0x44};

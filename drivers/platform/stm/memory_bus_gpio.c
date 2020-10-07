@@ -13,7 +13,7 @@ static void interruptHandler(void *);
 /*----------------------------------------------------------------------------*/
 static enum Result busInit(void *, const void *);
 static void busDeinit(void *);
-static enum Result busSetCallback(void *, void (*)(void *), void *);
+static void busSetCallback(void *, void (*)(void *), void *);
 static enum Result busGetParam(void *, enum IfParameter, void *);
 static enum Result busSetParam(void *, enum IfParameter, const void *);
 static size_t busRead(void *, void *, size_t);
@@ -88,14 +88,13 @@ static void busDeinit(void *object)
   deinit(interface->timer);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result busSetCallback(void *object, void (*callback)(void *),
+static void busSetCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct MemoryBusGpio * const interface = object;
 
   interface->callbackArgument = argument;
   interface->callback = callback;
-  return E_OK;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busGetParam(void *object, enum IfParameter parameter,
