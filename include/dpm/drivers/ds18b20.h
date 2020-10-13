@@ -7,8 +7,8 @@
 #ifndef DPM_DRIVERS_DS18B20_H_
 #define DPM_DRIVERS_DS18B20_H_
 /*----------------------------------------------------------------------------*/
-#include <xcore/entity.h>
 #include <xcore/interface.h>
+#include <stdbool.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const DS18B20;
@@ -41,11 +41,10 @@ struct DS18B20
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS
 
-void ds18b20Callback(struct DS18B20 *, void (*)(void *), void *);
-enum Result ds18b20ReadTemperature(const struct DS18B20 *, int16_t *);
-void ds18b20RequestTemperature(struct DS18B20 *);
+bool ds18b20ReadTemperature(const struct DS18B20 *, int16_t *);
+bool ds18b20RequestTemperature(struct DS18B20 *);
+void ds18b20SetCallback(struct DS18B20 *, void (*)(void *), void *);
 void ds18b20StartConversion(struct DS18B20 *);
-enum Result ds18b20Status(const struct DS18B20 *);
 
 END_DECLS
 /*----------------------------------------------------------------------------*/

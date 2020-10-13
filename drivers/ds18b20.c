@@ -17,7 +17,7 @@ enum State
 };
 /*----------------------------------------------------------------------------*/
 static void sensorCallback(void *);
-/*----------------------------------------------------------------------------*/
+
 static enum Result sensorInit(void *, const void *);
 static void sensorDeinit(void *);
 /*----------------------------------------------------------------------------*/
@@ -56,7 +56,7 @@ static void sensorCallback(void *object)
 
     case SENSOR_READ_SCRATCHPAD:
     {
-      // TODO Check CRC
+      /* TODO Check CRC */
       sensor->state = SENSOR_IDLE;
       event = true;
       break;
@@ -70,36 +70,26 @@ static void sensorCallback(void *object)
     sensor->callback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
-void ds18b20Callback(struct DS18B20 *sensor, void (*callback)(void *),
-    void *argument)
-{
-  sensor->callbackArgument = argument;
-  sensor->callback = callback;
-}
-/*----------------------------------------------------------------------------*/
-enum Result ds18b20ReadTemperature(const struct DS18B20 *sensor,
-    int16_t *temperature)
+bool ds18b20ReadTemperature(const struct DS18B20 *sensor, int16_t *value)
 {
   if (sensor->state == SENSOR_IDLE)
   {
-    const int16_t buffer =
-        (sensor->scratchpad[0] | (sensor->scratchpad[1] << 8)) << 4;
-
-    *temperature = buffer;
-    return E_OK;
+    *value = (sensor->scratchpad[0] | (sensor->scratchpad[1] << 8)) << 4;
+    return true;
   }
   else
-    return E_BUSY;
+    return false;
 }
 /*----------------------------------------------------------------------------*/
-void ds18b20RequestTemperature(struct DS18B20 *sensor)
+bool ds18b20RequestTemperature(struct DS18B20 *sensor)
 {
   if (ifSetParam(sensor->bus, IF_ADDRESS, &sensor->address) != E_OK)
   {
     sensor->state = SENSOR_ERROR;
-    return;
+    return false;
   }
 
+  ifSetParam(sensor->bus, IF_ZEROCOPY, 0);
   ifSetCallback(sensor->bus, sensorCallback, sensor);
   sensor->state = SENSOR_READ_TEMPERATURE;
 
@@ -107,7 +97,19 @@ void ds18b20RequestTemperature(struct DS18B20 *sensor)
       sizeof(readScratchpadCommand));
 
   if (count != sizeof(readScratchpadCommand))
+  {
     sensor->state = SENSOR_ERROR;
+    return false;
+  }
+  else
+    return true;
+}
+/*----------------------------------------------------------------------------*/
+void ds18b20SetCallback(struct DS18B20 *sensor, void (*callback)(void *),
+    void *argument)
+{
+  sensor->callbackArgument = argument;
+  sensor->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
 void ds18b20StartConversion(struct DS18B20 *sensor)
@@ -118,6 +120,7 @@ void ds18b20StartConversion(struct DS18B20 *sensor)
     return;
   }
 
+  ifSetParam(sensor->bus, IF_ZEROCOPY, 0);
   ifSetCallback(sensor->bus, sensorCallback, sensor);
   sensor->state = SENSOR_START_CONVERSION;
 
@@ -126,21 +129,6 @@ void ds18b20StartConversion(struct DS18B20 *sensor)
 
   if (count != sizeof(startConversionCommand))
     sensor->state = SENSOR_ERROR;
-}
-/*----------------------------------------------------------------------------*/
-enum Result ds18b20Status(const struct DS18B20 *sensor)
-{
-  switch (sensor->state)
-  {
-    case SENSOR_IDLE:
-      return E_OK;
-
-    case SENSOR_ERROR:
-      return E_ERROR;
-
-    default:
-      return E_BUSY;
-  }
 }
 /*----------------------------------------------------------------------------*/
 static enum Result sensorInit(void *object, const void *configBase)
@@ -153,7 +141,7 @@ static enum Result sensorInit(void *object, const void *configBase)
   sensor->callback = 0;
   sensor->state = SENSOR_IDLE;
 
-  return ifSetParam(sensor->bus, IF_ZEROCOPY, 0);
+  return E_OK;
 }
 /*----------------------------------------------------------------------------*/
 static void sensorDeinit(void *object)

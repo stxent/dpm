@@ -6,6 +6,7 @@ add_subdirectory("platform")
 file(GLOB SOURCE_FILES
         "*.c"
         "displays/*.c"
+        "gnss/*.c"
         "usb/*.c"
 )
 
