@@ -8,9 +8,6 @@ cmake_policy(SET CMP0069 NEW)
 
 option(USE_LTO "Enable Link Time Optimization." OFF)
 
-set(PATH_XCORE "${PROJECT_SOURCE_DIR}/../xcore" CACHE STRING "Path to the XCORE library.")
-set(PATH_HALM "${PROJECT_SOURCE_DIR}/../halm" CACHE STRING "Path to the HALM library.")
-
 # Default compiler flags
 set(FLAGS_DEFAULT "-fdata-sections -ffunction-sections -Wall -Wextra -Wshadow -pedantic")
 set(CMAKE_C_STANDARD 11)

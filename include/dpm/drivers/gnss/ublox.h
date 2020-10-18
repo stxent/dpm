@@ -35,6 +35,7 @@ struct Ublox
   struct UbloxParser parser;
   uint64_t timestamp;
   uint64_t timedelta;
+  bool queued;
 
   void *callbackArgument;
   void (*onDataReceived)(void *, const uint8_t *, size_t);

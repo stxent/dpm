@@ -76,7 +76,7 @@ static void setupGpio(struct MemoryBusDma *interface,
     else
       interface->address = pinAddress(pin);
 
-    pinOutput(pin, 0);
+    pinOutput(pin, false);
   }
 }
 /*----------------------------------------------------------------------------*/

@@ -5,6 +5,7 @@
  */
 
 #include <dpm/drivers/ds18b20.h>
+#include <assert.h>
 #include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 enum State
@@ -16,7 +17,7 @@ enum State
   SENSOR_ERROR
 };
 /*----------------------------------------------------------------------------*/
-static void sensorCallback(void *);
+static void interruptHandler(void *);
 
 static enum Result sensorInit(void *, const void *);
 static void sensorDeinit(void *);
@@ -30,7 +31,7 @@ const struct EntityClass * const DS18B20 = &(const struct EntityClass){
 static const uint8_t readScratchpadCommand[] = {0xBE};
 static const uint8_t startConversionCommand[] = {0x44};
 /*----------------------------------------------------------------------------*/
-static void sensorCallback(void *object)
+static void interruptHandler(void *object)
 {
   struct DS18B20 * const sensor = object;
   bool event = false;
@@ -90,7 +91,7 @@ bool ds18b20RequestTemperature(struct DS18B20 *sensor)
   }
 
   ifSetParam(sensor->bus, IF_ZEROCOPY, 0);
-  ifSetCallback(sensor->bus, sensorCallback, sensor);
+  ifSetCallback(sensor->bus, interruptHandler, sensor);
   sensor->state = SENSOR_READ_TEMPERATURE;
 
   const uint32_t count = ifWrite(sensor->bus, readScratchpadCommand,
@@ -121,7 +122,7 @@ void ds18b20StartConversion(struct DS18B20 *sensor)
   }
 
   ifSetParam(sensor->bus, IF_ZEROCOPY, 0);
-  ifSetCallback(sensor->bus, sensorCallback, sensor);
+  ifSetCallback(sensor->bus, interruptHandler, sensor);
   sensor->state = SENSOR_START_CONVERSION;
 
   const uint32_t count = ifWrite(sensor->bus, startConversionCommand,
@@ -134,6 +135,9 @@ void ds18b20StartConversion(struct DS18B20 *sensor)
 static enum Result sensorInit(void *object, const void *configBase)
 {
   const struct DS18B20Config * const config = configBase;
+  assert(config);
+  assert(config->bus);
+
   struct DS18B20 * const sensor = object;
 
   sensor->address = config->address;

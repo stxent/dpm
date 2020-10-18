@@ -173,7 +173,7 @@ static enum Result displayInit(void *object, const void *configPtr)
   if (!pinValid(display->rs))
     return E_VALUE;
   /* Initialize and select instruction registers */
-  pinOutput(display->rs, 0);
+  pinOutput(display->rs, false);
 
   display->buffer = malloc(bufferSize);
   if (!display->buffer)

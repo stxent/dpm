@@ -9,7 +9,7 @@
 #include <halm/wq.h>
 #include <xcore/memory.h>
 /*----------------------------------------------------------------------------*/
-#define BUFFER_LENGTH 64
+#define BUFFER_LENGTH 256
 /*----------------------------------------------------------------------------*/
 struct HandlerEntry
 {
@@ -80,7 +80,13 @@ static void onMessageReceived(struct Ublox *receiver,
 /*----------------------------------------------------------------------------*/
 static void onSerialEvent(void *argument)
 {
-  wqAdd(WQ_DEFAULT, parseSerialDataTask, argument);
+  struct Ublox * const receiver = argument;
+
+  if (!receiver->queued)
+  {
+    receiver->queued = true;
+    wqAdd(WQ_DEFAULT, parseSerialDataTask, receiver);
+  }
 }
 /*----------------------------------------------------------------------------*/
 static void onTimePulseEvent(void *argument)
@@ -100,6 +106,8 @@ static void parseSerialDataTask(void *argument)
   struct Ublox * const receiver = argument;
   uint8_t buffer[BUFFER_LENGTH];
   size_t length;
+
+  receiver->queued = false;
 
   while ((length = ifRead(receiver->serial, buffer, sizeof(buffer))))
   {
@@ -152,6 +160,7 @@ static enum Result ubloxInit(void *object, const void *configBase)
   ubloxParserInit(&receiver->parser);
   receiver->timestamp = 0;
   receiver->timedelta = 0;
+  receiver->queued = false;
 
   receiver->serial = config->serial;
   receiver->pps = config->pps;

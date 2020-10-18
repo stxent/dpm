@@ -238,14 +238,14 @@ static enum Result displayInit(void *object, const void *configPtr)
   display->reset = pinInit(config->reset);
   if (!pinValid(display->reset))
     return E_VALUE;
-  pinOutput(display->reset, 1);
+  pinOutput(display->reset, true);
 
   if (config->cs)
   {
     display->cs = pinInit(config->cs);
     if (!pinValid(display->cs))
       return E_VALUE;
-    pinOutput(display->cs, 1);
+    pinOutput(display->cs, true);
 
     display->csExternal = false;
   }
@@ -255,7 +255,7 @@ static enum Result displayInit(void *object, const void *configPtr)
   display->rs = pinInit(config->rs);
   if (!pinValid(display->rs))
     return E_VALUE;
-  pinOutput(display->rs, 0);
+  pinOutput(display->rs, false);
 
   display->bus = config->bus;
 
