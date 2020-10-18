@@ -15,6 +15,11 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS_DEFAULT} ${FLAGS_CPU}")
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 
+find_package(halm QUIET)
+if(NOT halm_FOUND)
+    message(STATUS "Package information for halm not found")
+endif()
+
 if(${USE_LTO})
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
     if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
@@ -32,16 +37,35 @@ foreach(ENTRY ${DIRECTORY_LIST})
     if(TARGET dpm_${ENTRY})
         list(APPEND LIBRARY_TARGETS dpm_${ENTRY})
         list(APPEND LIBRARY_OBJECTS $<TARGET_OBJECTS:dpm_${ENTRY}>)
-        target_include_directories(dpm_${ENTRY}
-                PUBLIC "${PROJECT_SOURCE_DIR}/include"
+        target_include_directories(dpm_${ENTRY} PUBLIC
+                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                $<INSTALL_INTERFACE:include>
         )
         target_link_libraries(dpm_${ENTRY}
                 PUBLIC halm
         )
+        install(TARGETS dpm_${ENTRY} EXPORT dpm-targets)
     endif()
 endforeach()
 
 add_library(${PROJECT_NAME} ${LIBRARY_OBJECTS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${LIBRARY_TARGETS})
 
-install(TARGETS ${PROJECT_NAME} ARCHIVE DESTINATION lib)
+# Library installation configuration
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/dpm
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h"
+)
+install(TARGETS ${PROJECT_NAME}
+        EXPORT dpm-targets
+        ARCHIVE DESTINATION lib
+        INCLUDES DESTINATION include
+)
+install(EXPORT dpm-targets
+        FILE dpm-targets.cmake
+        DESTINATION lib/dpm
+)
+install(FILES "${PROJECT_SOURCE_DIR}/config.cmake.in"
+        DESTINATION lib/dpm
+        RENAME dpm-config.cmake
+)
