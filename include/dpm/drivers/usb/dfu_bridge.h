@@ -33,6 +33,8 @@ struct DfuBridgeConfig
   size_t offset;
   /** Optional: software reset handler. */
   void (*reset)(void);
+  /** Optional: disable firmware reading. */
+  bool writeonly;
 };
 
 struct DfuBridge

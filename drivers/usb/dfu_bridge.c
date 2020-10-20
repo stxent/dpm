@@ -9,6 +9,7 @@
 #include <halm/generic/work_queue.h>
 #include <halm/irq.h>
 #include <halm/usb/dfu.h>
+#include <halm/usb/usb_trace.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -209,7 +210,9 @@ static enum Result bridgeInit(void *object, const void *configBase)
 
   dfuSetCallbackArgument(loader->device, loader);
   dfuSetDownloadRequestCallback(loader->device, onDownloadRequest);
-  dfuSetUploadRequestCallback(loader->device, onUploadRequest);
+
+  if (!config->writeonly)
+    dfuSetUploadRequestCallback(loader->device, onUploadRequest);
 
   bridgeReset(loader);
   return E_OK;
