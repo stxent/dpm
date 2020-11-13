@@ -24,8 +24,8 @@ static void timerInterruptHandler(void *);
 /*----------------------------------------------------------------------------*/
 static enum Result serialInit(void *, const void *);
 static void serialSetCallback(void *, void (*)(void *), void *);
-static enum Result serialGetParam(void *, enum IfParameter, void *);
-static enum Result serialSetParam(void *, enum IfParameter, const void *);
+static enum Result serialGetParam(void *, int, void *);
+static enum Result serialSetParam(void *, int, const void *);
 static size_t serialRead(void *, void *, size_t);
 static size_t serialWrite(void *, const void *, size_t);
 
@@ -104,6 +104,7 @@ static void serialInterruptHandler(void *object)
     {
       /* Restart the timer */
       timerDisable(interface->timer);
+      timerSetValue(interface->timer, 0);
       timerEnable(interface->timer);
 
       interface->state = STATE_WAIT;
@@ -242,14 +243,12 @@ static void serialSetCallback(void *object, void (*callback)(void *),
   Serial->setCallback(object, callback, argument);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result serialGetParam(void *object, enum IfParameter parameter,
-    void *data)
+static enum Result serialGetParam(void *object, int parameter, void *data)
 {
   return Serial->getParam(object, parameter, data);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result serialSetParam(void *object, enum IfParameter parameter,
-    const void *data)
+static enum Result serialSetParam(void *object, int parameter, const void *data)
 {
   return Serial->setParam(object, parameter, data);
 }

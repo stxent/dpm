@@ -30,6 +30,7 @@ const struct TimerClass * const MemoryBusDmaClock =
 
     .enable = tmrEnable,
     .disable = tmrDisable,
+    .setAutostop = 0,
     .setCallback = tmrCallback,
     .getFrequency = 0,
     .setFrequency = 0,

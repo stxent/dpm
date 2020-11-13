@@ -19,8 +19,8 @@ static void setupGpio(struct MemoryBusDma *, const struct MemoryBusDmaConfig *);
 static enum Result busInit(void *, const void *);
 static void busDeinit(void *);
 static void busSetCallback(void *, void (*)(void *), void *);
-static enum Result busGetParam(void *, enum IfParameter, void *);
-static enum Result busSetParam(void *, enum IfParameter, const void *);
+static enum Result busGetParam(void *, int, void *);
+static enum Result busSetParam(void *, int, const void *);
 static size_t busRead(void *, void *, size_t);
 static size_t busWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
@@ -200,12 +200,11 @@ static void busSetCallback(void *object, void (*callback)(void *),
   interface->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static enum Result busGetParam(void *object, enum IfParameter parameter,
-    void *data)
+static enum Result busGetParam(void *object, int parameter, void *data)
 {
   struct MemoryBusDma * const interface = object;
 
-  switch (parameter)
+  switch ((enum IfParameter)parameter)
   {
     case IF_STATUS:
       return interface->active ? E_BUSY : E_OK;
@@ -219,12 +218,12 @@ static enum Result busGetParam(void *object, enum IfParameter parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result busSetParam(void *object, enum IfParameter parameter,
+static enum Result busSetParam(void *object, int parameter,
     const void *data __attribute__((unused)))
 {
   struct MemoryBusDma * const interface = object;
 
-  switch (parameter)
+  switch ((enum IfParameter)parameter)
   {
     case IF_BLOCKING:
       interface->blocking = true;

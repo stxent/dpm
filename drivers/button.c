@@ -90,12 +90,11 @@ static enum Result buttonInit(void *object, const void *configBase)
 /*----------------------------------------------------------------------------*/
 static void buttonDeinit(void *object)
 {
-  const struct Button * const button = object;
+  struct Button * const button = object;
 
-  timerDisable(button->timer);
+  buttonDisable(button);
+
   timerSetCallback(button->timer, 0, 0);
-
-  interruptDisable(button->interrupt);
   interruptSetCallback(button->interrupt, 0, 0);
 }
 /*----------------------------------------------------------------------------*/

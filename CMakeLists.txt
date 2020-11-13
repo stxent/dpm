@@ -16,8 +16,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS_DEFAULT} ${FLAGS_CPU}")
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 
 find_package(halm QUIET)
-if(NOT halm_FOUND)
-    message(STATUS "Package information for halm not found")
+if(halm_FOUND)
+    message(STATUS "Found halm package")
 endif()
 
 if(${USE_LTO})

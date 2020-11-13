@@ -60,8 +60,8 @@ static void updateDisplay(struct HD44780 *);
 static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
 static void displaySetCallback(void *, void (*)(void *), void *);
-static enum Result displayGetParam(void *, enum IfParameter, void *);
-static enum Result displaySetParam(void *, enum IfParameter, const void *);
+static enum Result displayGetParam(void *, int, void *);
+static enum Result displaySetParam(void *, int, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
@@ -225,8 +225,7 @@ static void displaySetCallback(void *object, void (*callback)(void *),
   display->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static enum Result displayGetParam(void *object, enum IfParameter parameter,
-    void *data)
+static enum Result displayGetParam(void *object, int parameter, void *data)
 {
   const struct HD44780 * const display = object;
 
@@ -241,7 +240,7 @@ static enum Result displayGetParam(void *object, enum IfParameter parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result displaySetParam(void *object, enum IfParameter parameter,
+static enum Result displaySetParam(void *object, int parameter,
     const void *data)
 {
   struct HD44780 * const display = object;

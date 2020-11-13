@@ -85,7 +85,7 @@ static void onSerialEvent(void *argument)
   if (!receiver->queued)
   {
     receiver->queued = true;
-    wqAdd(WQ_DEFAULT, parseSerialDataTask, receiver);
+    wqAdd(receiver->wq, parseSerialDataTask, receiver);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -165,6 +165,7 @@ static enum Result ubloxInit(void *object, const void *configBase)
   receiver->serial = config->serial;
   receiver->pps = config->pps;
   receiver->timer = config->timer;
+  receiver->wq = config->wq ? config->wq : WQ_DEFAULT;
 
   receiver->callbackArgument = 0;
   receiver->onDataReceived = 0;

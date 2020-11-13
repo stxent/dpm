@@ -26,6 +26,7 @@ const struct TimerClass * const IrdaTimer = &(const struct TimerClass){
 
     .enable = tmrEnable,
     .disable = tmrDisable,
+    .setAutostop = 0,
     .setCallback = tmrSetCallback,
     .getFrequency = 0,
     .setFrequency = tmrSetFrequency,

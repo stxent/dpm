@@ -85,8 +85,8 @@ static inline void sendData(struct ST7735 *, const uint8_t *, size_t);
 /*----------------------------------------------------------------------------*/
 static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
-static enum Result displayGetParam(void *, enum IfParameter, void *);
-static enum Result displaySetParam(void *, enum IfParameter, const void *);
+static enum Result displayGetParam(void *, int, void *);
+static enum Result displaySetParam(void *, int, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
@@ -252,8 +252,7 @@ static void displayDeinit(void *object __attribute__((unused)))
 {
 }
 /*----------------------------------------------------------------------------*/
-static enum Result displayGetParam(void *object, enum IfParameter parameter,
-    void *data)
+static enum Result displayGetParam(void *object, int parameter, void *data)
 {
   struct ST7735 * const display = object;
 
@@ -273,7 +272,7 @@ static enum Result displayGetParam(void *object, enum IfParameter parameter,
       break;
   }
 
-  switch (parameter)
+  switch ((enum IfParameter)parameter)
   {
     case IF_STATUS:
       return ifGetParam(display->bus, IF_STATUS, 0);
@@ -283,7 +282,7 @@ static enum Result displayGetParam(void *object, enum IfParameter parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result displaySetParam(void *object, enum IfParameter parameter,
+static enum Result displaySetParam(void *object, int parameter,
     const void *data)
 {
   struct ST7735 * const display = object;

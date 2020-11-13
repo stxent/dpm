@@ -10,6 +10,7 @@
 #include <dpm/drivers/gnss/ublox_parser.h>
 #include <halm/interrupt.h>
 #include <halm/timer.h>
+#include <halm/wq.h>
 #include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const Ublox;
@@ -22,6 +23,8 @@ struct UbloxConfig
   struct Interrupt *pps;
   /** Mandatory: chrono timer. */
   struct Timer64 *timer;
+  /** Optional: work queue for packet processing tasks. */
+  struct WorkQueue *wq;
 };
 
 struct Ublox
@@ -31,6 +34,7 @@ struct Ublox
   struct Interface *serial;
   struct Interrupt *pps;
   struct Timer64 *timer;
+  struct WorkQueue *wq;
 
   struct UbloxParser parser;
   uint64_t timestamp;
