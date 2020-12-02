@@ -70,8 +70,8 @@ static void setupGpio(struct MemoryBusDma *interface,
 
     if (index)
     {
-      assert(pin.data.port == PIN_TO_PORT(config->pins[0]));
-      assert(pin.data.offset == PIN_TO_OFFSET(config->pins[0]) + index);
+      assert(pin.port == PIN_TO_PORT(config->pins[0]));
+      assert(pin.number == PIN_TO_OFFSET(config->pins[0]) + index);
     }
     else
       interface->address = pinAddress(pin);
