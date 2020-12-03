@@ -4,10 +4,10 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <dpm/drivers/platform/nxp/memory_bus_dma.h>
-#include <dpm/drivers/platform/nxp/memory_bus_dma_finalizer.h>
-#include <dpm/drivers/platform/nxp/memory_bus_dma_timer.h>
-#include <halm/platform/nxp/gpdma_oneshot.h>
+#include <dpm/drivers/platform/lpc/memory_bus_dma.h>
+#include <dpm/drivers/platform/lpc/memory_bus_dma_finalizer.h>
+#include <dpm/drivers/platform/lpc/memory_bus_dma_timer.h>
+#include <halm/platform/lpc/gpdma_oneshot.h>
 #include <xcore/memory.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/

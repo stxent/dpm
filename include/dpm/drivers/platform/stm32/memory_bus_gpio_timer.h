@@ -1,13 +1,13 @@
 /*
- * drivers/platform/stm/memory_bus_gpio_timer.h
+ * drivers/platform/stm32/memory_bus_gpio_timer.h
  * Copyright (C) 2019 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_TIMER_H_
-#define DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_TIMER_H_
+#ifndef DPM_DRIVERS_PLATFORM_STM32_MEMORY_BUS_GPIO_TIMER_H_
+#define DPM_DRIVERS_PLATFORM_STM32_MEMORY_BUS_GPIO_TIMER_H_
 /*----------------------------------------------------------------------------*/
-#include <halm/platform/stm/gptimer_base.h>
+#include <halm/platform/stm32/gptimer_base.h>
 /*----------------------------------------------------------------------------*/
 extern const struct TimerClass * const MemoryBusGpioTimer;
 
@@ -41,4 +41,4 @@ struct MemoryBusGpioTimer
   uint8_t channel;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_DRIVERS_PLATFORM_STM_MEMORY_BUS_GPIO_TIMER_H_ */
+#endif /* DPM_DRIVERS_PLATFORM_STM32_MEMORY_BUS_GPIO_TIMER_H_ */

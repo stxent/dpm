@@ -1,11 +1,11 @@
 /*
- * drivers/platform/nxp/memory_bus_dma.h
+ * drivers/platform/lpc/memory_bus_dma.h
  * Copyright (C) 2014 xent
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#ifndef DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_H_
-#define DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_H_
+#ifndef DPM_DRIVERS_PLATFORM_LPC_MEMORY_BUS_DMA_H_
+#define DPM_DRIVERS_PLATFORM_LPC_MEMORY_BUS_DMA_H_
 /*----------------------------------------------------------------------------*/
 #include <halm/dma.h>
 #include <halm/irq.h>
@@ -81,4 +81,4 @@ struct MemoryBusDma
   bool blocking;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_DRIVERS_PLATFORM_NXP_MEMORY_BUS_DMA_H_ */
+#endif /* DPM_DRIVERS_PLATFORM_LPC_MEMORY_BUS_DMA_H_ */

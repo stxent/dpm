@@ -4,15 +4,15 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <dpm/drivers/platform/stm/memory_bus_gpio_timer.h>
-#include <halm/platform/stm/gptimer_defs.h>
+#include <dpm/drivers/platform/stm32/memory_bus_gpio_timer.h>
+#include <halm/platform/stm32/gptimer_defs.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
 static enum Result setupChannels(struct MemoryBusGpioTimer *,
     const struct MemoryBusGpioTimerConfig *);
 
-#ifdef CONFIG_PLATFORM_STM_GPTIMER_PM
+#ifdef CONFIG_PLATFORM_STM32_GPTIMER_PM
 static void powerStateHandler(void *, enum PmState);
 #endif
 /*----------------------------------------------------------------------------*/
@@ -25,7 +25,7 @@ static void tmrSetOverflow(void *, uint32_t);
 static uint32_t tmrGetValue(const void *);
 static void tmrSetValue(void *, uint32_t);
 
-#ifndef CONFIG_PLATFORM_STM_GPTIMER_NO_DEINIT
+#ifndef CONFIG_PLATFORM_STM32_GPTIMER_NO_DEINIT
 static void tmrDeinit(void *);
 #else
 #define tmrDeinit deletedDestructorTrap
@@ -64,7 +64,7 @@ static void interruptHandler(void *object)
   timer->callback(timer->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
-#ifdef CONFIG_PLATFORM_STM_GPTIMER_PM
+#ifdef CONFIG_PLATFORM_STM32_GPTIMER_PM
 static void powerStateHandler(void *object, enum PmState state)
 {
   if (state == PM_ACTIVE)
@@ -152,7 +152,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
   tmrSetFrequency(timer, config->frequency);
   tmrSetOverflow(timer, config->cycle);
 
-#ifdef CONFIG_PLATFORM_STM_GPTIMER_PM
+#ifdef CONFIG_PLATFORM_STM32_GPTIMER_PM
   if ((res = pmRegister(powerStateHandler, timer)) != E_OK)
     return res;
 #endif
@@ -171,7 +171,7 @@ static void tmrDeinit(void *object)
   irqDisable(timer->base.irq);
   reg->CR1 &= ~CR1_CEN;
 
-#ifdef CONFIG_PLATFORM_STM_GPTIMER_PM
+#ifdef CONFIG_PLATFORM_STM32_GPTIMER_PM
   pmUnregister(timer);
 #endif
 

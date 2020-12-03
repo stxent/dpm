@@ -4,9 +4,9 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <dpm/drivers/platform/stm/irda.h>
-#include <halm/platform/stm/gptimer.h>
-#include <halm/platform/stm/uart_defs.h>
+#include <dpm/drivers/platform/stm32/irda.h>
+#include <halm/platform/stm32/gptimer.h>
+#include <halm/platform/stm32/uart_defs.h>
 /*----------------------------------------------------------------------------*/
 #define FRAME_WIDTH 10
 /*----------------------------------------------------------------------------*/
@@ -29,7 +29,7 @@ static enum Result serialSetParam(void *, int, const void *);
 static size_t serialRead(void *, void *, size_t);
 static size_t serialWrite(void *, const void *, size_t);
 
-#ifndef CONFIG_PLATFORM_STM_UART_NO_DEINIT
+#ifndef CONFIG_PLATFORM_STM32_UART_NO_DEINIT
 static void serialDeinit(void *);
 #else
 #define serialDeinit deletedDestructorTrap
@@ -227,7 +227,7 @@ static enum Result serialInit(void *object, const void *configBase)
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-#ifndef CONFIG_PLATFORM_STM_UART_NO_DEINIT
+#ifndef CONFIG_PLATFORM_STM32_UART_NO_DEINIT
 static void serialDeinit(void *object)
 {
   struct Irda * const interface = object;

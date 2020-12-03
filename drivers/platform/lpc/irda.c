@@ -4,9 +4,9 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <dpm/drivers/platform/nxp/irda.h>
-#include <dpm/drivers/platform/nxp/irda_timer.h>
-#include <halm/platform/nxp/gen_1/uart_defs.h>
+#include <dpm/drivers/platform/lpc/irda.h>
+#include <dpm/drivers/platform/lpc/irda_timer.h>
+#include <halm/platform/lpc/gen_1/uart_defs.h>
 /*----------------------------------------------------------------------------*/
 #define FRAME_WIDTH  10
 #define TX_FIFO_SIZE 16
@@ -31,7 +31,7 @@ static enum Result serialSetParam(void *, int, const void *);
 static size_t serialRead(void *, void *, size_t);
 static size_t serialWrite(void *, const void *, size_t);
 
-#ifndef CONFIG_PLATFORM_NXP_UART_NO_DEINIT
+#ifndef CONFIG_PLATFORM_LPC_UART_NO_DEINIT
 static void serialDeinit(void *);
 #else
 #define serialDeinit deletedDestructorTrap
@@ -231,7 +231,7 @@ static enum Result serialInit(void *object, const void *configBase)
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-#ifndef CONFIG_PLATFORM_NXP_UART_NO_DEINIT
+#ifndef CONFIG_PLATFORM_LPC_UART_NO_DEINIT
 static void serialDeinit(void *object)
 {
   struct Irda * const interface = object;

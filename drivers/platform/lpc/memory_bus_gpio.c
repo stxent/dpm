@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the GNU General Public License v3.0
  */
 
-#include <dpm/drivers/platform/nxp/memory_bus_gpio.h>
-#include <dpm/drivers/platform/nxp/memory_bus_gpio_timer.h>
+#include <dpm/drivers/platform/lpc/memory_bus_gpio.h>
+#include <dpm/drivers/platform/lpc/memory_bus_gpio_timer.h>
 #include <xcore/memory.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
