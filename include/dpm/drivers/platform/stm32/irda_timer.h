@@ -1,7 +1,7 @@
 /*
  * drivers/platform/lpc/irda_timer.h
  * Copyright (C) 2020 xent
- * Project is distributed under the terms of the GNU General Public License v3.0
+ * Project is distributed under the terms of the MIT License
  */
 
 #ifndef DPM_DRIVERS_PLATFORM_LPC_IRDA_TIMER_H_

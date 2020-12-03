@@ -1,7 +1,7 @@
 /*
  * s6d1121.c
  * Copyright (C) 2014 xent
- * Project is distributed under the terms of the GNU General Public License v3.0
+ * Project is distributed under the terms of the MIT License
  */
 
 #include <dpm/drivers/displays/display.h>

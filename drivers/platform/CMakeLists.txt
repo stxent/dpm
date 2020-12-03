@@ -1,5 +1,5 @@
 # Copyright (C) 2018 xent
-# Project is distributed under the terms of the GNU General Public License v3.0
+# Project is distributed under the terms of the MIT License
 
 if(DEFINED PLATFORM)
     string(FIND ${PLATFORM} "LPC" PLATFORM_IS_LPC)

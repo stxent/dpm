@@ -1,7 +1,7 @@
 /*
  * drivers/platform/stm32/memory_bus_gpio_timer.h
  * Copyright (C) 2019 xent
- * Project is distributed under the terms of the GNU General Public License v3.0
+ * Project is distributed under the terms of the MIT License
  */
 
 #ifndef DPM_DRIVERS_PLATFORM_STM32_MEMORY_BUS_GPIO_TIMER_H_

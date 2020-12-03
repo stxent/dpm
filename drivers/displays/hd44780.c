@@ -1,7 +1,7 @@
 /*
  * hd44780.c
  * Copyright (C) 2014 xent
- * Project is distributed under the terms of the GNU General Public License v3.0
+ * Project is distributed under the terms of the MIT License
  */
 
 #include <dpm/drivers/displays/hd44780.h>
@@ -199,7 +199,7 @@ static enum Result displayInit(void *object, const void *configPtr)
       | HD44780_2_LINES | HD44780_FONT_5x8;
   /* Display On/Off control */
   display->command[1] = HD44780_CONTROL | HD44780_DISPLAY_ON
-      | HD44780_CURSOR_ON | HD44780_BLINK_ON;
+      /*| HD44780_CURSOR_ON | HD44780_BLINK_ON*/;
   /* Entry mode set */
   display->command[2] = HD44780_ENTRY_MODE | HD44780_SHIFT_RIGHT;
   /* Cursor or display shift */

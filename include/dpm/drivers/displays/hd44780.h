@@ -1,7 +1,7 @@
 /*
  * drivers/displays/hd44780.h
  * Copyright (C) 2014 xent
- * Project is distributed under the terms of the GNU General Public License v3.0
+ * Project is distributed under the terms of the MIT License
  */
 
 #ifndef DPM_DRIVERS_DISPLAYS_HD44780_H_

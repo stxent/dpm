@@ -1,7 +1,7 @@
 /*
  * drivers/displays/s6d1121.h
  * Copyright (C) 2014 xent
- * Project is distributed under the terms of the GNU General Public License v3.0
+ * Project is distributed under the terms of the MIT License
  */
 
 #ifndef DPM_DRIVERS_DISPLAYS_S6D1121_H_

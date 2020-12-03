@@ -1,7 +1,7 @@
 /*
  * drivers/gnss/ublox_defs.h
  * Copyright (C) 2020 xent
- * Project is distributed under the terms of the GNU General Public License v3.0
+ * Project is distributed under the terms of the MIT License
  */
 
 #ifndef DPM_DRIVERS_GNSS_UBLOX_DEFS_H_
@@ -13,12 +13,54 @@
 /*----------------------------------------------------------------------------*/
 enum UbloxMessageClass
 {
-  UBX_TIM = 0x0D
+  UBX_NAV = 0x01,
+  UBX_RXM = 0x02,
+  UBX_INF = 0x04,
+  UBX_ACK = 0x05,
+  UBX_CFG = 0x06,
+  UBX_UPD = 0x09,
+  UBX_MON = 0x0A,
+  UBX_AID = 0x0B,
+  UBX_TIM = 0x0D,
+  UBX_MGA = 0x13,
+  UBX_LOG = 0x21
 };
 
 enum UbloxMessageId
 {
-  UBX_TIM_TP = 0x01
+  UBX_NAV_POSLLH    = 0x02,
+  UBX_NAV_STATUS    = 0x03,
+  UBX_NAV_SOL       = 0x06,
+  UBX_NAV_PVT       = 0x07,
+  UBX_NAV_VELNED    = 0x12,
+  UBX_NAV_TIMEGPS   = 0x20,
+  UBX_NAV_SVINFO    = 0x30,
+  UBX_NAV_SAT       = 0x35,
+  UBX_NAV_RELPOSNED = 0x3C,
+
+  UBX_ACK_NAK       = 0x00,
+  UBX_ACK_ACK       = 0x01,
+
+  UBX_CFG_PRT       = 0x00,
+  UBX_CFG_MSG       = 0x01,
+  UBX_CFG_RST       = 0x04,
+  UBX_CFG_RATE      = 0x08,
+  UBX_CFG_ODO       = 0x1E,
+  UBX_CFG_NAV5      = 0x24,
+  UBX_CFG_TP5       = 0x31,
+  UBX_CFG_GNSS      = 0x3E,
+  UBX_CFG_DGNSS     = 0x70,
+
+  UBX_CFG_VALGET    = 0x8B,
+  UBX_CFG_VALSET    = 0x8A,
+  UBX_CFG_VALDEL    = 0x8C,
+
+  UBX_TIM_TP        = 0x01,
+
+  UBX_RXM_RAW       = 0x10,
+  UBX_RXM_RAWX      = 0x15,
+
+  UBX_MON_VER       = 0x04
 };
 /*----------------------------------------------------------------------------*/
 struct UbxTimTpPacket {

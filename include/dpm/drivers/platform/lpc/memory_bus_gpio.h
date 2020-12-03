@@ -1,7 +1,7 @@
 /*
  * drivers/platform/lpc/memory_bus_gpio.h
  * Copyright (C) 2014 xent
- * Project is distributed under the terms of the GNU General Public License v3.0
+ * Project is distributed under the terms of the MIT License
  */
 
 #ifndef DPM_DRIVERS_PLATFORM_LPC_MEMORY_BUS_GPIO_H_
