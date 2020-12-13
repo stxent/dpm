@@ -87,7 +87,7 @@ static bool setupDma(struct MemoryBusDma *interface,
   /* Only channels 0 and 1 can be used as DMA events */
   assert(matchChannel < 2);
 
-  const enum DmaWidth width = !busWidth ? DMA_WIDTH_BYTE : DMA_WIDTH_HALFWORD;
+  const enum GpDmaWidth width = busWidth ? DMA_WIDTH_HALFWORD : DMA_WIDTH_BYTE;
 
   const struct GpDmaSettings dmaSettings = {
       .source = {
