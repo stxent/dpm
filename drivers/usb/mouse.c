@@ -13,6 +13,7 @@
 #include <halm/usb/usb_trace.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 /*----------------------------------------------------------------------------*/
 #define REPORT_PACKET_SIZE  4
 #define REQUEST_QUEUE_SIZE  2
@@ -30,6 +31,13 @@ struct Mouse
 
   struct UsbEndpoint *txDataEp;
 };
+
+struct MouseReport
+{
+  uint8_t buttons;
+  int8_t dx;
+  int8_t dy;
+} __attribute__((packed));
 /*----------------------------------------------------------------------------*/
 static void deviceDataSent(void *, struct UsbRequest *, enum UsbRequestStatus);
 static void sendReport(struct Mouse *, uint8_t, int8_t, int8_t);
@@ -96,23 +104,29 @@ static void deviceDataSent(void *argument, struct UsbRequest *request,
 static void sendReport(struct Mouse *device, uint8_t buttons,
     int8_t dx, int8_t dy)
 {
-  const IrqState state = irqSave();
-
   if (!pointerQueueEmpty(&device->txQueue))
   {
+    const struct MouseReport report = {
+        .buttons = buttons,
+        .dx = dx,
+        .dy = dy
+    };
+
+    IrqState state = irqSave();
     struct UsbRequest * const request = pointerQueueFront(&device->txQueue);
     pointerQueuePopFront(&device->txQueue);
+    irqRestore(state);
 
     request->length = 3;
-    request->buffer[0] = buttons;
-    request->buffer[1] = (uint8_t)dx;
-    request->buffer[2] = (uint8_t)dy;
+    memcpy(request->buffer, &report, sizeof(report));
 
     if (usbEpEnqueue(device->txDataEp, request) != E_OK)
+    {
+      state = irqSave();
       pointerQueuePushBack(&device->txQueue, request);
+      irqRestore(state);
+    }
   }
-
-  irqRestore(state);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result mouseInit(void *object, const void *configBase)

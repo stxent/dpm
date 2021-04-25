@@ -93,7 +93,7 @@ static void setupChannels(struct MemoryBusDmaTimer *timer,
   if (select)
   {
     timer->select = gpTimerConfigMatchPin(channel, select);
-    mask |= 1 << timer->trailing;
+    mask |= 1 << timer->select;
   }
   else
     timer->select = GPTIMER_EVENT_END;

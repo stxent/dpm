@@ -43,7 +43,8 @@ static const struct FlashGeometry *findFlashRegion(
   const struct FlashGeometry *region = loader->geometry;
   size_t offset = 0;
 
-  while (region->count) {
+  while (region->count)
+  {
     /* Sector size should be a power of 2 */
     assert((region->size & (region->size - 1)) == 0);
 
