@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
-#define UBLOX_MESSAGE_LENGTH 128
+#define UBLOX_MESSAGE_LENGTH 1024
 /*----------------------------------------------------------------------------*/
 struct UbloxMessage
 {
@@ -25,6 +25,10 @@ struct UbloxParser
 {
   struct UbloxMessage message;
   size_t position;
+
+  uint32_t errors;
+  uint32_t received;
+
   uint8_t checksum[2];
   uint8_t state;
 };

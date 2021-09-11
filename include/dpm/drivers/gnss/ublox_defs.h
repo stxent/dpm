@@ -62,7 +62,46 @@ enum UbloxMessageId
 
   UBX_MON_VER       = 0x04
 };
+
+enum UbloxSystemId
+{
+  UBX_SYSTEM_GPS     = 0,
+  UBX_SYSTEM_SBAS    = 1,
+  UBX_SYSTEM_GALILEO = 2,
+  UBX_SYSTEM_BEIDOU  = 3,
+  UBX_SYSTEM_IMES    = 4,
+  UBX_SYSTEM_QZSS    = 5,
+  UBX_SYSTEM_GLONASS = 6
+};
 /*----------------------------------------------------------------------------*/
+struct UbxNavSatData {
+  uint8_t gnssId;
+  uint8_t svId;
+  uint8_t cno;
+  int8_t elev;
+  int16_t azim;
+  int16_t prRes;
+  uint32_t flags;
+} __attribute__((packed));
+
+struct UbxNavSatPacket {
+  uint32_t iTOW;
+  uint8_t version;
+  uint8_t numSvs;
+  uint8_t reserved1[2];
+  struct UbxNavSatData data[];
+} __attribute__((packed));
+
+struct UbxNavStatusPacket {
+  uint32_t iTOW;
+  uint8_t gpsFix;
+  uint8_t flags;
+  uint8_t fixStat;
+  uint8_t flags2;
+  uint32_t ttff;
+  uint32_t msss;
+} __attribute__((packed));
+
 struct UbxTimTpPacket {
   uint32_t towMS;
   uint32_t towSubMS;

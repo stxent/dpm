@@ -51,6 +51,9 @@ static void updateChecksumWithBuffer(uint8_t *result, const uint8_t *values,
 /*----------------------------------------------------------------------------*/
 void ubloxParserInit(struct UbloxParser *parser)
 {
+  parser->errors = 0;
+  parser->received = 0;
+
   resetParserState(parser);
 }
 /*----------------------------------------------------------------------------*/
@@ -115,6 +118,8 @@ size_t ubloxParserProcess(struct UbloxParser *parser, const uint8_t *buffer,
             parser->checksum[1] = 0;
             parser->state = STATE_TYPE;
           }
+          else
+            ++parser->errors;
 
           parser->position = 0;
         }
@@ -146,7 +151,7 @@ size_t ubloxParserProcess(struct UbloxParser *parser, const uint8_t *buffer,
         {
           parser->message.length |= (uint16_t)(c << 8);
           parser->position = 0;
-        	parser->state = parser->message.length ?
+          parser->state = parser->message.length ?
               STATE_PAYLOAD : STATE_CHECKSUM;
         }
 
@@ -171,6 +176,8 @@ size_t ubloxParserProcess(struct UbloxParser *parser, const uint8_t *buffer,
         {
           if (++parser->position == 2)
           {
+            ++parser->received;
+
             if (parser->message.length <= UBLOX_MESSAGE_LENGTH)
               parser->state = STATE_DONE;
             else
@@ -179,6 +186,7 @@ size_t ubloxParserProcess(struct UbloxParser *parser, const uint8_t *buffer,
         }
         else
         {
+          ++parser->errors;
           resetParserState(parser);
         }
         break;

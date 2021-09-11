@@ -17,7 +17,12 @@ struct HandlerEntry
   uint16_t type;
 };
 /*----------------------------------------------------------------------------*/
-static void onMessageReceivedTimTp(struct Ublox *, const struct UbloxMessage *);
+static void onMessageReceivedNavSat(struct Ublox *,
+    const struct UbloxMessage *);
+static void onMessageReceivedNavStatus(struct Ublox *,
+    const struct UbloxMessage *);
+static void onMessageReceivedTimTp(struct Ublox *,
+    const struct UbloxMessage *);
 
 static uint64_t makeGpsTime(uint16_t, uint32_t);
 static void onMessageReceived(struct Ublox *, const struct UbloxMessage *);
@@ -35,8 +40,121 @@ const struct EntityClass * const Ublox = &(const struct EntityClass){
 };
 /*----------------------------------------------------------------------------*/
 static const struct HandlerEntry handlers[] = {
+    {onMessageReceivedNavSat, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_SAT)},
+    {onMessageReceivedNavStatus, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_STATUS)},
     {onMessageReceivedTimTp, UBLOX_TYPE_PACK(UBX_TIM, UBX_TIM_TP)}
 };
+/*----------------------------------------------------------------------------*/
+static void onMessageReceivedNavSat(struct Ublox *receiver,
+    const struct UbloxMessage *message)
+{
+  static const uint32_t QUALITY_MASK = 0x00000007UL;
+
+  const struct UbxNavSatPacket * const packet =
+      (const struct UbxNavSatPacket *)message->data;
+  const size_t count = (message->length - sizeof(struct UbxNavSatPacket))
+      / sizeof(struct UbxNavSatData);
+
+  if (count != packet->numSvs)
+  {
+    /* Incorrect packet */
+    return;
+  }
+
+  struct SatelliteInfo satellites = {0, 0, 0, 0, 0};
+
+  for (size_t i = 0; i < count; ++i)
+  {
+    const uint32_t quality =
+        fromLittleEndian32(packet->data[i].flags) & QUALITY_MASK;
+
+    /* Ignore when no signal, unusable or not found */
+    if (quality < 2 || quality == 3)
+      continue;
+
+    switch ((enum UbloxSystemId)packet->data[i].gnssId)
+    {
+      case UBX_SYSTEM_GPS:
+        ++satellites.gps;
+        break;
+
+      case UBX_SYSTEM_GALILEO:
+        ++satellites.galileo;
+        break;
+
+      case UBX_SYSTEM_BEIDOU:
+        ++satellites.beidou;
+        break;
+
+      case UBX_SYSTEM_GLONASS:
+        ++satellites.glonass;
+        break;
+
+      case UBX_SYSTEM_SBAS:
+      case UBX_SYSTEM_IMES:
+      case UBX_SYSTEM_QZSS:
+        ++satellites.sbas;
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  if (receiver->onSatelliteCountReceived)
+    receiver->onSatelliteCountReceived(receiver->callbackArgument, &satellites);
+}
+/*----------------------------------------------------------------------------*/
+static void onMessageReceivedNavStatus(struct Ublox *receiver,
+    const struct UbloxMessage *message)
+{
+  enum GPSFix
+  {
+    GPSFIX_NOFIX,
+    GPSFIX_DEAD_RECKONING,
+    GPSFIX_2DFIX,
+    GPSFIX_3DFIX,
+    GPSFIX_COMBINED,
+    GPSFIX_TIME_ONLY
+  };
+
+  static const uint8_t FLAGS_GPS_FIX_OK = 0x01;
+  static const uint8_t FLAGS_DIFF_SOLN  = 0x02;
+
+  const struct UbxNavStatusPacket * const packet =
+      (const struct UbxNavStatusPacket *)message->data;
+  enum FixType fix;
+
+  switch (packet->gpsFix)
+  {
+    case GPSFIX_DEAD_RECKONING:
+      fix = FIX_DEAD_RECKONING;
+      break;
+
+    case GPSFIX_2DFIX:
+      fix = FIX_2D;
+      break;
+
+    case GPSFIX_3DFIX:
+      if (packet->flags & FLAGS_GPS_FIX_OK)
+      {
+        if (packet->flags & FLAGS_DIFF_SOLN)
+          fix = FIX_3D_CORRECTED;
+        else
+          fix = FIX_3D;
+      }
+      else
+        fix = FIX_2D;
+      break;
+
+    default:
+      fix = FIX_NONE;
+      break;
+  }
+
+  if (receiver->onStatusReceived)
+    receiver->onStatusReceived(receiver->callbackArgument, fix);
+}
 /*----------------------------------------------------------------------------*/
 static void onMessageReceivedTimTp(struct Ublox *receiver,
     const struct UbloxMessage *message)
@@ -152,6 +270,15 @@ void ubloxEnable(struct Ublox *receiver)
   interruptEnable(receiver->pps);
 }
 /*----------------------------------------------------------------------------*/
+void ubloxGetCounters(const struct Ublox *receiver, uint32_t *received,
+    uint32_t *errors)
+{
+  if (received)
+    *received = receiver->parser.received;
+  if (errors)
+    *errors = receiver->parser.errors;
+}
+/*----------------------------------------------------------------------------*/
 static enum Result ubloxInit(void *object, const void *configBase)
 {
   const struct UbloxConfig * const config = configBase;
@@ -179,19 +306,31 @@ static void ubloxDeinit(void *object)
   ubloxDisable(object);
 }
 /*----------------------------------------------------------------------------*/
-void ubloxSetCallbackArgument(struct Ublox *ublox, void *argument)
+void ubloxSetCallbackArgument(struct Ublox *receiver, void *argument)
 {
-  ublox->callbackArgument = argument;
+  receiver->callbackArgument = argument;
 }
 /*----------------------------------------------------------------------------*/
-void ubloxSetDataReceivedCallback(struct Ublox *ublox,
+void ubloxSetDataReceivedCallback(struct Ublox *receiver,
     void (*callback)(void *, const uint8_t *, size_t))
 {
-  ublox->onDataReceived = callback;
+  receiver->onDataReceived = callback;
 }
 /*----------------------------------------------------------------------------*/
-void ubloxSetTimeReceivedCallback(struct Ublox *ublox,
+void ubloxSetSatelliteCountReceivedCallback(struct Ublox *receiver,
+    void (*callback)(void *, const struct SatelliteInfo *))
+{
+  receiver->onSatelliteCountReceived = callback;
+}
+/*----------------------------------------------------------------------------*/
+void ubloxSetStatusReceivedCallback(struct Ublox *receiver,
+    void (*callback)(void *, enum FixType))
+{
+  receiver->onStatusReceived = callback;
+}
+/*----------------------------------------------------------------------------*/
+void ubloxSetTimeReceivedCallback(struct Ublox *receiver,
     void (*callback)(void *, uint64_t))
 {
-  ublox->onTimeReceived = callback;
+  receiver->onTimeReceived = callback;
 }
