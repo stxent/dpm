@@ -32,8 +32,6 @@ struct MemoryBusDmaControlConfig
 {
   /** Mandatory: external clock input. */
   PinNumber input;
-  /** Optional: chip select output. */
-  PinNumber select;
   /** Mandatory: pin used as output for memory control signal. */
   PinNumber leading;
   /** Mandatory: pin used as output for memory control signal. */

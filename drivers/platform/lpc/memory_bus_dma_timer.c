@@ -10,8 +10,8 @@
 /*----------------------------------------------------------------------------*/
 static inline uint32_t getMaxValue(const struct MemoryBusDmaTimer *);
 static void interruptHandler(void *);
-static void setupChannels(struct MemoryBusDmaTimer *, uint8_t,
-    PinNumber, PinNumber, PinNumber);
+static void setupChannels(struct MemoryBusDmaTimer *, uint8_t, PinNumber,
+    PinNumber);
 /*----------------------------------------------------------------------------*/
 static enum Result tmrClockInit(void *, const void *);
 static enum Result tmrControlInit(void *, const void *);
@@ -80,7 +80,7 @@ static void interruptHandler(void *object)
 }
 /*----------------------------------------------------------------------------*/
 static void setupChannels(struct MemoryBusDmaTimer *timer,
-    uint8_t channel, PinNumber leading, PinNumber trailing, PinNumber select)
+    uint8_t channel, PinNumber leading, PinNumber trailing)
 {
   uint8_t mask = 0;
 
@@ -89,14 +89,6 @@ static void setupChannels(struct MemoryBusDmaTimer *timer,
 
   timer->trailing = gpTimerConfigMatchPin(channel, trailing);
   mask |= 1 << timer->trailing;
-
-  if (select)
-  {
-    timer->select = gpTimerConfigMatchPin(channel, select);
-    mask |= 1 << timer->select;
-  }
-  else
-    timer->select = GPTIMER_EVENT_END;
 
   timer->reset = gpTimerAllocateChannel(mask);
 }
@@ -115,7 +107,7 @@ static enum Result tmrClockInit(void *object, const void *configPtr)
     return res;
 
   /* Configure timer channels */
-  setupChannels(timer, config->channel, config->leading, config->trailing, 0);
+  setupChannels(timer, config->channel, config->leading, config->trailing);
 
   timer->base.handler = interruptHandler;
   timer->callback = 0;
@@ -165,8 +157,7 @@ static enum Result tmrControlInit(void *object, const void *configPtr)
     return res;
 
   /* Configure timer channels */
-  setupChannels(timer, config->channel, config->leading, config->trailing,
-      config->select);
+  setupChannels(timer, config->channel, config->leading, config->trailing);
 
   timer->callback = 0;
   timer->match = 0;
@@ -247,8 +238,5 @@ static void tmrControlSetOverflow(void *object, uint32_t overflow)
   LPC_TIMER_Type * const reg = timer->base.reg;
 
   reg->MR[timer->leading] = 2;
-  reg->MR[timer->trailing] = (overflow << 1) - 1;
-
-  if (timer->select != GPTIMER_EVENT_END)
-    reg->MR[timer->select] = overflow << 1;
+  reg->MR[timer->trailing] = overflow << 1;
 }

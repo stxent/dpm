@@ -136,7 +136,6 @@ static enum Result busInit(void *object, const void *configPtr)
   };
   const struct MemoryBusDmaControlConfig controlConfig = {
       .input = config->control.capture,
-      .select = config->control.select,
       .leading = config->control.leading,
       .trailing = config->control.trailing,
       .channel = config->control.channel,

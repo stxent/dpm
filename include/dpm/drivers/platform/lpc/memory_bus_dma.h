@@ -44,8 +44,6 @@ struct MemoryBusDmaConfig
   struct {
     /** Mandatory: clock capture pin. */
     PinNumber capture;
-    /** Optional: chip select pin. */
-    PinNumber select;
     /** Mandatory: leading memory control signal. */
     PinNumber leading;
     /** Mandatory: trailing memory control signal. */
