@@ -1,11 +1,11 @@
 /*
- * s6d1121.c
- * Copyright (C) 2014 xent
+ * ili9325.c
+ * Copyright (C) 2021 xent
  * Project is distributed under the terms of the MIT License
  */
 
 #include <dpm/drivers/displays/display.h>
-#include <dpm/drivers/displays/s6d1121.h>
+#include <dpm/drivers/displays/ili9325.h>
 #include <halm/delay.h>
 #include <xcore/bits.h>
 #include <xcore/memory.h>
@@ -14,82 +14,72 @@
 #define DISPLAY_HEIGHT  320
 #define DISPLAY_WIDTH   240
 
-#define ENTRY_MODE_ID0  BIT(0)
-#define ENTRY_MODE_ID1  BIT(1)
 #define ENTRY_MODE_AM   BIT(3)
+#define ENTRY_MODE_ID0  BIT(4)
+#define ENTRY_MODE_ID1  BIT(5)
+#define ENTRY_MODE_ORG  BIT(7)
 #define ENTRY_MODE_BGR  BIT(12)
 #define ENTRY_MODE_DFM  BIT(14)
 #define ENTRY_MODE_TRI  BIT(15)
 /*----------------------------------------------------------------------------*/
 enum DisplayRegister
 {
-  REG_PRODUCTION_CODE                 = 0x00,
-  REG_DRIVER_OUTPUT_CONTROL           = 0x01,
-  REG_LCD_DRIVING_WAVEFORM_CONTROL    = 0x02,
-  REG_ENTRY_MODE                      = 0x03,
-  REG_OSCILLATOR_CONTROL              = 0x04,
-  REG_DISPLAY_CONTROL                 = 0x07,
-  REG_BLANK_PERIOD_CONTROL_1          = 0x08,
-  REG_FRAME_CYCLE_CONTROL_1           = 0x0A,
-  REG_FRAME_CYCLE_CONTROL             = 0x0B,
-  REG_EXTERNAL_INTERFACE_CONTROL      = 0x0C,
-  REG_POWER_CONTROL_1                 = 0x10,
-  REG_POWER_CONTROL_2                 = 0x11,
-  REG_POWER_CONTROL_3                 = 0x12,
-  REG_POWER_CONTROL_4                 = 0x13,
-  REG_POWER_CONTROL_5                 = 0x14,
-  REG_POWER_CONTROL_6                 = 0x15,
-  REG_POWER_CONTROL_7                 = 0x16,
-  REG_GRAM_ADDRESS_X                  = 0x20,
-  REG_GRAM_ADDRESS_Y                  = 0x21,
-  REG_GRAM_DATA                       = 0x22,
-  REG_GAMMA_CONTROL_1                 = 0x30,
-  REG_GAMMA_CONTROL_2                 = 0x31,
-  REG_GAMMA_CONTROL_3                 = 0x32,
-  REG_GAMMA_CONTROL_4                 = 0x33,
-  REG_GAMMA_CONTROL_5                 = 0x34,
-  REG_GAMMA_CONTROL_6                 = 0x35,
-  REG_GAMMA_CONTROL_7                 = 0x36,
-  REG_GAMMA_CONTROL_8                 = 0x37,
-  REG_GAMMA_CONTROL_9                 = 0x38,
-  REG_GAMMA_CONTROL_10                = 0x39,
-  REG_GAMMA_CONTROL_11                = 0x3A,
-  REG_GAMMA_CONTROL_12                = 0x3B,
-  REG_GAMMA_CONTROL_13                = 0x3C,
-  REG_GAMMA_CONTROL_14                = 0x3D,
-  REG_VERTICAL_SCROLL_CONTROL         = 0x41,
-
-  /* Screen driving positions skipped */
-
-  REG_HORIZONTAL_WINDOW_ADDRESS       = 0x46,
-  REG_VERTICAL_WINDOW_ADDRESS_END     = 0x47,
-  REG_VERTICAL_WINDOW_ADDRESS_BEGIN   = 0x48,
-  REG_MDDI_WAKEUP_CONTROL             = 0x50,
-  REG_MDDI_LINK_WAKEUP_START_POSITION = 0x51,
-  REG_SUB_PANEL_CONTROL_1             = 0x52,
-  REG_SUB_PANEL_CONTROL_2             = 0x53,
-  REG_SUB_PANEL_CONTROL_3             = 0x54,
-
-  /* GPIO registers skipped */
-
-  REG_MTP_INIT                        = 0x60,
-
-  /* Other MTP registers skipped */
-
-  REG_GOE_SIGNAL_TIMING               = 0x70,
-  REG_GATE_START_PULSE_DELAY_TIMING   = 0x71,
-  REG_RED_OUTPUT_START_TIMING         = 0x72,
-  REG_GREEN_OUTPUT_START_TIMING       = 0x73,
-  REG_BLUE_OUTPUT_START_TIMING        = 0x74,
-  REG_RSW_TIMING                      = 0x75,
-  REG_GSW_TIMING                      = 0x76,
-  REG_BSW_TIMING                      = 0x77,
-  REG_VCOM_OUTPUT_CONTROL             = 0x78,
-  REG_PANEL_SIGNAL_CONTROL_1          = 0x79,
-  REG_PANEL_SIGNAL_CONTROL_2          = 0x7A,
+  REG_DRIVER_CODE_READ                  = 0x00,
+  REG_DRIVER_OUTPUT_CONTROL_1           = 0x01,
+  REG_LCD_DRIVING_CONTROL               = 0x02,
+  REG_ENTRY_MODE                        = 0x03,
+  REG_RESIZE_CONTROL                    = 0x04,
+  REG_DISPLAY_CONTROL_1                 = 0x07,
+  REG_DISPLAY_CONTROL_2                 = 0x08,
+  REG_DISPLAY_CONTROL_3                 = 0x09,
+  REG_DISPLAY_CONTROL_4                 = 0x0A,
+  REG_RGB_DISPLAY_INTERFACE_CONTROL_1   = 0x0C,
+  REG_FRAME_MARKER_POSITION             = 0x0D,
+  REG_RGB_DISPLAY_INTERFACE_CONTROL_2   = 0x0F,
+  REG_POWER_CONTROL_1                   = 0x10,
+  REG_POWER_CONTROL_2                   = 0x11,
+  REG_POWER_CONTROL_3                   = 0x12,
+  REG_POWER_CONTROL_4                   = 0x13,
+  REG_HORIZONTAL_GRAM_ADDRESS_SET       = 0x20,
+  REG_VERTICAL_GRAM_ADDRESS_SET         = 0x21,
+  REG_WRITE_DATA_TO_GRAM                = 0x22,
+  REG_POWER_CONTROL_7                   = 0x29,
+  REG_FRAME_RATE_AND_COLOR_CONTROL      = 0x2B,
+  REG_GAMMA_CONTROL_1                   = 0x30,
+  REG_GAMMA_CONTROL_2                   = 0x31,
+  REG_GAMMA_CONTROL_3                   = 0x32,
+  REG_GAMMA_CONTROL_4                   = 0x35,
+  REG_GAMMA_CONTROL_5                   = 0x36,
+  REG_GAMMA_CONTROL_6                   = 0x37,
+  REG_GAMMA_CONTROL_7                   = 0x38,
+  REG_GAMMA_CONTROL_8                   = 0x39,
+  REG_GAMMA_CONTROL_9                   = 0x3C,
+  REG_GAMMA_CONTROL_10                  = 0x3D,
+  REG_HORIZONTAL_ADDRESS_START          = 0x50,
+  REG_HORIZONTAL_ADDRESS_END            = 0x51,
+  REG_VERTICAL_ADDRESS_START            = 0x52,
+  REG_VERTICAL_ADDRESS_END              = 0x53,
+  REG_DRIVER_OUTPUT_CONTROL_2           = 0x60,
+  REG_BASE_IMAGE_DISPLAY_CONTROL        = 0x61,
+  REG_VERTICAL_SCROLL_CONTROL           = 0x6A,
+  REG_PARTIAL_IMAGE_1_DISPLAY_POSITION  = 0x80,
+  REG_PARTIAL_IMAGE_1_AREA_START        = 0x81,
+  REG_PARTIAL_IMAGE_1_AREA_END          = 0x82,
+  REG_PARTIAL_IMAGE_2_DISPLAY_POSITION  = 0x83,
+  REG_PARTIAL_IMAGE_2_AREA_START        = 0x84,
+  REG_PARTIAL_IMAGE_2_AREA_END          = 0x85,
+  REG_PANEL_INTERFACE_CONTROL_1         = 0x90,
+  REG_PANEL_INTERFACE_CONTROL_2         = 0x92,
+  REG_RESERVED_0                        = 0x93,
+  REG_PANEL_INTERFACE_CONTROL_4         = 0x95,
+  REG_RESERVED_1                        = 0x97,
+  REG_RESERVED_2                        = 0x98,
+  REG_OTP_VCM_PROGRAMMING_CONTROL       = 0xA1,
+  REG_OTP_VCM_STATUS_AND_ENABLE         = 0xA2,
+  REG_OTP_PROGRAMMING_ID_KEY            = 0xA5,
 
   /* Service definitions */
-  DELAY_MS                            = 0xFF
+  DELAY_MS                              = 0xFF
 };
 /*----------------------------------------------------------------------------*/
 struct InitEntry
@@ -98,13 +88,13 @@ struct InitEntry
   uint16_t value;
 };
 /*----------------------------------------------------------------------------*/
-static void deselectChip(struct S6D1121 *);
-static void selectChip(struct S6D1121 *);
-static void setOrientation(struct S6D1121 *, enum DisplayOrientation);
-static void setWindow(struct S6D1121 *, const struct DisplayWindow *);
-static void writeAddress(struct S6D1121 *, enum DisplayRegister);
-static void writeData(struct S6D1121 *, uint16_t);
-static void writeRegister(struct S6D1121 *, enum DisplayRegister, uint16_t);
+static void deselectChip(struct ILI9325 *);
+static void selectChip(struct ILI9325 *);
+static void setOrientation(struct ILI9325 *, enum DisplayOrientation);
+static void setWindow(struct ILI9325 *, const struct DisplayWindow *);
+static void writeAddress(struct ILI9325 *, enum DisplayRegister);
+static void writeData(struct ILI9325 *, uint16_t);
+static void writeRegister(struct ILI9325 *, enum DisplayRegister, uint16_t);
 /*----------------------------------------------------------------------------*/
 static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
@@ -113,8 +103,8 @@ static enum Result displaySetParam(void *, int, const void *);
 static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
-const struct InterfaceClass * const S6D1121 = &(const struct InterfaceClass){
-    .size = sizeof(struct S6D1121),
+const struct InterfaceClass * const ILI9325 = &(const struct InterfaceClass){
+    .size = sizeof(struct ILI9325),
     .init = displayInit,
     .deinit = displayDeinit,
 
@@ -126,73 +116,80 @@ const struct InterfaceClass * const S6D1121 = &(const struct InterfaceClass){
 };
 /*----------------------------------------------------------------------------*/
 static const struct InitEntry initSequence[] = {
-    {REG_POWER_CONTROL_2,               0x2004},
-    {REG_POWER_CONTROL_4,               0xCC00},
-    {REG_POWER_CONTROL_6,               0x2600},
-    {REG_POWER_CONTROL_5,               0x252A},
-    {REG_POWER_CONTROL_3,               0x0033},
-    {REG_POWER_CONTROL_4,               0xCC04},
-    {DELAY_MS, 1},
-    {REG_POWER_CONTROL_4,               0xCC06},
-    {DELAY_MS, 1},
-    {REG_POWER_CONTROL_4,               0xCC4F},
-    {DELAY_MS, 1},
-    {REG_POWER_CONTROL_4,               0x674F},
-    {REG_POWER_CONTROL_2,               0x2003},
-    {DELAY_MS, 1},
+    /* Initial sequence */
+    {REG_DRIVER_OUTPUT_CONTROL_1,          0x0100},
+    {REG_LCD_DRIVING_CONTROL,              0x0700},
+    {REG_RESIZE_CONTROL,                   0x0000},
+    {REG_DISPLAY_CONTROL_2,                0x0202},
+    {REG_DISPLAY_CONTROL_3,                0x0000},
+    {REG_DISPLAY_CONTROL_4,                0x0000},
+    {REG_RGB_DISPLAY_INTERFACE_CONTROL_1,  0x0000},
+    {REG_FRAME_MARKER_POSITION,            0x0000},
+    {REG_RGB_DISPLAY_INTERFACE_CONTROL_2,  0x0000},
 
-    /* Gamma settings */
-    {REG_GAMMA_CONTROL_1,               0x2609},
-    {REG_GAMMA_CONTROL_2,               0x242C},
-    {REG_GAMMA_CONTROL_3,               0x1F23},
-    {REG_GAMMA_CONTROL_4,               0x2425},
-    {REG_GAMMA_CONTROL_5,               0x2226},
-    {REG_GAMMA_CONTROL_6,               0x2523},
-    {REG_GAMMA_CONTROL_7,               0x1C1A},
-    {REG_GAMMA_CONTROL_8,               0x131D},
-    {REG_GAMMA_CONTROL_9,               0x0B11},
-    {REG_GAMMA_CONTROL_10,              0x1210},
-    {REG_GAMMA_CONTROL_11,              0x1315},
-    {REG_GAMMA_CONTROL_12,              0x3619},
-    {REG_GAMMA_CONTROL_13,              0x0D00},
-    {REG_GAMMA_CONTROL_14,              0x000D},
+    /* Power On sequence */
+    {REG_POWER_CONTROL_1,                  0x0000},
+    {REG_POWER_CONTROL_2,                  0x0000},
+    {REG_POWER_CONTROL_3,                  0x0000},
+    {REG_POWER_CONTROL_4,                  0x0000},
 
-    {REG_POWER_CONTROL_7,               0x0007},
-    {REG_LCD_DRIVING_WAVEFORM_CONTROL,  0x0013},
-    {REG_DRIVER_OUTPUT_CONTROL,         0x0127},
-    {DELAY_MS, 1},
-    {REG_BLANK_PERIOD_CONTROL_1,        0x0303},
-    {REG_FRAME_CYCLE_CONTROL_1,         0x000B},
-    {REG_FRAME_CYCLE_CONTROL,           0x0003},
-    {REG_EXTERNAL_INTERFACE_CONTROL,    0x0000},
-    {REG_VERTICAL_SCROLL_CONTROL,       0x0000},
-    {REG_MDDI_WAKEUP_CONTROL,           0x0000},
-    {REG_MTP_INIT,                      0x0005},
-    {REG_GOE_SIGNAL_TIMING,             0x000B},
-    {REG_GATE_START_PULSE_DELAY_TIMING, 0x0000},
-    {REG_VCOM_OUTPUT_CONTROL,           0x0000},
-    {REG_PANEL_SIGNAL_CONTROL_2,        0x0000},
-    {REG_PANEL_SIGNAL_CONTROL_1,        0x0007},
-    {REG_DISPLAY_CONTROL,               0x0051},
-    {DELAY_MS, 1},
-    {REG_DISPLAY_CONTROL,               0x0053},
-    {REG_PANEL_SIGNAL_CONTROL_1,        0x0000}
+    {REG_POWER_CONTROL_1,                  0x17B0},
+    {REG_POWER_CONTROL_2,                  0x0137},
+    {REG_POWER_CONTROL_3,                  0x0139},
+    {REG_POWER_CONTROL_4,                  0x1D00},
+    {REG_POWER_CONTROL_7,                  0x0013},
+
+    /* Adjust Gamma Curve */
+    {REG_GAMMA_CONTROL_1,                  0x0007},
+    {REG_GAMMA_CONTROL_2,                  0x0302},
+    {REG_GAMMA_CONTROL_3,                  0x0105},
+    {REG_GAMMA_CONTROL_4,                  0x0206},
+    {REG_GAMMA_CONTROL_5,                  0x0808},
+    {REG_GAMMA_CONTROL_6,                  0x0206},
+    {REG_GAMMA_CONTROL_7,                  0x0504},
+    {REG_GAMMA_CONTROL_8,                  0x0007},
+    {REG_GAMMA_CONTROL_9,                  0x0105},
+    {REG_GAMMA_CONTROL_10,                 0x0808},
+
+    /* Configure GRAM area */
+    {REG_DRIVER_OUTPUT_CONTROL_2,          0xA700},
+    {REG_BASE_IMAGE_DISPLAY_CONTROL,       0x0001},
+    {REG_VERTICAL_SCROLL_CONTROL,          0x0000},
+
+    /* Partial Image Control */
+    {REG_PARTIAL_IMAGE_1_DISPLAY_POSITION, 0x0000},
+    {REG_PARTIAL_IMAGE_1_AREA_START,       0x0000},
+    {REG_PARTIAL_IMAGE_1_AREA_END,         0x0000},
+    {REG_PARTIAL_IMAGE_2_DISPLAY_POSITION, 0x0000},
+    {REG_PARTIAL_IMAGE_2_AREA_START,       0x0000},
+    {REG_PARTIAL_IMAGE_2_AREA_END,         0x0000},
+
+    /* Panel Control */
+    {REG_PANEL_INTERFACE_CONTROL_1,        0x0010},
+    {REG_PANEL_INTERFACE_CONTROL_2,        0x0000},
+    {REG_RESERVED_0,                       0x0003},
+    {REG_PANEL_INTERFACE_CONTROL_4,        0x0110},
+    {REG_RESERVED_1,                       0x0000},
+    {REG_RESERVED_2,                       0x0000},
+
+    /* Display enable */
+    {REG_DISPLAY_CONTROL_1,                0x0173}
 };
 /*----------------------------------------------------------------------------*/
-static void deselectChip(struct S6D1121 *display)
+static void deselectChip(struct ILI9325 *display)
 {
   pinSet(display->cs);
 }
 /*----------------------------------------------------------------------------*/
-static void selectChip(struct S6D1121 *display)
+static void selectChip(struct ILI9325 *display)
 {
   pinReset(display->cs);
 }
 /*----------------------------------------------------------------------------*/
-static void setOrientation(struct S6D1121 *display,
+static void setOrientation(struct ILI9325 *display,
     enum DisplayOrientation orientation)
 {
-  uint16_t value = 0;
+  uint16_t value = ENTRY_MODE_BGR;
 
   switch (orientation)
   {
@@ -217,24 +214,24 @@ static void setOrientation(struct S6D1121 *display,
   deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
-static void setWindow(struct S6D1121 *display,
+static void setWindow(struct ILI9325 *display,
     const struct DisplayWindow *window)
 {
   selectChip(display);
 
-  writeRegister(display, REG_HORIZONTAL_WINDOW_ADDRESS,
-      window->ax | (window->bx << 8));
+  writeRegister(display, REG_HORIZONTAL_ADDRESS_START, window->ax);
+  writeRegister(display, REG_HORIZONTAL_ADDRESS_END, window->bx);
 
-  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_END, window->by);
-  writeRegister(display, REG_VERTICAL_WINDOW_ADDRESS_BEGIN, window->ay);
+  writeRegister(display, REG_VERTICAL_ADDRESS_START, window->ay);
+  writeRegister(display, REG_VERTICAL_ADDRESS_END, window->by);
 
-  writeRegister(display, REG_GRAM_ADDRESS_X, window->ax);
-  writeRegister(display, REG_GRAM_ADDRESS_Y, window->ay);
+  writeRegister(display, REG_HORIZONTAL_GRAM_ADDRESS_SET, window->ax);
+  writeRegister(display, REG_VERTICAL_GRAM_ADDRESS_SET, window->ay);
 
   deselectChip(display);
 }
 /*----------------------------------------------------------------------------*/
-static void writeAddress(struct S6D1121 *display,
+static void writeAddress(struct ILI9325 *display,
     enum DisplayRegister address)
 {
   const uint16_t buffer = toBigEndian16((uint16_t)address);
@@ -243,7 +240,7 @@ static void writeAddress(struct S6D1121 *display,
   ifWrite(display->bus, &buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
-static void writeData(struct S6D1121 *display, uint16_t data)
+static void writeData(struct ILI9325 *display, uint16_t data)
 {
   const uint16_t buffer = toBigEndian16(data);
 
@@ -251,7 +248,7 @@ static void writeData(struct S6D1121 *display, uint16_t data)
   ifWrite(display->bus, &buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
-static void writeRegister(struct S6D1121 *display, enum DisplayRegister address,
+static void writeRegister(struct ILI9325 *display, enum DisplayRegister address,
     uint16_t data)
 {
   writeAddress(display, address);
@@ -260,11 +257,11 @@ static void writeRegister(struct S6D1121 *display, enum DisplayRegister address,
 /*----------------------------------------------------------------------------*/
 static enum Result displayInit(void *object, const void *configPtr)
 {
-  const struct S6D1121Config * const config = configPtr;
+  const struct ILI9325Config * const config = configPtr;
   assert(config);
   assert(config->bus);
 
-  struct S6D1121 * const display = object;
+  struct ILI9325 * const display = object;
 
   display->reset = pinInit(config->reset);
   if (!pinValid(display->reset))
@@ -319,7 +316,7 @@ static void displayDeinit(void *object __attribute__((unused)))
 /*----------------------------------------------------------------------------*/
 static enum Result displayGetParam(void *object, int parameter, void *data)
 {
-  struct S6D1121 * const display = object;
+  struct ILI9325 * const display = object;
 
   switch ((enum IfDisplayParameter)parameter)
   {
@@ -361,7 +358,7 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
 static enum Result displaySetParam(void *object, int parameter,
     const void *data)
 {
-  struct S6D1121 * const display = object;
+  struct ILI9325 * const display = object;
 
   switch ((enum IfDisplayParameter)parameter)
   {
@@ -401,11 +398,11 @@ static enum Result displaySetParam(void *object, int parameter,
 /*----------------------------------------------------------------------------*/
 static size_t displayRead(void *object, void *buffer, size_t length)
 {
-  struct S6D1121 * const display = object;
+  struct ILI9325 * const display = object;
   size_t bytesRead;
 
   selectChip(display);
-  writeAddress(display, REG_GRAM_DATA);
+  writeAddress(display, REG_WRITE_DATA_TO_GRAM);
 
   pinSet(display->rs);
   bytesRead = ifRead(display->bus, buffer, length);
@@ -416,11 +413,11 @@ static size_t displayRead(void *object, void *buffer, size_t length)
 /*----------------------------------------------------------------------------*/
 static size_t displayWrite(void *object, const void *buffer, size_t length)
 {
-  struct S6D1121 * const display = object;
+  struct ILI9325 * const display = object;
   size_t bytesWritten;
 
   selectChip(display);
-  writeAddress(display, REG_GRAM_DATA);
+  writeAddress(display, REG_WRITE_DATA_TO_GRAM);
 
   pinSet(display->rs);
   bytesWritten = ifWrite(display->bus, buffer, length);

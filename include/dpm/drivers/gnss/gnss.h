@@ -16,7 +16,7 @@ enum FixType
   FIX_2D,
   FIX_3D,
   FIX_3D_CORRECTED
-};
+} __attribute__((packed));
 
 struct SatelliteInfo
 {

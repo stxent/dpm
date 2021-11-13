@@ -1,18 +1,18 @@
 /*
- * drivers/displays/s6d1121.h
- * Copyright (C) 2014 xent
+ * drivers/displays/ili9325.h
+ * Copyright (C) 2021 xent
  * Project is distributed under the terms of the MIT License
  */
 
-#ifndef DPM_DRIVERS_DISPLAYS_S6D1121_H_
-#define DPM_DRIVERS_DISPLAYS_S6D1121_H_
+#ifndef DPM_DRIVERS_DISPLAYS_ILI9325_H_
+#define DPM_DRIVERS_DISPLAYS_ILI9325_H_
 /*----------------------------------------------------------------------------*/
 #include <halm/pin.h>
 #include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
-extern const struct InterfaceClass * const S6D1121;
+extern const struct InterfaceClass * const ILI9325;
 /*----------------------------------------------------------------------------*/
-struct S6D1121Config
+struct ILI9325Config
 {
   /** Mandatory: memory interface. */
   struct Interface *bus;
@@ -24,7 +24,7 @@ struct S6D1121Config
   PinNumber rs;
 };
 /*----------------------------------------------------------------------------*/
-struct S6D1121
+struct ILI9325
 {
   struct Interface parent;
 
@@ -43,4 +43,4 @@ struct S6D1121
   uint8_t orientation;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_DRIVERS_DISPLAYS_S6D1121_H_ */
+#endif /* DPM_DRIVERS_DISPLAYS_ILI9325_H_ */

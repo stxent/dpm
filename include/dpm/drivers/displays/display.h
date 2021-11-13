@@ -18,7 +18,7 @@ enum DisplayOrientation
   DISPLAY_ORIENTATION_MIRROR_XY,
 
   DISPLAY_ORIENTATION_END
-};
+} __attribute__((packed));
 
 /** Display options extending common interface options. */
 enum IfDisplayParameter
@@ -32,7 +32,7 @@ enum IfDisplayParameter
   IF_DISPLAY_RESOLUTION,
   /** Set first and last addresses of the current display window. */
   IF_DISPLAY_WINDOW
-};
+} __attribute__((packed));
 /*----------------------------------------------------------------------------*/
 struct DisplayPoint
 {
