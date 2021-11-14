@@ -6,7 +6,9 @@
 
 #include <dpm/drivers/platform/lpc/irda.h>
 #include <dpm/drivers/platform/lpc/irda_timer.h>
+#include <halm/generic/byte_queue_extensions.h>
 #include <halm/platform/lpc/gen_1/uart_defs.h>
+#include <string.h>
 /*----------------------------------------------------------------------------*/
 #define FRAME_WIDTH  10
 #define TX_FIFO_SIZE 16
@@ -57,19 +59,19 @@ static uint32_t calcTimerPeriod(size_t width, bool master)
 static void onStartOfDataCallback(void *object)
 {
   struct Irda * const interface = object;
-  LPC_UART_Type * const reg = interface->base.base.reg;
+  LPC_UART_Type * const reg = interface->base.reg;
 
   /* Reconfigure to normal mode */
   reg->LCR &= ~(LCR_PE | LCR_PS_MASK);
 
-  const size_t rxQueueSize = byteQueueSize(&interface->base.rxQueue);
-  const size_t txQueueSize = byteQueueSize(&interface->base.txQueue);
+  const size_t rxQueueSize = byteQueueSize(&interface->rxQueue);
+  const size_t txQueueSize = byteQueueSize(&interface->txQueue);
 
   if (rxQueueSize || txQueueSize)
   {
     interface->pending = MIN(txQueueSize, interface->width);
     interface->state = STATE_DATA;
-    irqSetPending(interface->base.base.irq);
+    irqSetPending(interface->base.irq);
   }
   else
     interface->state = STATE_IDLE;
@@ -79,9 +81,9 @@ static void onStartOfFrameCallback(void *object)
 {
   struct Irda * const interface = object;
 
-  if (interface->master || !byteQueueEmpty(&interface->base.txQueue))
+  if (interface->master || !byteQueueEmpty(&interface->txQueue))
   {
-    LPC_UART_Type * const reg = interface->base.base.reg;
+    LPC_UART_Type * const reg = interface->base.reg;
 
     /* Generate Break character */
     reg->LCR = (reg->LCR & ~LCR_PS_MASK) | (LCR_PE | LCR_PS(PS_FORCED_LOW));
@@ -96,7 +98,7 @@ static void onStartOfFrameCallback(void *object)
 static void serialInterruptHandler(void *object)
 {
   struct Irda * const interface = object;
-  LPC_UART_Type * const reg = interface->base.base.reg;
+  LPC_UART_Type * const reg = interface->base.reg;
   const uint32_t iir = reg->IIR & IIR_INTID_MASK;
   uint32_t lsr = reg->LSR;
   bool event = false;
@@ -120,8 +122,8 @@ static void serialInterruptHandler(void *object)
     else if (!(lsr & LSR_FE))
     {
       /* Received bytes will be dropped when queue becomes full */
-      if (!byteQueueFull(&interface->base.rxQueue))
-        byteQueuePushBack(&interface->base.rxQueue, data);
+      if (!byteQueueFull(&interface->rxQueue))
+        byteQueuePushBack(&interface->rxQueue, data);
     }
     else
       ++interface->fe;
@@ -136,7 +138,7 @@ static void serialInterruptHandler(void *object)
      * Invoke user callback at the start of the frame when there is
      * an unread data in the reception buffer.
      */
-    if (!byteQueueEmpty(&interface->base.rxQueue))
+    if (!byteQueueEmpty(&interface->rxQueue))
       event = true;
 
     /* Send the rest of the packet */
@@ -149,18 +151,18 @@ static void serialInterruptHandler(void *object)
         interface->state = STATE_IDLE;
 
       while (bytesToWrite--)
-        reg->THR = byteQueuePopFront(&interface->base.txQueue);
+        reg->THR = byteQueuePopFront(&interface->txQueue);
     }
   }
 
   /* Handle line timeout */
-  if (iir == IIR_INTID_CTI && !byteQueueEmpty(&interface->base.rxQueue))
+  if (iir == IIR_INTID_CTI && !byteQueueEmpty(&interface->rxQueue))
   {
     event = true;
   }
 
-  if (interface->base.callback && event)
-    interface->base.callback(interface->base.callbackArgument);
+  if (interface->callback && event)
+    interface->callback(interface->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static void timerInterruptHandler(void *object)
@@ -179,22 +181,28 @@ static enum Result serialInit(void *object, const void *configBase)
   assert(config);
   assert(config->frameLength <= config->rxLength);
 
-  const struct SerialConfig baseConfig = {
-      .rate = config->rate,
-      .rxLength = config->rxLength,
-      .txLength = config->txLength,
-      .parity = SERIAL_PARITY_NONE,
+  const struct UartBaseConfig baseConfig = {
       .rx = config->rx,
       .tx = config->tx,
-      .priority = config->priority,
       .channel = config->channel
   };
   struct Irda * const interface = object;
+  struct UartRateConfig rateConfig;
   enum Result res;
 
   /* Call base class constructor */
-  if ((res = Serial->init(object, &baseConfig)) != E_OK)
+  if ((res = UartBase->init(object, &baseConfig)) != E_OK)
     return res;
+
+  if ((res = uartCalcRate(object, config->rate, &rateConfig)) != E_OK)
+    return res;
+
+  if (!byteQueueInit(&interface->rxQueue, config->rxLength))
+    return E_MEMORY;
+  if (!byteQueueInit(&interface->txQueue, config->txLength))
+    return E_MEMORY;
+
+  uartSetRate(object, rateConfig);
 
   const struct IrdaTimerConfig timerConfig = {
       .frequency = config->rate,
@@ -207,7 +215,8 @@ static enum Result serialInit(void *object, const void *configBase)
   if (!(interface->timer = init(IrdaTimer, &timerConfig)))
     return E_ERROR;
 
-  interface->base.base.handler = serialInterruptHandler;
+  interface->base.handler = serialInterruptHandler;
+  interface->callback = 0;
   interface->pending = 0;
   interface->width = config->frameLength;
   interface->fe = 0;
@@ -216,14 +225,26 @@ static enum Result serialInit(void *object, const void *configBase)
 
   timerSetCallback(interface->timer, timerInterruptHandler, interface);
 
-  LPC_UART_Type * const reg = interface->base.base.reg;
+  LPC_UART_Type * const reg = interface->base.reg;
   uint32_t ier = IER_RBRINTEN | IER_THREINTEN;
+
+  /* Set 8-bit length */
+  reg->LCR = LCR_WLS(WLS_8BIT);
+  /* Enable FIFO and set RX trigger level */
+  reg->FCR = (reg->FCR & ~FCR_RXTRIGLVL_MASK) | FCR_FIFOEN
+      | FCR_RXTRIGLVL(RX_TRIGGER_LEVEL_8);
+  /* Enable RBR and THRE interrupts */
+  reg->IER = IER_RBRINTEN | IER_THREINTEN;
+  /* Transmitter is enabled by default thus TER register is left untouched */
 
   if (!interface->master)
     ier |= IER_RLSINTEN;
 
   reg->ICR = ICR_IRDAEN | (config->inversion ? ICR_IRDAINV : 0);
   reg->IER = ier;
+
+  irqSetPriority(interface->base.irq, config->priority);
+  irqEnable(interface->base.irq);
 
   if (interface->master)
     timerEnable(interface->timer);
@@ -236,15 +257,22 @@ static void serialDeinit(void *object)
 {
   struct Irda * const interface = object;
 
+  irqDisable(interface->base.irq);
+
   deinit(interface->timer);
-  Serial->deinit(interface);
+  byteQueueDeinit(&interface->txQueue);
+  byteQueueDeinit(&interface->rxQueue);
+  UartBase->deinit(interface);
 }
 #endif
 /*----------------------------------------------------------------------------*/
 static void serialSetCallback(void *object, void (*callback)(void *),
     void *argument)
 {
-  Serial->setCallback(object, callback, argument);
+  struct Irda * const interface = object;
+
+  interface->callbackArgument = argument;
+  interface->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result serialGetParam(void *object, int parameter, void *data)
@@ -261,10 +289,33 @@ static enum Result serialGetParam(void *object, int parameter, void *data)
       break;
   }
 
-  return Serial->getParam(interface, parameter, data);
+  switch ((enum IfParameter)parameter)
+  {
+    case IF_RX_AVAILABLE:
+      *(size_t *)data = byteQueueSize(&interface->rxQueue);
+      return E_OK;
+
+    case IF_RX_PENDING:
+      *(size_t *)data = byteQueueCapacity(&interface->rxQueue)
+          - byteQueueSize(&interface->rxQueue);
+      return E_OK;
+
+    case IF_TX_AVAILABLE:
+      *(size_t *)data = byteQueueCapacity(&interface->txQueue)
+          - byteQueueSize(&interface->txQueue);
+      return E_OK;
+
+    case IF_TX_PENDING:
+      *(size_t *)data = byteQueueSize(&interface->txQueue);
+      return E_OK;
+
+    default:
+      return E_INVALID;
+  }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result serialSetParam(void *object, int parameter, const void *data)
+static enum Result serialSetParam(void *object, int parameter,
+    const void *data __attribute__((unused)))
 {
   struct Irda * const interface = object;
 
@@ -276,25 +327,56 @@ static enum Result serialSetParam(void *object, int parameter, const void *data)
       return E_OK;
 
     default:
-      break;
+      return E_INVALID;
   }
-
-  return Serial->setParam(interface, parameter, data);
 }
 /*----------------------------------------------------------------------------*/
 static size_t serialRead(void *object, void *buffer, size_t length)
 {
-  return Serial->read(object, buffer, length);
+  struct Irda * const interface = object;
+  uint8_t *position = buffer;
+
+  while (length && !byteQueueEmpty(&interface->rxQueue))
+  {
+    const uint8_t *address;
+    size_t count;
+
+    byteQueueDeferredPop(&interface->rxQueue, &address, &count, 0);
+    count = MIN(length, count);
+    memcpy(position, address, count);
+
+    irqDisable(interface->base.irq);
+    byteQueueAbandon(&interface->rxQueue, count);
+    irqEnable(interface->base.irq);
+
+    position += count;
+    length -= count;
+  }
+
+  return position - (uint8_t *)buffer;
 }
 /*----------------------------------------------------------------------------*/
 static size_t serialWrite(void *object, const void *buffer, size_t length)
 {
   struct Irda * const interface = object;
-  size_t written;
+  const uint8_t *position = buffer;
 
-  irqDisable(interface->base.base.irq);
-  written = byteQueuePushArray(&interface->base.txQueue, buffer, length);
-  irqEnable(interface->base.base.irq);
+  while (length && !byteQueueFull(&interface->txQueue))
+  {
+    uint8_t *address;
+    size_t count;
 
-  return written;
+    byteQueueDeferredPush(&interface->txQueue, &address, &count, 0);
+    count = MIN(length, count);
+    memcpy(address, position, count);
+
+    irqDisable(interface->base.irq);
+    byteQueueAdvance(&interface->txQueue, count);
+    irqEnable(interface->base.irq);
+
+    position += count;
+    length -= count;
+  }
+
+  return position - (const uint8_t *)buffer;
 }

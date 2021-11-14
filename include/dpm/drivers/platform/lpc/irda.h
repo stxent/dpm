@@ -7,8 +7,9 @@
 #ifndef DPM_DRIVERS_PLATFORM_LPC_IRDA_H_
 #define DPM_DRIVERS_PLATFORM_LPC_IRDA_H_
 /*----------------------------------------------------------------------------*/
-#include <halm/platform/lpc/serial.h>
+#include <halm/platform/lpc/uart_base.h>
 #include <halm/timer.h>
+#include <xcore/containers/byte_queue.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const Irda;
 
@@ -40,7 +41,15 @@ struct IrdaConfig
 
 struct Irda
 {
-  struct Serial base;
+  struct UartBase base;
+
+  void (*callback)(void *);
+  void *callbackArgument;
+
+  /* Input queue */
+  struct ByteQueue rxQueue;
+  /* Output queue */
+  struct ByteQueue txQueue;
 
   /* Frame timer */
   struct Timer *timer;
