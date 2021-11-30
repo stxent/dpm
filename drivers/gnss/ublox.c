@@ -120,6 +120,8 @@ static void onMessageReceivedNavStatus(struct Ublox *receiver,
 
   static const uint8_t FLAGS_GPS_FIX_OK = 0x01;
   static const uint8_t FLAGS_DIFF_SOLN  = 0x02;
+  // static const uint8_t FLAGS_WKN_SET    = 0x04; // TODO
+  // static const uint8_t FLAGS_TOW_SET    = 0x08; // TODO
 
   const struct UbxNavStatusPacket * const packet =
       (const struct UbxNavStatusPacket *)message->data;
@@ -202,8 +204,8 @@ static void onSerialEvent(void *argument)
 
   if (!receiver->queued)
   {
-    receiver->queued = true;
-    wqAdd(receiver->wq, parseSerialDataTask, receiver);
+    if (wqAdd(receiver->wq, parseSerialDataTask, receiver) == E_OK)
+      receiver->queued = true;
   }
 }
 /*----------------------------------------------------------------------------*/
