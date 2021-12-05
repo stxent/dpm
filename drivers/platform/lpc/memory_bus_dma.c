@@ -7,6 +7,7 @@
 #include <dpm/drivers/platform/lpc/memory_bus_dma.h>
 #include <dpm/drivers/platform/lpc/memory_bus_dma_finalizer.h>
 #include <dpm/drivers/platform/lpc/memory_bus_dma_timer.h>
+#include <halm/platform/lpc/gpdma_circular.h>
 #include <halm/platform/lpc/gpdma_oneshot.h>
 #include <xcore/memory.h>
 #include <assert.h>
@@ -101,18 +102,37 @@ static bool setupDma(struct MemoryBusDma *interface,
           .increment = false
       }
   };
-  const struct GpDmaOneShotConfig dmaConfig = {
-      .event = GPDMA_MAT0_0 + matchChannel + config->clock.channel * 2,
-      .type = GPDMA_TYPE_M2P,
-      .channel = config->clock.dma
-  };
 
   /*
    * To improve performance DMA synchronization logic can be disabled.
    * This will decrease data write time from 5 to 4 AHB cycles.
    */
 
-  interface->dma = init(GpDmaOneShot, &dmaConfig);
+  if (config->size <= GPDMA_MAX_TRANSFER_SIZE)
+  {
+    const struct GpDmaOneShotConfig dmaConfig = {
+        .event = GPDMA_MAT0_0 + matchChannel + config->clock.channel * 2,
+        .type = GPDMA_TYPE_M2P,
+        .channel = config->clock.dma
+    };
+
+    interface->dma = init(GpDmaOneShot, &dmaConfig);
+  }
+  else
+  {
+    const size_t chunks = (config->size + GPDMA_MAX_TRANSFER_SIZE - 1)
+        / GPDMA_MAX_TRANSFER_SIZE;
+    const struct GpDmaCircularConfig dmaConfig = {
+        .number = chunks,
+        .event = GPDMA_MAT0_0 + matchChannel + config->clock.channel * 2,
+        .type = GPDMA_TYPE_M2P,
+        .channel = config->clock.dma,
+        .oneshot = true,
+        .silent = true
+    };
+
+    interface->dma = init(GpDmaCircular, &dmaConfig);
+  }
 
   if (interface->dma)
   {
@@ -233,7 +253,7 @@ static enum Result busSetParam(void *object, int parameter,
       return E_OK;
 
     default:
-      return E_ERROR;
+      return E_INVALID;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -247,7 +267,7 @@ static size_t busRead(void *object __attribute__((unused)),
 static size_t busWrite(void *object, const void *buffer, size_t length)
 {
   struct MemoryBusDma * const interface = object;
-  const size_t samples = length >> interface->width;
+  size_t samples = length >> interface->width;
 
   if (!samples)
     return 0;
@@ -260,17 +280,28 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
 
   /* Finalization should be enabled after supervisor timer startup */
   if (memoryBusDmaFinalizerStart(interface->finalizer) != E_OK)
-    return 0;
-
-  dmaAppend(interface->dma, interface->address, buffer, samples);
-  if (dmaEnable(interface->dma) != E_OK)
   {
-    memoryBusDmaFinalizerStop(interface->finalizer);
     timerDisable(interface->control);
     return 0;
   }
 
-  /* Start the transfer by enabling clock generation timer */
+  uintptr_t position = (uintptr_t)buffer;
+
+  while (samples)
+  {
+    const size_t chunk = MIN(samples, GPDMA_MAX_TRANSFER_SIZE);
+
+    dmaAppend(interface->dma, interface->address, (const void *)position,
+        chunk);
+
+    samples -= chunk;
+    position += chunk << interface->width;
+  }
+
+  if (dmaEnable(interface->dma) != E_OK)
+    goto error;
+
+  /* Start the transfer by enabling the clock generation timer */
   timerEnable(interface->clock);
 
   if (interface->blocking)
@@ -280,11 +311,16 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
 
     if (dmaStatus(interface->dma) != E_OK)
     {
-      /* Transmission has failed */
-      dmaDisable(interface->dma);
-      return 0;
+      timerDisable(interface->clock);
+      goto error;
     }
   }
 
-  return samples << interface->width;
+  return length - (samples << interface->width);
+
+error:
+  /* Transmission has failed */
+  memoryBusDmaFinalizerStop(interface->finalizer);
+  timerDisable(interface->control);
+  return 0;
 }

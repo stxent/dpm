@@ -90,6 +90,8 @@ struct InitEntry
 /*----------------------------------------------------------------------------*/
 static void deselectChip(struct ILI9325 *);
 static void selectChip(struct ILI9325 *);
+static void selectCommandMode(struct ILI9325 *);
+static void selectDataMode(struct ILI9325 *);
 static void setOrientation(struct ILI9325 *, enum DisplayOrientation);
 static void setWindow(struct ILI9325 *, const struct DisplayWindow *);
 static void writeAddress(struct ILI9325 *, enum DisplayRegister);
@@ -186,6 +188,16 @@ static void selectChip(struct ILI9325 *display)
   pinReset(display->cs);
 }
 /*----------------------------------------------------------------------------*/
+static void selectCommandMode(struct ILI9325 *display)
+{
+  pinReset(display->rs);
+}
+/*----------------------------------------------------------------------------*/
+static void selectDataMode(struct ILI9325 *display)
+{
+  pinSet(display->rs);
+}
+/*----------------------------------------------------------------------------*/
 static void setOrientation(struct ILI9325 *display,
     enum DisplayOrientation orientation)
 {
@@ -236,7 +248,7 @@ static void writeAddress(struct ILI9325 *display,
 {
   const uint16_t buffer = toBigEndian16((uint16_t)address);
 
-  pinReset(display->rs);
+  selectCommandMode(display);
   ifWrite(display->bus, &buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
@@ -244,7 +256,7 @@ static void writeData(struct ILI9325 *display, uint16_t data)
 {
   const uint16_t buffer = toBigEndian16(data);
 
-  pinSet(display->rs);
+  selectDataMode(display);
   ifWrite(display->bus, &buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
@@ -351,7 +363,7 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
       return ifGetParam(display->bus, IF_STATUS, 0);
 
     default:
-      return E_ERROR;
+      return E_INVALID;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -392,7 +404,7 @@ static enum Result displaySetParam(void *object, int parameter,
     }
 
     default:
-      return E_ERROR;
+      return E_INVALID;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -404,7 +416,7 @@ static size_t displayRead(void *object, void *buffer, size_t length)
   selectChip(display);
   writeAddress(display, REG_WRITE_DATA_TO_GRAM);
 
-  pinSet(display->rs);
+  selectDataMode(display);
   bytesRead = ifRead(display->bus, buffer, length);
   deselectChip(display);
 
@@ -419,7 +431,7 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   selectChip(display);
   writeAddress(display, REG_WRITE_DATA_TO_GRAM);
 
-  pinSet(display->rs);
+  selectDataMode(display);
   bytesWritten = ifWrite(display->bus, buffer, length);
   deselectChip(display);
 

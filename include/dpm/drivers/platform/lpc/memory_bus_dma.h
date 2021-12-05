@@ -19,10 +19,12 @@ extern const struct InterfaceClass * const MemoryBusDma;
 
 struct MemoryBusDmaConfig
 {
-  /** Mandatory: period of a memory cycle in timer ticks. */
-  uint32_t cycle;
   /** Mandatory: pointer to an array of data output pins. */
   const PinNumber *pins;
+  /** Optional: maximum transfer count. */
+  size_t size;
+  /** Mandatory: period of a memory cycle in timer ticks. */
+  uint32_t cycle;
   /** Optional: interrupt priority. */
   IrqPriority priority;
 

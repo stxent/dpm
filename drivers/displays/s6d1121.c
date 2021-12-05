@@ -100,6 +100,8 @@ struct InitEntry
 /*----------------------------------------------------------------------------*/
 static void deselectChip(struct S6D1121 *);
 static void selectChip(struct S6D1121 *);
+static void selectCommandMode(struct S6D1121 *);
+static void selectDataMode(struct S6D1121 *);
 static void setOrientation(struct S6D1121 *, enum DisplayOrientation);
 static void setWindow(struct S6D1121 *, const struct DisplayWindow *);
 static void writeAddress(struct S6D1121 *, enum DisplayRegister);
@@ -189,6 +191,16 @@ static void selectChip(struct S6D1121 *display)
   pinReset(display->cs);
 }
 /*----------------------------------------------------------------------------*/
+static void selectCommandMode(struct S6D1121 *display)
+{
+  pinReset(display->rs);
+}
+/*----------------------------------------------------------------------------*/
+static void selectDataMode(struct S6D1121 *display)
+{
+  pinSet(display->rs);
+}
+/*----------------------------------------------------------------------------*/
 static void setOrientation(struct S6D1121 *display,
     enum DisplayOrientation orientation)
 {
@@ -239,7 +251,7 @@ static void writeAddress(struct S6D1121 *display,
 {
   const uint16_t buffer = toBigEndian16((uint16_t)address);
 
-  pinReset(display->rs);
+  selectCommandMode(display);
   ifWrite(display->bus, &buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
@@ -247,7 +259,7 @@ static void writeData(struct S6D1121 *display, uint16_t data)
 {
   const uint16_t buffer = toBigEndian16(data);
 
-  pinSet(display->rs);
+  selectDataMode(display);
   ifWrite(display->bus, &buffer, sizeof(buffer));
 }
 /*----------------------------------------------------------------------------*/
@@ -354,7 +366,7 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
       return ifGetParam(display->bus, IF_STATUS, 0);
 
     default:
-      return E_ERROR;
+      return E_INVALID;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -395,7 +407,7 @@ static enum Result displaySetParam(void *object, int parameter,
     }
 
     default:
-      return E_ERROR;
+      return E_INVALID;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -407,7 +419,7 @@ static size_t displayRead(void *object, void *buffer, size_t length)
   selectChip(display);
   writeAddress(display, REG_GRAM_DATA);
 
-  pinSet(display->rs);
+  selectDataMode(display);
   bytesRead = ifRead(display->bus, buffer, length);
   deselectChip(display);
 
@@ -422,7 +434,7 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   selectChip(display);
   writeAddress(display, REG_GRAM_DATA);
 
-  pinSet(display->rs);
+  selectDataMode(display);
   bytesWritten = ifWrite(display->bus, buffer, length);
   deselectChip(display);
 

@@ -88,6 +88,5 @@ static enum Result finalizerInit(void *object, const void *configPtr)
 static void finalizerDeinit(void *object)
 {
   struct MemoryBusDmaFinalizer * const finalizer = object;
-
   deinit(finalizer->dma);
 }
