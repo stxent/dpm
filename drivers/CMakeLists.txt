@@ -7,6 +7,7 @@ file(GLOB SOURCE_FILES
         "*.c"
         "displays/*.c"
         "gnss/*.c"
+        "memory/*.c"
         "usb/*.c"
 )
 
