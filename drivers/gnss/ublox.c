@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/gnss/ublox.h>
-#include <dpm/drivers/gnss/ublox_defs.h>
+#include <dpm/gnss/ublox.h>
+#include <dpm/gnss/ublox_defs.h>
 #include <halm/wq.h>
 #include <xcore/memory.h>
 /*----------------------------------------------------------------------------*/

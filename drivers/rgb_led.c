@@ -4,7 +4,7 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/rgb_led.h>
+#include <dpm/rgb_led.h>
 /*----------------------------------------------------------------------------*/
 static enum Result ledInit(void *, const void *);
 static void ledDeinit(void *);

@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/displays/display.h>
-#include <dpm/drivers/displays/s6d1121.h>
+#include <dpm/displays/display.h>
+#include <dpm/displays/s6d1121.h>
 #include <halm/delay.h>
 #include <xcore/bits.h>
 #include <xcore/memory.h>

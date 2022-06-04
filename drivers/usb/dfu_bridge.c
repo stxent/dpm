@@ -1,10 +1,10 @@
 /*
- * drivers/usb/dfu_bridge.c
+ * dfu_bridge.c
  * Copyright (C) 2020 xent
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/usb/dfu_bridge.h>
+#include <dpm/usb/dfu_bridge.h>
 #include <halm/generic/flash.h>
 #include <halm/generic/work_queue.h>
 #include <halm/irq.h>

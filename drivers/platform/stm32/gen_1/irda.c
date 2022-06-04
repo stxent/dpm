@@ -4,7 +4,7 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/platform/stm32/irda.h>
+#include <dpm/platform/stm32/irda.h>
 #include <halm/generic/byte_queue_extensions.h>
 #include <halm/platform/stm32/gptimer.h>
 #include <halm/platform/stm32/uart_defs.h>

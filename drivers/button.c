@@ -4,7 +4,7 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/button.h>
+#include <dpm/button.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
 static void onPinInterrupt(void *);

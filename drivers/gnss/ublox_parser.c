@@ -4,7 +4,7 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/gnss/ublox_parser.h>
+#include <dpm/gnss/ublox_parser.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
 #define UBLOX_SYNC_WORD_1 0xB5

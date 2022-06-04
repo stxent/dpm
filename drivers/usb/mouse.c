@@ -4,7 +4,7 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/usb/mouse.h>
+#include <dpm/usb/mouse.h>
 #include <halm/generic/pointer_queue.h>
 #include <halm/irq.h>
 #include <halm/usb/hid_defs.h>
@@ -233,12 +233,12 @@ static enum Result mouseSetReport(void *object __attribute__((unused)),
   }
 }
 /*----------------------------------------------------------------------------*/
-void mouseMovePointer(struct Mouse *device, int8_t dx, int8_t dy)
-{
-  sendReport(device, 0, dx, dy);
-}
-/*----------------------------------------------------------------------------*/
 void mouseClick(struct Mouse *device, uint8_t state)
 {
   sendReport(device, state, 0, 0);
+}
+/*----------------------------------------------------------------------------*/
+void mouseMovePointer(struct Mouse *device, int8_t dx, int8_t dy)
+{
+  sendReport(device, 0, dx, dy);
 }

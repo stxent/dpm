@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/platform/stm32/memory_bus_gpio.h>
-#include <dpm/drivers/platform/stm32/memory_bus_gpio_timer.h>
+#include <dpm/platform/stm32/memory_bus_gpio.h>
+#include <dpm/platform/stm32/memory_bus_gpio_timer.h>
 #include <xcore/memory.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/

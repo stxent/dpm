@@ -4,9 +4,9 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/platform/lpc/memory_bus_dma.h>
-#include <dpm/drivers/platform/lpc/memory_bus_dma_finalizer.h>
-#include <dpm/drivers/platform/lpc/memory_bus_dma_timer.h>
+#include <dpm/platform/lpc/memory_bus_dma.h>
+#include <dpm/platform/lpc/memory_bus_dma_finalizer.h>
+#include <dpm/platform/lpc/memory_bus_dma_timer.h>
 #include <halm/platform/lpc/gpdma_circular.h>
 #include <halm/platform/lpc/gpdma_oneshot.h>
 #include <xcore/memory.h>

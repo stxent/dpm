@@ -4,7 +4,7 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/displays/hd44780.h>
+#include <dpm/displays/hd44780.h>
 #include <xcore/bits.h>
 #include <assert.h>
 #include <stdlib.h>

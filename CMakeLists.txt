@@ -27,7 +27,7 @@ if(${USE_LTO})
     endif()
 endif()
 
-set(DIRECTORY_LIST generic platform)
+set(DIRECTORY_LIST displays generic gnss memory platform usb)
 set(LIBRARY_OBJECTS "")
 set(LIBRARY_TARGETS "")
 

@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/displays/display.h>
-#include <dpm/drivers/displays/st7735.h>
+#include <dpm/displays/display.h>
+#include <dpm/displays/st7735.h>
 #include <halm/delay.h>
 #include <xcore/bits.h>
 #include <assert.h>

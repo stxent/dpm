@@ -4,8 +4,8 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/platform/lpc/irda.h>
-#include <dpm/drivers/platform/lpc/irda_timer.h>
+#include <dpm/platform/lpc/irda.h>
+#include <dpm/platform/lpc/irda_timer.h>
 #include <halm/generic/byte_queue_extensions.h>
 #include <halm/platform/lpc/gen_1/uart_defs.h>
 #include <string.h>

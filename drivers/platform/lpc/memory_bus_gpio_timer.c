@@ -4,7 +4,7 @@
  * Project is distributed under the terms of the MIT License
  */
 
-#include <dpm/drivers/platform/lpc/memory_bus_gpio_timer.h>
+#include <dpm/platform/lpc/memory_bus_gpio_timer.h>
 #include <halm/platform/lpc/gptimer_defs.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
