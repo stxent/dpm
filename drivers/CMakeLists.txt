@@ -11,6 +11,5 @@ add_subdirectory("usb")
 list(APPEND SOURCE_FILES "button.c")
 list(APPEND SOURCE_FILES "rgb_led.c")
 list(APPEND SOURCE_FILES "software_pwm.c")
-        "memory/*.c"
 
 add_library(dpm_generic OBJECT ${SOURCE_FILES})
