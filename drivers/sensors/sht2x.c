@@ -44,7 +44,10 @@ enum State
   STATE_T_READ,
   STATE_T_READ_WAIT,
 
-  STATE_PROCESS
+  STATE_PROCESS,
+
+  STATE_ERROR_WAIT,
+  STATE_ERROR
 };
 /*----------------------------------------------------------------------------*/
 static void busInit(struct SHT2X *);
@@ -134,6 +137,14 @@ static uint16_t fetchSample(const struct SHT2X *sensor)
 static void onBusEvent(void *object)
 {
   struct SHT2X * const sensor = object;
+  bool waitForEvent = false;
+
+  if (ifGetParam(sensor->bus, IF_STATUS, 0) != E_OK)
+  {
+    sensor->state = STATE_ERROR;
+    timerSetOverflow(sensor->timer, resolutionToTemperatureTime(sensor));
+    waitForEvent = true;
+  }
 
   switch (sensor->state)
   {
@@ -143,10 +154,8 @@ static void onBusEvent(void *object)
 
     case STATE_H_START_WAIT:
       sensor->state = STATE_H_WAIT;
-      /* TODO Switching between diffrent overflow values */
       timerSetOverflow(sensor->timer, resolutionToHumidityTime(sensor));
-      timerSetValue(sensor->timer, 0);
-      timerEnable(sensor->timer);
+      waitForEvent = true;
       break;
 
     case STATE_H_READ_WAIT:
@@ -157,8 +166,7 @@ static void onBusEvent(void *object)
     case STATE_T_START_WAIT:
       sensor->state = STATE_T_WAIT;
       timerSetOverflow(sensor->timer, resolutionToTemperatureTime(sensor));
-      timerSetValue(sensor->timer, 0);
-      timerEnable(sensor->timer);
+      waitForEvent = true;
       break;
 
     case STATE_T_READ_WAIT:
@@ -168,6 +176,13 @@ static void onBusEvent(void *object)
 
     default:
       break;
+  }
+
+  if (waitForEvent)
+  {
+    /* Switching between different overflow values requires counter reset */
+    timerSetValue(sensor->timer, 0);
+    timerEnable(sensor->timer);
   }
 
   ifSetParam(sensor->bus, IF_RELEASE, 0);
@@ -186,6 +201,10 @@ static void onTimerEvent(void *object)
 
     case STATE_T_WAIT:
       sensor->state = STATE_T_READ;
+      break;
+
+    case STATE_ERROR_WAIT:
+      sensor->state = STATE_ERROR;
       break;
 
     default:
@@ -533,7 +552,16 @@ static bool shtUpdate(void *object)
         break;
 
       case STATE_PROCESS:
-        calcHumidity(sensor);
+      case STATE_ERROR:
+        if (sensor->state == STATE_PROCESS)
+        {
+          calcHumidity(sensor);
+        }
+        else if (sensor->onErrorCallback)
+        {
+          sensor->onErrorCallback(sensor->callbackArgument,
+              SENSOR_INTERFACE_ERROR);
+        }
 
         if (sensor->stop)
         {
@@ -552,6 +580,9 @@ static bool shtUpdate(void *object)
           sensor->state = STATE_H_START;
           updated = true;
         }
+        break;
+
+      case STATE_ERROR_WAIT:
         break;
     }
   }

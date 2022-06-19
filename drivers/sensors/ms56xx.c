@@ -43,7 +43,10 @@ enum State
   STATE_T_READ,
   STATE_T_READ_WAIT,
 
-  STATE_PROCESS
+  STATE_PROCESS,
+  STATE_ERROR_WAIT,
+
+  STATE_ERROR
 };
 /*----------------------------------------------------------------------------*/
 static void calcOffSens5607(const uint16_t *, int32_t, int64_t *, int64_t *);
@@ -327,6 +330,13 @@ static void onBusEvent(void *object)
   struct MS56XX * const sensor = object;
   bool release = false;
 
+  if (!sensor->cs && ifGetParam(sensor->bus, IF_STATUS, 0) != E_OK)
+  {
+    sensor->state = STATE_ERROR_WAIT;
+    timerEnable(sensor->timer);
+    release = true;
+  }
+
   switch (sensor->state)
   {
     case STATE_CAL_WRITE_WAIT:
@@ -403,6 +413,10 @@ static void onTimerEvent(void *object)
 
     case STATE_T_WAIT:
       sensor->state = STATE_T_WRITE;
+      break;
+
+    case STATE_ERROR_WAIT:
+      sensor->state = STATE_ERROR;
       break;
 
     default:
@@ -791,7 +805,16 @@ static bool msUpdate(void *object)
         break;
 
       case STATE_PROCESS:
-        calcPressure(sensor);
+      case STATE_ERROR:
+        if (sensor->state == STATE_PROCESS)
+        {
+          calcPressure(sensor);
+        }
+        else if (sensor->onErrorCallback)
+        {
+          sensor->onErrorCallback(sensor->callbackArgument,
+              SENSOR_INTERFACE_ERROR);
+        }
 
         if (sensor->stop)
         {
@@ -810,6 +833,9 @@ static bool msUpdate(void *object)
           sensor->state = STATE_P_START;
           updated = true;
         }
+        break;
+
+      case STATE_ERROR_WAIT:
         break;
     }
   }
