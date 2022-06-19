@@ -283,7 +283,7 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
 {
   struct ST7735 * const display = object;
 
-  switch ((enum IfDisplayParameter)parameter)
+  switch ((enum DisplayParameter)parameter)
   {
     case IF_DISPLAY_ORIENTATION:
     {
@@ -325,7 +325,7 @@ static enum Result displaySetParam(void *object, int parameter,
 {
   struct ST7735 * const display = object;
 
-  switch ((enum IfDisplayParameter)parameter)
+  switch ((enum DisplayParameter)parameter)
   {
     case IF_DISPLAY_ORIENTATION:
     {

@@ -32,9 +32,9 @@ enum SHT2XResolution
 struct SHT2XConfig
 {
   /** Mandatory: serial interface. */
-  struct Interface *bus;
+  void *bus;
   /** Mandatory: event timer. */
-  struct Timer *timer;
+  void *timer;
 
   /** Optional: resolution configuration. */
   enum SHT2XResolution resolution;

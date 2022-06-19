@@ -18,14 +18,14 @@ extern const struct EntityClass * const Ublox;
 
 struct UbloxConfig
 {
-  /** Mandatory: serial interface. */
-  struct Interface *serial;
   /** Mandatory: external interrupt for PPS. */
-  struct Interrupt *pps;
-  /** Mandatory: chrono timer. */
-  struct Timer64 *timer;
+  void *pps;
+  /** Mandatory: serial interface. */
+  void *serial;
+  /** Mandatory: 64-bit chrono timer. */
+  void *timer;
   /** Optional: work queue for packet processing tasks. */
-  struct WorkQueue *wq;
+  void *wq;
 };
 
 struct Ublox

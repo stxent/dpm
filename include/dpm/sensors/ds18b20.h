@@ -28,9 +28,9 @@ enum DS18B20Resolution
 struct DS18B20Config
 {
   /** Mandatory: sensor bus. */
-  struct Interface *bus;
+  void *bus;
   /* Timer for timeout calculations */
-  struct Timer *timer;
+  void *timer;
   /** Optional: device address. */
   uint64_t address;
   /** Optional: temperature resolution. */

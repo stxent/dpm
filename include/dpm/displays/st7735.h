@@ -16,7 +16,7 @@ extern const struct InterfaceClass * const ST7735;
 struct ST7735Config
 {
   /** Mandatory: memory interface. */
-  struct Interface *bus;
+  void *bus;
   /** Mandatory: pin used as Chip Select output. */
   PinNumber cs;
   /** Mandatory: pin used for display reset. */

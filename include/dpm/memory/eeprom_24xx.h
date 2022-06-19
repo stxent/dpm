@@ -15,7 +15,7 @@ extern const struct InterfaceClass * const Eeprom24xx;
 struct Eeprom24xxConfig
 {
   /** Mandatory: underlying I2C interface. */
-  struct Interface *i2c;
+  void *i2c;
   /** Mandatory: address space size. */
   uint32_t chipSize;
   /** Optional: baud rate of the interface. */

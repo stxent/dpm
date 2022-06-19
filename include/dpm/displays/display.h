@@ -21,7 +21,7 @@ enum DisplayOrientation
 } __attribute__((packed));
 
 /** Display options extending common interface options. */
-enum IfDisplayParameter
+enum DisplayParameter
 {
   /** Update information on the display immediately. */
   IF_DISPLAY_UPDATE = IF_PARAMETER_END,

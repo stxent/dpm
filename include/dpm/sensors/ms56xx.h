@@ -35,9 +35,9 @@ enum MS56XXSubtype
 struct MS56XXConfig
 {
   /** Mandatory: serial interface. */
-  struct Interface *bus;
+  void *bus;
   /** Mandatory: event timer. */
-  struct Timer *timer;
+  void *timer;
 
   /** Optional: oversampling configuration. */
   enum MS56XXOversampling oversampling;

@@ -229,7 +229,7 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
 {
   const struct HD44780 * const display = object;
 
-  switch ((enum IfDisplayParameter)parameter)
+  switch ((enum DisplayParameter)parameter)
   {
     case IF_DISPLAY_RESOLUTION:
       *(struct DisplayResolution *)data = display->resolution;
@@ -245,7 +245,7 @@ static enum Result displaySetParam(void *object, int parameter,
 {
   struct HD44780 * const display = object;
 
-  switch ((enum IfDisplayParameter)parameter)
+  switch ((enum DisplayParameter)parameter)
   {
     case IF_DISPLAY_WINDOW:
     {

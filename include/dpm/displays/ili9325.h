@@ -15,7 +15,7 @@ extern const struct InterfaceClass * const ILI9325;
 struct ILI9325Config
 {
   /** Mandatory: memory interface. */
-  struct Interface *bus;
+  void *bus;
   /** Mandatory: pin used as Chip Select output. */
   PinNumber cs;
   /** Mandatory: pin used for display reset. */

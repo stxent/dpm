@@ -15,7 +15,7 @@ extern const struct InterfaceClass * const S6D1121;
 struct S6D1121Config
 {
   /** Mandatory: memory interface. */
-  struct Interface *bus;
+  void *bus;
   /** Mandatory: pin used as Chip Select output. */
   PinNumber cs;
   /** Mandatory: pin used for display reset. */

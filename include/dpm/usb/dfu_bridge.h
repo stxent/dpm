@@ -26,7 +26,7 @@ struct DfuBridgeConfig
   /** Mandatory: geometry of the flash memory. */
   const struct FlashGeometry *geometry;
   /** Mandatory: flash memory interface. */
-  struct Interface *flash;
+  void *flash;
   /** Mandatory: DFU instance. */
   struct Dfu *device;
   /** Mandatory: offset from the beginning of the flash memory. */

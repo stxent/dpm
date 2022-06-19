@@ -16,7 +16,7 @@ extern const struct InterfaceClass * const HD44780;
 struct HD44780Config
 {
   /** Mandatory: memory interface. */
-  struct Interface *bus;
+  void *bus;
   /** Mandatory: display resolution. */
   struct DisplayResolution resolution;
   /** Mandatory: pin used as Register Select output. */
