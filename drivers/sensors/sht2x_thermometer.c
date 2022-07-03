@@ -5,6 +5,8 @@
  */
 
 #include <dpm/sensors/sht2x.h>
+#include <dpm/sensors/sht2x_defs.h>
+#include <xcore/atomic.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
 static enum Result thermoInit(void *, const void *);
@@ -41,16 +43,16 @@ const struct SensorClass * const SHT2XThermometer =
     .update = thermoUpdate
 };
 /*----------------------------------------------------------------------------*/
-static enum Result thermoInit(void *object,
-    const void *configBase __attribute__((unused)))
+static enum Result thermoInit(void *object, const void *configBase)
 {
+  const struct SHT2XThermometerConfig * const config = configBase;
   struct SHT2XThermometer * const sensor = object;
 
   sensor->callbackArgument = 0;
   sensor->onErrorCallback = 0;
   sensor->onResultCallback = 0;
   sensor->onUpdateCallback = 0;
-  sensor->enabled = false;
+  sensor->parent = config->parent;
 
   return E_OK;
 }
@@ -101,9 +103,14 @@ static void thermoReset(void *object __attribute__((unused)))
 {
 }
 /*----------------------------------------------------------------------------*/
-static void thermoSample(void *object __attribute__((unused)))
+static void thermoSample(void *object)
 {
-  // TODO
+  struct SHT2XThermometer * const sensor = object;
+
+  assert(sensor->onResultCallback);
+  assert(sensor->onUpdateCallback);
+
+  atomicFetchOr(&sensor->parent->flags, FLAG_THERMO_SAMPLE);
 }
 /*----------------------------------------------------------------------------*/
 static void thermoStart(void *object)
@@ -113,13 +120,13 @@ static void thermoStart(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->enabled = true;
+  atomicFetchOr(&sensor->parent->flags, FLAG_THERMO_LOOP);
 }
 /*----------------------------------------------------------------------------*/
 static void thermoStop(void *object)
 {
   struct SHT2XThermometer * const sensor = object;
-  sensor->enabled = false;
+  atomicFetchAnd(&sensor->parent->flags, ~FLAG_THERMO_LOOP);
 }
 /*----------------------------------------------------------------------------*/
 static bool thermoUpdate(void *object __attribute__((unused)))

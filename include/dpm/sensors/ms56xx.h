@@ -88,22 +88,20 @@ struct MS56XX
   uint16_t prom[8];
   /* Buffer for received data */
   uint8_t buffer[3];
+  /* Command and status flags */
+  uint8_t flags;
   /* Oversampling settings */
   uint8_t oversampling;
   /* Current PROM position */
   uint8_t parameter;
   /* Current operation */
   uint8_t state;
-  /* Calibration completed flag */
-  bool calibrated;
-  /* Chip Select pin used */
-  bool cs;
-  /* Reset calibration data */
-  bool reset;
-  /* Start conversion */
-  bool start;
-  /* Stop after current operation */
-  bool stop;
+};
+
+struct MS56XXThermometerConfig
+{
+  /** Mandatory: parent object. */
+  struct MS56XX *parent;
 };
 
 struct MS56XXThermometer
@@ -115,7 +113,7 @@ struct MS56XXThermometer
   void (*onResultCallback)(void *, const void *, size_t);
   void (*onUpdateCallback)(void *);
 
-  bool enabled;
+  struct MS56XX *parent;
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS

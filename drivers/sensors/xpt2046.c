@@ -5,25 +5,25 @@
  */
 
 #include <dpm/sensors/xpt2046.h>
+#include <dpm/sensors/xpt2046_defs.h>
 #include <halm/generic/spi.h>
 #include <halm/interrupt.h>
 #include <halm/timer.h>
+#include <xcore/atomic.h>
 #include <xcore/bits.h>
 #include <xcore/interface.h>
 #include <assert.h>
 #include <limits.h>
 /*----------------------------------------------------------------------------*/
-#define CTRL_ADC_ON   BIT(0)
-#define CTRL_REF_ON   BIT(1)
-#define CTRL_DFR      0
-#define CTRL_SER      BIT(2)
-#define CTRL_HI_Y     BIT_FIELD(0x09, 4)
-#define CTRL_Z1_POS   BIT_FIELD(0x0B, 4)
-#define CTRL_Z2_POS   BIT_FIELD(0x0C, 4)
-#define CTRL_HI_X     BIT_FIELD(0x0D, 4)
+#define ADC_MAX     MASK(12)
+#define UPDATE_FREQ 100
 
-#define ADC_MAX       MASK(12)
-#define UPDATE_FREQ   100
+enum
+{
+  FLAG_PRESSED  = 0x01,
+  FLAG_LOOP     = 0x02,
+  FLAG_SAMPLE   = 0x04
+};
 
 enum
 {
@@ -89,7 +89,7 @@ static void calcPosition(void *object)
     const uint16_t y = (sensor->rxBuffer[7] << 8 | sensor->rxBuffer[8]) >> 3;
     int16_t result[3];
 
-    sensor->pressed = true;
+    atomicFetchOr(&sensor->flags, FLAG_PRESSED);
 
     result[0] = (int16_t)(((x - sensor->xMin) * sensor->xRes)
           / (sensor->xMax - sensor->xMin));
@@ -102,7 +102,7 @@ static void calcPosition(void *object)
   else
   {
     /* Touch panel released */
-    sensor->pressed = false;
+    atomicFetchAnd(&sensor->flags, ~FLAG_PRESSED);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -120,6 +120,8 @@ static void onBusEvent(void *object)
 static void onPinEvent(void *object)
 {
   struct XPT2046 * const sensor = object;
+
+  interruptDisable(sensor->event);
 
   sensor->state = STATE_READ;
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -191,10 +193,8 @@ static enum Result tsInit(void *object, const void *configBase)
   sensor->onResultCallback = 0;
   sensor->onUpdateCallback = 0;
 
+  sensor->flags = 0;
   sensor->state = STATE_IDLE;
-  sensor->pressed = false;
-  sensor->start = false;
-  sensor->stop = false;
 
   sensor->threshold = config->threshold;
   sensor->xRes = config->x;
@@ -274,8 +274,7 @@ static void tsSample(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->start = true;
-  sensor->stop = true;
+  atomicFetchOr(&sensor->flags, FLAG_SAMPLE);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -286,7 +285,7 @@ static void tsStart(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->start = true;
+  atomicFetchOr(&sensor->flags, FLAG_LOOP);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -294,7 +293,7 @@ static void tsStop(void *object)
 {
   struct XPT2046 * const sensor = object;
 
-  sensor->stop = true;
+  atomicFetchAnd(&sensor->flags, ~(FLAG_LOOP | FLAG_SAMPLE));
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -312,37 +311,51 @@ static bool tsUpdate(void *object)
     switch (sensor->state)
     {
       case STATE_IDLE:
-        if (sensor->start)
-        {
-          sensor->start = false;
+      {
+        const uint8_t flags = atomicLoad(&sensor->flags);
 
-          if (!sensor->stop)
-          {
-            sensor->state = STATE_EVENT_WAIT;
-            interruptEnable(sensor->event);
-          }
+        if (flags & FLAG_SAMPLE)
+        {
+          sensor->state = STATE_READ;
+          updated = true;
+        }
+        else if (flags & FLAG_LOOP)
+        {
+          sensor->state = STATE_EVENT_WAIT;
+
+          if (flags & FLAG_PRESSED)
+            timerEnable(sensor->timer);
           else
-          {
-            sensor->state = STATE_READ;
-            updated = true;
-          }
+            interruptEnable(sensor->event);
+        }
+        else
+        {
+          atomicFetchAnd(&sensor->flags, ~FLAG_PRESSED);
         }
         break;
+      }
 
       case STATE_EVENT_WAIT:
-        if (sensor->stop)
+      {
+        const uint8_t flags = atomicLoad(&sensor->flags);
+
+        if ((flags & FLAG_SAMPLE) || !(flags & FLAG_LOOP))
         {
           interruptDisable(sensor->event);
           timerDisable(sensor->timer);
 
-          sensor->state = STATE_IDLE;
-          sensor->stop = false;
+          if (flags & FLAG_SAMPLE)
+          {
+            sensor->state = STATE_READ;
+            updated = true;
+          }
+          else
+            sensor->state = STATE_IDLE;
         }
         break;
+      }
 
       case STATE_READ:
-        interruptDisable(sensor->event);
-
         sensor->state = STATE_READ_WAIT;
         startReading(sensor);
 
@@ -356,21 +369,10 @@ static bool tsUpdate(void *object)
       case STATE_PROCESS:
         calcPosition(sensor);
 
-        if (!sensor->stop)
-        {
-          sensor->state = STATE_EVENT_WAIT;
+        sensor->state = STATE_IDLE;
+        atomicFetchAnd(&sensor->flags, ~FLAG_SAMPLE);
 
-          if (sensor->pressed)
-            timerEnable(sensor->timer);
-          else
-            interruptEnable(sensor->event);
-        }
-        else
-        {
-          sensor->pressed = false;
-          sensor->stop = false;
-          sensor->state = STATE_IDLE;
-        }
+        updated = true;
         break;
     }
   }

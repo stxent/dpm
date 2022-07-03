@@ -6,12 +6,21 @@
 
 #include <dpm/sensors/ds18b20.h>
 #include <halm/timer.h>
+#include <xcore/atomic.h>
 #include <xcore/crc/crc8_dallas.h>
 #include <xcore/interface.h>
 #include <assert.h>
 #include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 #define LENGTH_CONFIG 4
+
+enum
+{
+  FLAG_RESET  = 0x01,
+  FLAG_READY  = 0x02,
+  FLAG_LOOP   = 0x04,
+  FLAG_SAMPLE = 0x08
+};
 
 enum
 {
@@ -119,31 +128,35 @@ static int16_t makeSampleValue(struct DS18B20 *sensor)
 static void onBusEvent(void *object)
 {
   struct DS18B20 * const sensor = object;
+  bool release = true;
 
   switch (sensor->state)
   {
     case STATE_CONFIG_WRITE_WAIT:
-      ifSetParam(sensor->bus, IF_RELEASE, 0);
+      atomicFetchAnd(&sensor->flags, ~FLAG_RESET);
+      atomicFetchOr(&sensor->flags, FLAG_READY);
       sensor->state = STATE_IDLE;
       break;
 
     case STATE_TEMP_CONVERSION_WAIT:
-      ifSetParam(sensor->bus, IF_RELEASE, 0);
       sensor->state = STATE_TEMP_WAIT_START;
       break;
 
     case STATE_TEMP_REQUEST_WAIT:
       sensor->state = STATE_TEMP_READ;
+      release = false;
       break;
 
     case STATE_TEMP_READ_WAIT:
-      ifSetParam(sensor->bus, IF_RELEASE, 0);
       sensor->state = STATE_PROCESS;
       break;
 
     default:
       break;
   }
+
+  if (release)
+    ifSetParam(sensor->bus, IF_RELEASE, 0);
 
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
@@ -249,19 +262,17 @@ static enum Result dsInit(void *object, const void *configBase)
 
   struct DS18B20 * const sensor = object;
 
-  sensor->address = config->address;
-  sensor->bus = config->bus;
-  sensor->timer = config->timer;
-  sensor->state = STATE_IDLE;
-
   sensor->callbackArgument = 0;
   sensor->onErrorCallback = 0;
   sensor->onResultCallback = 0;
   sensor->onUpdateCallback = 0;
 
-  sensor->reset = false;
-  sensor->start = false;
-  sensor->stop = false;
+  sensor->address = config->address;
+  sensor->bus = config->bus;
+  sensor->timer = config->timer;
+
+  sensor->flags = 0;
+  sensor->state = STATE_IDLE;
 
   if (config->resolution != DS18B20_RESOLUTION_DEFAULT)
     sensor->resolution = (uint8_t)config->resolution;
@@ -324,7 +335,7 @@ static void dsReset(void *object)
 {
   struct DS18B20 * const sensor = object;
 
-  sensor->reset = true;
+  atomicFetchOr(&sensor->flags, FLAG_RESET);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -335,8 +346,7 @@ static void dsSample(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->start = true;
-  sensor->stop = true;
+  atomicFetchOr(&sensor->flags, FLAG_SAMPLE);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -347,7 +357,7 @@ static void dsStart(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->start = true;
+  atomicFetchOr(&sensor->flags, FLAG_LOOP);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -355,7 +365,7 @@ static void dsStop(void *object)
 {
   struct DS18B20 * const sensor = object;
 
-  sensor->stop = true;
+  atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_LOOP | FLAG_SAMPLE));
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -373,28 +383,29 @@ static bool dsUpdate(void *object)
     switch (sensor->state)
     {
       case STATE_IDLE:
-        if (sensor->reset)
+      {
+        const uint8_t flags = atomicLoad(&sensor->flags);
+
+        if (flags & FLAG_RESET)
         {
           sensor->state = STATE_CONFIG_WRITE;
-          sensor->reset = false;
           updated = true;
         }
-        else if (sensor->start)
+        else if (flags & (FLAG_LOOP | FLAG_SAMPLE))
         {
-          sensor->state = STATE_TEMP_CONVERSION;
-          sensor->start = false;
-          updated = true;
-        }
-        else if (sensor->stop)
-        {
-          sensor->stop = false;
+          if (flags & FLAG_READY)
+          {
+            sensor->state = STATE_TEMP_CONVERSION;
+            updated = true;
+          }
         }
         break;
+      }
 
       case STATE_CONFIG_WRITE:
         sensor->state = STATE_CONFIG_WRITE_WAIT;
+        atomicFetchAnd(&sensor->flags, ~FLAG_READY);
         startConfigWrite(sensor);
-
         busy = true;
         break;
 
@@ -405,7 +416,6 @@ static bool dsUpdate(void *object)
       case STATE_TEMP_CONVERSION:
         sensor->state = STATE_TEMP_CONVERSION_WAIT;
         startTemperatureConversion(sensor);
-
         busy = true;
         break;
 
@@ -421,7 +431,6 @@ static bool dsUpdate(void *object)
       case STATE_TEMP_REQUEST:
         sensor->state = STATE_TEMP_REQUEST_WAIT;
         startTemperatureRequest(sensor);
-
         busy = true;
         break;
 
@@ -432,7 +441,6 @@ static bool dsUpdate(void *object)
       case STATE_TEMP_READ:
         sensor->state = STATE_TEMP_READ_WAIT;
         startTemperatureRead(sensor);
-
         busy = true;
         break;
 
@@ -443,23 +451,10 @@ static bool dsUpdate(void *object)
       case STATE_PROCESS:
         calcTemperature(sensor);
 
-        if (sensor->stop)
-        {
-          sensor->stop = false;
-          sensor->state = STATE_IDLE;
-        }
-        else if (sensor->reset)
-        {
-          sensor->reset = false;
-          sensor->start = true;
-          sensor->state = STATE_CONFIG_WRITE;
-          updated = true;
-        }
-        else
-        {
-          sensor->state = STATE_TEMP_CONVERSION;
-          updated = true;
-        }
+        sensor->state = STATE_IDLE;
+        atomicFetchAnd(&sensor->flags, ~FLAG_SAMPLE);
+
+        updated = true;
         break;
     }
   }

@@ -74,16 +74,18 @@ struct SHT2X
 
   /* Buffer for received data */
   uint8_t buffer[2];
+  /* Command and status flags */
+  uint8_t flags;
   /* Resolution settings */
   uint8_t resolution;
   /* Current operation */
   uint8_t state;
-  /* Reset calibration data */
-  bool reset;
-  /* Start conversion */
-  bool start;
-  /* Stop after current operation */
-  bool stop;
+};
+
+struct SHT2XThermometerConfig
+{
+  /** Mandatory: parent object. */
+  struct SHT2X *parent;
 };
 
 struct SHT2XThermometer
@@ -95,7 +97,7 @@ struct SHT2XThermometer
   void (*onResultCallback)(void *, const void *, size_t);
   void (*onUpdateCallback)(void *);
 
-  bool enabled;
+  struct SHT2X *parent;
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS

@@ -68,14 +68,10 @@ struct XPT2046
 
   /* Response buffer */
   uint8_t rxBuffer[11];
+  /* Command and status flags */
+  uint8_t flags;
   /* Current state */
   uint8_t state;
-  /* Periodic sampling flag */
-  bool pressed;
-  /* Start conversion */
-  bool start;
-  /* Stop after current operation */
-  bool stop;
 };
 /*----------------------------------------------------------------------------*/
 void xpt2046ResetCalibration(struct XPT2046 *);

@@ -5,7 +5,9 @@
  */
 
 #include <dpm/sensors/sht2x.h>
+#include <dpm/sensors/sht2x_defs.h>
 #include <halm/timer.h>
+#include <xcore/atomic.h>
 #include <xcore/bits.h>
 #include <xcore/interface.h>
 #include <assert.h>
@@ -13,17 +15,6 @@
 /*----------------------------------------------------------------------------*/
 #define LENGTH_COMMAND  1
 #define LENGTH_CONFIG   2
-
-enum Command
-{
-  CMD_TRIGGER_T_HOLD  = 0xE3,
-  CMD_TRIGGER_RH_HOLD = 0xE5,
-  CMD_TRIGGER_T       = 0xF3,
-  CMD_TRIGGER_RH      = 0xF5,
-  CMD_WRITE_USER_REG  = 0xE6,
-  CMD_READ_USER_REG   = 0xE7,
-  CMD_SOFT_RESET      = 0xFE
-};
 
 enum State
 {
@@ -47,7 +38,8 @@ enum State
   STATE_PROCESS,
 
   STATE_ERROR_WAIT,
-  STATE_ERROR
+  STATE_ERROR_INTERFACE,
+  STATE_ERROR_TIMEOUT
 };
 /*----------------------------------------------------------------------------*/
 static void busInit(struct SHT2X *);
@@ -107,6 +99,11 @@ static void busInit(struct SHT2X *sensor)
 
   if (sensor->rate)
     ifSetParam(sensor->bus, IF_RATE, &sensor->rate);
+
+  /* Start bus watchdog */
+  timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
+  timerSetValue(sensor->timer, 0);
+  timerEnable(sensor->timer);
 }
 /*----------------------------------------------------------------------------*/
 static void calcHumidity(struct SHT2X *sensor)
@@ -119,7 +116,7 @@ static void calcHumidity(struct SHT2X *sensor)
   sensor->onResultCallback(sensor->callbackArgument,
       &humidity, sizeof(humidity));
 
-  if (sensor->thermometer && sensor->thermometer->enabled)
+  if (atomicLoad(&sensor->flags) & (FLAG_THERMO_LOOP | FLAG_THERMO_SAMPLE))
   {
     sensor->thermometer->onResultCallback(sensor->thermometer->callbackArgument,
         &temperature, sizeof(temperature));
@@ -137,48 +134,52 @@ static uint16_t fetchSample(const struct SHT2X *sensor)
 static void onBusEvent(void *object)
 {
   struct SHT2X * const sensor = object;
-  bool waitForEvent = false;
+  bool waitForTimeout = false;
+
+  timerDisable(sensor->timer);
 
   if (ifGetParam(sensor->bus, IF_STATUS, 0) != E_OK)
   {
-    sensor->state = STATE_ERROR;
+    sensor->state = STATE_ERROR_WAIT;
     timerSetOverflow(sensor->timer, resolutionToTemperatureTime(sensor));
-    waitForEvent = true;
+    waitForTimeout = true;
   }
 
   switch (sensor->state)
   {
     case STATE_CONFIG_WRITE_WAIT:
       sensor->state = STATE_IDLE;
+      atomicFetchAnd(&sensor->flags, ~FLAG_RESET);
+      atomicFetchOr(&sensor->flags, FLAG_READY);
       break;
 
     case STATE_H_START_WAIT:
       sensor->state = STATE_H_WAIT;
       timerSetOverflow(sensor->timer, resolutionToHumidityTime(sensor));
-      waitForEvent = true;
+      waitForTimeout = true;
       break;
 
     case STATE_H_READ_WAIT:
-      sensor->humidity = fetchSample(sensor);
       sensor->state = STATE_T_START;
+      sensor->humidity = fetchSample(sensor);
       break;
 
     case STATE_T_START_WAIT:
       sensor->state = STATE_T_WAIT;
       timerSetOverflow(sensor->timer, resolutionToTemperatureTime(sensor));
-      waitForEvent = true;
+      waitForTimeout = true;
       break;
 
     case STATE_T_READ_WAIT:
-      sensor->temperature = fetchSample(sensor);
       sensor->state = STATE_PROCESS;
+      sensor->temperature = fetchSample(sensor);
       break;
 
     default:
       break;
   }
 
-  if (waitForEvent)
+  if (waitForTimeout)
   {
     /* Switching between different overflow values requires counter reset */
     timerSetValue(sensor->timer, 0);
@@ -204,10 +205,12 @@ static void onTimerEvent(void *object)
       break;
 
     case STATE_ERROR_WAIT:
-      sensor->state = STATE_ERROR;
+      sensor->state = STATE_ERROR_INTERFACE;
       break;
 
     default:
+      ifSetParam(sensor->bus, IF_RELEASE, 0);
+      sensor->state = STATE_ERROR_TIMEOUT;
       break;
   }
 
@@ -342,24 +345,21 @@ static enum Result shtInit(void *object, const void *configBase)
 
   struct SHT2X * const sensor = object;
 
+  sensor->callbackArgument = 0;
+  sensor->onErrorCallback = 0;
+  sensor->onResultCallback = 0;
+  sensor->onUpdateCallback = 0;
+
   sensor->thermometer = 0;
   sensor->bus = config->bus;
   sensor->timer = config->timer;
   sensor->rate = config->rate;
   sensor->address = config->address;
 
-  sensor->callbackArgument = 0;
-  sensor->onErrorCallback = 0;
-  sensor->onResultCallback = 0;
-  sensor->onUpdateCallback = 0;
-
   sensor->humidity = 0;
   sensor->temperature = 0;
+  sensor->flags = 0;
   sensor->state = STATE_IDLE;
-
-  sensor->reset = false;
-  sensor->start = false;
-  sensor->stop = false;
 
   if (config->resolution != SHT2X_RESOLUTION_DEFAULT)
     sensor->resolution = (uint8_t)config->resolution;
@@ -392,10 +392,15 @@ static enum SensorStatus shtGetStatus(const void *object)
 {
   const struct SHT2X * const sensor = object;
 
-  if (sensor->state == STATE_IDLE)
-    return SENSOR_IDLE;
+  if (atomicLoad(&sensor->flags) & FLAG_READY)
+  {
+    if (sensor->state == STATE_IDLE)
+      return SENSOR_IDLE;
+    else
+      return SENSOR_BUSY;
+  }
   else
-    return SENSOR_BUSY;
+    return SENSOR_ERROR;
 }
 /*----------------------------------------------------------------------------*/
 static void shtSetCallbackArgument(void *object, void *argument)
@@ -428,7 +433,7 @@ static void shtReset(void *object)
 {
   struct SHT2X * const sensor = object;
 
-  sensor->reset = true;
+  atomicFetchOr(&sensor->flags, FLAG_RESET);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -439,8 +444,7 @@ static void shtSample(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->start = true;
-  sensor->stop = true;
+  atomicFetchOr(&sensor->flags, FLAG_SAMPLE);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -451,7 +455,7 @@ static void shtStart(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->start = true;
+  atomicFetchOr(&sensor->flags, FLAG_LOOP);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -459,7 +463,7 @@ static void shtStop(void *object)
 {
   struct SHT2X * const sensor = object;
 
-  sensor->stop = true;
+  atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_LOOP | FLAG_SAMPLE));
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -477,26 +481,28 @@ static bool shtUpdate(void *object)
     switch (sensor->state)
     {
       case STATE_IDLE:
-        if (sensor->reset)
+      {
+        const uint8_t flags = atomicLoad(&sensor->flags);
+
+        if (flags & FLAG_RESET)
         {
           sensor->state = STATE_CONFIG_WRITE;
-          sensor->reset = false;
           updated = true;
         }
-        else if (sensor->start)
+        else if (flags & (FLAG_LOOP | FLAG_SAMPLE))
         {
-          sensor->start = false;
-          sensor->state = STATE_H_START;
-          updated = true;
-        }
-        else if (sensor->stop)
-        {
-          sensor->stop = false;
+          if (flags & FLAG_READY)
+          {
+            sensor->state = STATE_H_START;
+            updated = true;
+          }
         }
         break;
+      }
 
       case STATE_CONFIG_WRITE:
         sensor->state = STATE_CONFIG_WRITE_WAIT;
+        atomicFetchAnd(&sensor->flags, ~FLAG_READY);
         startConfigWrite(sensor);
         busy = true;
         break;
@@ -552,37 +558,28 @@ static bool shtUpdate(void *object)
         break;
 
       case STATE_PROCESS:
-      case STATE_ERROR:
-        if (sensor->state == STATE_PROCESS)
-        {
-          calcHumidity(sensor);
-        }
-        else if (sensor->onErrorCallback)
-        {
-          sensor->onErrorCallback(sensor->callbackArgument,
-              SENSOR_INTERFACE_ERROR);
-        }
+        calcHumidity(sensor);
 
-        if (sensor->stop)
-        {
-          sensor->stop = false;
-          sensor->state = STATE_IDLE;
-        }
-        else if (sensor->reset)
-        {
-          sensor->reset = false;
-          sensor->start = true;
-          sensor->state = STATE_CONFIG_WRITE;
-          updated = true;
-        }
-        else
-        {
-          sensor->state = STATE_H_START;
-          updated = true;
-        }
+        sensor->state = STATE_IDLE;
+        atomicFetchAnd(&sensor->flags, ~(FLAG_SAMPLE | FLAG_THERMO_SAMPLE));
+
+        updated = true;
         break;
 
       case STATE_ERROR_WAIT:
+        break;
+
+      case STATE_ERROR_INTERFACE:
+      case STATE_ERROR_TIMEOUT:
+        if (sensor->onErrorCallback)
+        {
+          sensor->onErrorCallback(sensor->callbackArgument,
+              sensor->state == STATE_ERROR_INTERFACE ?
+                  SENSOR_INTERFACE_ERROR : SENSOR_INTERFACE_TIMEOUT);
+        }
+
+        sensor->state = STATE_IDLE;
+        updated = true;
         break;
     }
   }
@@ -594,7 +591,13 @@ static bool shtUpdate(void *object)
 struct SHT2XThermometer *sht2xMakeThermometer(struct SHT2X *sensor)
 {
   if (!sensor->thermometer)
-    sensor->thermometer = init(SHT2XThermometer, 0);
+  {
+    const struct SHT2XThermometerConfig config = {
+        .parent = sensor
+    };
+
+    sensor->thermometer = init(SHT2XThermometer, &config);
+  }
 
   return sensor->thermometer;
 }

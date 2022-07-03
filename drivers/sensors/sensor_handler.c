@@ -12,6 +12,7 @@
 /*----------------------------------------------------------------------------*/
 static void shOnUpdate(void *);
 static void shOnDetach(void *);
+static void shOnError(void *, enum SensorResult);
 static void shOnResult(void *, const void *, size_t);
 static void shUpdate(void *);
 /*----------------------------------------------------------------------------*/
@@ -32,13 +33,28 @@ static void shOnDetach(void *argument)
   }
 }
 /*----------------------------------------------------------------------------*/
+static void shOnError(void *argument, enum SensorResult error)
+{
+  struct SHEntry * const entry = argument;
+  struct SensorHandler * const handler = entry->handler;
+
+  if (handler->errorCallback)
+  {
+    handler->errorCallback(handler->errorCallbackArgument,
+        entry->tag, error);
+  }
+}
+/*----------------------------------------------------------------------------*/
 static void shOnResult(void *argument, const void *buffer, size_t length)
 {
   struct SHEntry * const entry = argument;
   struct SensorHandler * const handler = entry->handler;
 
-  if (handler->callback)
-    handler->callback(handler->callbackArgument, entry->tag, buffer, length);
+  if (handler->dataCallback)
+  {
+    handler->dataCallback(handler->dataCallbackArgument,
+        entry->tag, buffer, length);
+  }
 }
 /*----------------------------------------------------------------------------*/
 static void shOnUpdate(void *argument)
@@ -109,7 +125,8 @@ bool shInit(struct SensorHandler *handler, size_t capacity, void *wq)
 
   handler->current = 0;
   handler->wq = wq ? wq : WQ_DEFAULT;
-  handler->callback = 0;
+  handler->dataCallback = 0;
+  handler->errorCallback = 0;
 
   return true;
 }
@@ -135,6 +152,7 @@ bool shAttach(struct SensorHandler *handler, void *sensor, int tag)
     entry->tag = tag;
 
     sensorSetCallbackArgument(sensor, entry);
+    sensorSetErrorCallback(sensor, shOnError);
     sensorSetResultCallback(sensor, shOnResult);
     sensorSetUpdateCallback(sensor, shOnUpdate);
 
@@ -164,9 +182,16 @@ void shDetach(struct SensorHandler *handler, void *sensor)
   }
 }
 /*----------------------------------------------------------------------------*/
-void shSetCallback(struct SensorHandler *handler,
+void shSetDataCallback(struct SensorHandler *handler,
     void (*callback)(void *, int, const void *, size_t), void *argument)
 {
-  handler->callbackArgument = argument;
-  handler->callback = callback;
+  handler->dataCallbackArgument = argument;
+  handler->dataCallback = callback;
+}
+/*----------------------------------------------------------------------------*/
+void shSetErrorCallback(struct SensorHandler *handler,
+    void (*callback)(void *, int, enum SensorResult), void *argument)
+{
+  handler->errorCallbackArgument = argument;
+  handler->errorCallback = callback;
 }

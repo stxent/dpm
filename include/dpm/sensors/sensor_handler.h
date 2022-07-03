@@ -24,8 +24,10 @@ struct SensorHandler
   struct SHEntry *sensors;
   void *wq;
 
-  void (*callback)(void *, int, const void *, size_t);
-  void *callbackArgument;
+  void (*dataCallback)(void *, int, const void *, size_t);
+  void *dataCallbackArgument;
+  void (*errorCallback)(void *, int, enum SensorResult);
+  void *errorCallbackArgument;
 
   size_t capacity;
   uint32_t pool;
@@ -40,8 +42,10 @@ bool shInit(struct SensorHandler *, size_t, void *);
 void shDeinit(struct SensorHandler *);
 bool shAttach(struct SensorHandler *, void *, int);
 void shDetach(struct SensorHandler *, void *);
-void shSetCallback(struct SensorHandler *,
+void shSetDataCallback(struct SensorHandler *,
     void (*)(void *, int, const void *, size_t), void *);
+void shSetErrorCallback(struct SensorHandler *,
+    void (*)(void *, int, enum SensorResult), void *);
 
 END_DECLS
 /*----------------------------------------------------------------------------*/

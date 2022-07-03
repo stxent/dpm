@@ -55,17 +55,12 @@ struct DS18B20
 
   /* Scratchpad buffer */
   uint8_t scratchpad[9];
+  /* Command and status flags */
+  uint8_t flags;
   /* Temperature resolution configuration */
   uint8_t resolution;
   /* Sensor state */
   uint8_t state;
-
-  /* Reset sensor */
-  bool reset;
-  /* Start conversion */
-  bool start;
-  /* Stop after current operation */
-  bool stop;
 };
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_SENSORS_DS18B20_H_ */

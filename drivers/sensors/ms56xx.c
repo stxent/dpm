@@ -9,6 +9,7 @@
 #include <halm/generic/i2c.h>
 #include <halm/generic/spi.h>
 #include <halm/timer.h>
+#include <xcore/atomic.h>
 #include <assert.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
@@ -30,7 +31,7 @@ enum State
   STATE_P_START,
   STATE_P_START_WAIT,
   STATE_P_WAIT,
-  STATE_P_WRITE,
+  STATE_P_REQUEST,
   STATE_P_REQUEST_WAIT,
   STATE_P_READ,
   STATE_P_READ_WAIT,
@@ -38,15 +39,16 @@ enum State
   STATE_T_START,
   STATE_T_START_WAIT,
   STATE_T_WAIT,
-  STATE_T_WRITE,
+  STATE_T_REQUEST,
   STATE_T_REQUEST_WAIT,
   STATE_T_READ,
   STATE_T_READ_WAIT,
 
   STATE_PROCESS,
-  STATE_ERROR_WAIT,
 
-  STATE_ERROR
+  STATE_ERROR_WAIT,
+  STATE_ERROR_INTERFACE,
+  STATE_ERROR_TIMEOUT
 };
 /*----------------------------------------------------------------------------*/
 static void calcOffSens5607(const uint16_t *, int32_t, int64_t *, int64_t *);
@@ -256,19 +258,24 @@ static void busInit(struct MS56XX *sensor, bool read)
   if (sensor->rate)
     ifSetParam(sensor->bus, IF_RATE, &sensor->rate);
 
-  if (sensor->cs)
-  {
-    /* SPI bus */
-    ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, 0);
-    pinReset(sensor->gpio);
-  }
-  else
+  if (sensor->address)
   {
     /* I2C bus */
     ifSetParam(sensor->bus, IF_ADDRESS, &sensor->address);
 
     if (read)
       ifSetParam(sensor->bus, IF_I2C_REPEATED_START, 0);
+
+    /* Start bus watchdog */
+    timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
+    timerSetValue(sensor->timer, 0);
+    timerEnable(sensor->timer);
+  }
+  else
+  {
+    /* SPI bus */
+    ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, 0);
+    pinReset(sensor->gpio);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -282,7 +289,7 @@ static void calcPressure(struct MS56XX *sensor)
   sensor->onResultCallback(sensor->callbackArgument,
       &pressure, sizeof(pressure));
 
-  if (sensor->thermometer && sensor->thermometer->enabled)
+  if (atomicLoad(&sensor->flags) & (FLAG_THERMO_LOOP | FLAG_THERMO_SAMPLE))
   {
     sensor->thermometer->onResultCallback(sensor->thermometer->callbackArgument,
         &temperature, sizeof(temperature));
@@ -305,8 +312,9 @@ static void calRequestNext(struct MS56XX *sensor)
 static void calReset(struct MS56XX *sensor)
 {
   memset(sensor->prom, 0, sizeof(sensor->prom));
-  sensor->calibrated = false;
   sensor->parameter = 0;
+
+  atomicFetchAnd(&sensor->flags, ~FLAG_READY);
 }
 /*----------------------------------------------------------------------------*/
 static uint16_t fetchParameter(const struct MS56XX *sensor)
@@ -329,11 +337,16 @@ static void onBusEvent(void *object)
 {
   struct MS56XX * const sensor = object;
   bool release = false;
+  bool waitForTimeout = false;
 
-  if (!sensor->cs && ifGetParam(sensor->bus, IF_STATUS, 0) != E_OK)
+  timerDisable(sensor->timer);
+
+  if (sensor->address && ifGetParam(sensor->bus, IF_STATUS, 0) != E_OK)
   {
     sensor->state = STATE_ERROR_WAIT;
-    timerEnable(sensor->timer);
+    timerSetOverflow(sensor->timer, oversamplingToTime(sensor));
+
+    waitForTimeout = true;
     release = true;
   }
 
@@ -352,8 +365,9 @@ static void onBusEvent(void *object)
 
     case STATE_P_START_WAIT:
       sensor->state = STATE_P_WAIT;
-      timerEnable(sensor->timer);
+      timerSetOverflow(sensor->timer, oversamplingToTime(sensor));
 
+      waitForTimeout = true;
       release = true;
       break;
 
@@ -370,8 +384,9 @@ static void onBusEvent(void *object)
 
     case STATE_T_START_WAIT:
       sensor->state = STATE_T_WAIT;
-      timerEnable(sensor->timer);
+      timerSetOverflow(sensor->timer, oversamplingToTime(sensor));
 
+      waitForTimeout = true;
       release = true;
       break;
 
@@ -390,9 +405,16 @@ static void onBusEvent(void *object)
       break;
   }
 
+  if (waitForTimeout)
+  {
+    /* Switching between different overflow values requires counter reset */
+    timerSetValue(sensor->timer, 0);
+    timerEnable(sensor->timer);
+  }
+
   if (release)
   {
-    if (sensor->cs)
+    if (!sensor->address)
       pinSet(sensor->gpio);
 
     ifSetParam(sensor->bus, IF_RELEASE, 0);
@@ -408,18 +430,21 @@ static void onTimerEvent(void *object)
   switch (sensor->state)
   {
     case STATE_P_WAIT:
-      sensor->state = STATE_P_WRITE;
+      sensor->state = STATE_P_REQUEST;
       break;
 
     case STATE_T_WAIT:
-      sensor->state = STATE_T_WRITE;
+      sensor->state = STATE_T_REQUEST;
       break;
 
     case STATE_ERROR_WAIT:
-      sensor->state = STATE_ERROR;
+      sensor->state = STATE_ERROR_INTERFACE;
       break;
 
     default:
+      if (sensor->address)
+        ifSetParam(sensor->bus, IF_RELEASE, 0);
+      sensor->state = STATE_ERROR_TIMEOUT;
       break;
   }
 
@@ -503,24 +528,20 @@ static enum Result msInit(void *object, const void *configBase)
 
   struct MS56XX * const sensor = object;
 
-  sensor->thermometer = 0;
-  sensor->bus = config->bus;
-  sensor->timer = config->timer;
-  sensor->rate = config->rate;
-  sensor->address = config->address;
-
   sensor->callbackArgument = 0;
   sensor->onErrorCallback = 0;
   sensor->onResultCallback = 0;
   sensor->onUpdateCallback = 0;
 
+  sensor->thermometer = 0;
+  sensor->bus = config->bus;
+  sensor->timer = config->timer;
+  sensor->rate = config->rate;
+
   sensor->pressure = 0;
   sensor->temperature = 0;
+  sensor->flags = 0;
   sensor->state = STATE_IDLE;
-
-  sensor->reset = false;
-  sensor->start = false;
-  sensor->stop = false;
 
   calReset(sensor);
 
@@ -542,19 +563,23 @@ static enum Result msInit(void *object, const void *configBase)
 
   if (config->cs)
   {
+    sensor->address = 0;
+
     sensor->gpio = pinInit(config->cs);
     if (!pinValid(sensor->gpio))
       return E_VALUE;
     pinOutput(sensor->gpio, true);
-
-    sensor->cs = true;
   }
   else
-    sensor->cs = false;
+  {
+    if (!config->address)
+      return E_VALUE;
+
+    sensor->address = config->address;
+  }
 
   timerSetAutostop(sensor->timer, true);
   timerSetCallback(sensor->timer, onTimerEvent, sensor);
-  timerSetOverflow(sensor->timer, oversamplingToTime(sensor));
 
   return E_OK;
 }
@@ -579,7 +604,7 @@ static enum SensorStatus msGetStatus(const void *object)
 {
   const struct MS56XX * const sensor = object;
 
-  if (sensor->calibrated)
+  if (atomicLoad(&sensor->flags) & FLAG_READY)
   {
     if (sensor->state == STATE_IDLE)
       return SENSOR_IDLE;
@@ -620,7 +645,7 @@ static void msReset(void *object)
 {
   struct MS56XX * const sensor = object;
 
-  sensor->reset = true;
+  atomicFetchOr(&sensor->flags, FLAG_RESET);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -631,8 +656,7 @@ static void msSample(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->start = true;
-  sensor->stop = true;
+  atomicFetchOr(&sensor->flags, FLAG_SAMPLE);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -643,7 +667,7 @@ static void msStart(void *object)
   assert(sensor->onResultCallback);
   assert(sensor->onUpdateCallback);
 
-  sensor->start = true;
+  atomicFetchOr(&sensor->flags, FLAG_LOOP);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -651,7 +675,7 @@ static void msStop(void *object)
 {
   struct MS56XX * const sensor = object;
 
-  sensor->stop = true;
+  atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_LOOP | FLAG_SAMPLE));
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -669,27 +693,24 @@ static bool msUpdate(void *object)
     switch (sensor->state)
     {
       case STATE_IDLE:
-        if (sensor->reset)
+      {
+        const uint8_t flags = atomicLoad(&sensor->flags);
+
+        if (flags & FLAG_RESET)
         {
-          sensor->reset = false;
           sensor->state = STATE_CAL_START;
           updated = true;
         }
-        else if (sensor->start)
+        else if (flags & (FLAG_LOOP | FLAG_SAMPLE))
         {
-          sensor->start = false;
-
-          if (sensor->calibrated)
+          if (flags & FLAG_READY)
           {
             sensor->state = STATE_P_START;
             updated = true;
           }
         }
-        else if (sensor->stop)
-        {
-          sensor->stop = false;
-        }
         break;
+      }
 
       case STATE_CAL_START:
         sensor->state = STATE_CAL_WRITE;
@@ -720,12 +741,22 @@ static bool msUpdate(void *object)
       case STATE_CAL_END:
         if (++sensor->parameter == ARRAY_SIZE(sensor->prom))
         {
-          sensor->calibrated = checkCrc4(sensor->prom);
+          const bool calibrated = checkCrc4(sensor->prom);
 
-          if (!sensor->calibrated && sensor->onErrorCallback)
+          if (!calibrated)
           {
-            sensor->onErrorCallback(sensor->callbackArgument,
-                SENSOR_CALIBRATION_ERROR);
+            atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_READY));
+
+            if (sensor->onErrorCallback)
+            {
+              sensor->onErrorCallback(sensor->callbackArgument,
+                  SENSOR_CALIBRATION_ERROR);
+            }
+          }
+          else
+          {
+            atomicFetchAnd(&sensor->flags, ~FLAG_RESET);
+            atomicFetchOr(&sensor->flags, FLAG_READY);
           }
 
           sensor->state = STATE_IDLE;
@@ -751,7 +782,7 @@ static bool msUpdate(void *object)
       case STATE_P_WAIT:
         break;
 
-      case STATE_P_WRITE:
+      case STATE_P_REQUEST:
         sensor->state = STATE_P_REQUEST_WAIT;
         startSampleRequest(sensor);
         busy = true;
@@ -784,7 +815,7 @@ static bool msUpdate(void *object)
       case STATE_T_WAIT:
         break;
 
-      case STATE_T_WRITE:
+      case STATE_T_REQUEST:
         sensor->state = STATE_T_REQUEST_WAIT;
         startSampleRequest(sensor);
         busy = true;
@@ -805,37 +836,28 @@ static bool msUpdate(void *object)
         break;
 
       case STATE_PROCESS:
-      case STATE_ERROR:
-        if (sensor->state == STATE_PROCESS)
-        {
-          calcPressure(sensor);
-        }
-        else if (sensor->onErrorCallback)
-        {
-          sensor->onErrorCallback(sensor->callbackArgument,
-              SENSOR_INTERFACE_ERROR);
-        }
+        calcPressure(sensor);
 
-        if (sensor->stop)
-        {
-          sensor->stop = false;
-          sensor->state = STATE_IDLE;
-        }
-        else if (sensor->reset)
-        {
-          sensor->reset = false;
-          sensor->start = true;
-          sensor->state = STATE_CAL_START;
-          updated = true;
-        }
-        else
-        {
-          sensor->state = STATE_P_START;
-          updated = true;
-        }
+        sensor->state = STATE_IDLE;
+        atomicFetchAnd(&sensor->flags, ~(FLAG_SAMPLE | FLAG_THERMO_SAMPLE));
+
+        updated = true;
         break;
 
       case STATE_ERROR_WAIT:
+        break;
+
+      case STATE_ERROR_INTERFACE:
+      case STATE_ERROR_TIMEOUT:
+        if (sensor->onErrorCallback)
+        {
+          sensor->onErrorCallback(sensor->callbackArgument,
+              sensor->state == STATE_ERROR_INTERFACE ?
+                  SENSOR_INTERFACE_ERROR : SENSOR_INTERFACE_TIMEOUT);
+        }
+
+        sensor->state = STATE_IDLE;
+        updated = true;
         break;
     }
   }
@@ -847,7 +869,13 @@ static bool msUpdate(void *object)
 struct MS56XXThermometer *ms56xxMakeThermometer(struct MS56XX *sensor)
 {
   if (!sensor->thermometer)
-    sensor->thermometer = init(MS56XXThermometer, 0);
+  {
+    const struct MS56XXThermometerConfig config = {
+        .parent = sensor
+    };
+
+    sensor->thermometer = init(MS56XXThermometer, &config);
+  }
 
   return sensor->thermometer;
 }
