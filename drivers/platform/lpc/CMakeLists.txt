@@ -3,29 +3,29 @@
 
 set(HAS_NXP_GPTIMER TRUE)
 
-if("${PLATFORM}" MATCHES "LPC17XX|LPC43XX")
+if(${PLATFORM} MATCHES "LPC17XX|LPC43XX")
     set(HAS_NXP_GPDMA TRUE)
 else()
     set(HAS_NXP_GPDMA FALSE)
 endif()
 
-if("${PLATFORM}" MATCHES "LPC11EXX|LPC13UXX|LPC17XX|LPC43XX")
+if(${PLATFORM} MATCHES "LPC11EXX|LPC13UXX|LPC17XX|LPC43XX")
     set(HAS_NXP_IRDA TRUE)
 else()
     set(HAS_NXP_IRDA FALSE)
 endif()
 
-if(${HAS_NXP_GPTIMER} AND ${HAS_NXP_IRDA})
+if(HAS_NXP_GPTIMER AND HAS_NXP_IRDA)
     list(APPEND SOURCE_FILES "irda.c")
     list(APPEND SOURCE_FILES "irda_timer.c")
 endif()
 
-if(${HAS_NXP_GPTIMER})
+if(HAS_NXP_GPTIMER)
     list(APPEND SOURCE_FILES "memory_bus_gpio.c")
     list(APPEND SOURCE_FILES "memory_bus_gpio_timer.c")
 endif()
 
-if(${HAS_NXP_GPTIMER} AND ${HAS_NXP_GPDMA})
+if(HAS_NXP_GPTIMER AND HAS_NXP_GPDMA)
     list(APPEND SOURCE_FILES "memory_bus_dma.c")
     list(APPEND SOURCE_FILES "memory_bus_dma_finalizer.c")
     list(APPEND SOURCE_FILES "memory_bus_dma_timer.c")

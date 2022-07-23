@@ -19,7 +19,7 @@ if(halm_FOUND)
     message(STATUS "Found halm package")
 endif()
 
-if(${USE_LTO})
+if(USE_LTO)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
     if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
         set(CMAKE_C_COMPILE_OPTIONS_IPO -flto -ffat-lto-objects)

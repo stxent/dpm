@@ -7,7 +7,7 @@ if(${PLATFORM} STREQUAL "STM32F1XX")
     list(APPEND SOURCE_FILES "gen_1/irda.c")
 endif()
 
-if(${HAS_STM32_GPTIMER})
+if(HAS_STM32_GPTIMER)
     list(APPEND SOURCE_FILES "memory_bus_gpio.c")
     list(APPEND SOURCE_FILES "memory_bus_gpio_timer.c")
 endif()
