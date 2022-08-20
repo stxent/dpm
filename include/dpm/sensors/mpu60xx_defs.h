@@ -119,16 +119,16 @@ enum
 /*------------------Accelerometer Configuration register----------------------*/
 enum
 {
-  ACCEL_FS_SEL_2 = 0,
-  ACCEL_FS_SEL_4,
-  ACCEL_FS_SEL_8,
-  ACCEL_FS_SEL_16
+  ACCEL_AFS_SEL_2 = 0,
+  ACCEL_AFS_SEL_4,
+  ACCEL_AFS_SEL_8,
+  ACCEL_AFS_SEL_16
 };
 
-#define ACCEL_CONFIG_FS_SEL(value)      BIT_FIELD((value), 3)
-#define ACCEL_CONFIG_FS_SEL_MASK        BIT_FIELD(MASK(2), 3)
-#define ACCEL_CONFIG_FS_SEL_VALUE(reg) \
-    FIELD_VALUE((reg), ACCEL_CONFIG_FS_SEL_MASK, 3)
+#define ACCEL_CONFIG_AFS_SEL(value)     BIT_FIELD((value), 3)
+#define ACCEL_CONFIG_AFS_SEL_MASK       BIT_FIELD(MASK(2), 3)
+#define ACCEL_CONFIG_AFS_SEL_VALUE(reg) \
+    FIELD_VALUE((reg), ACCEL_CONFIG_AFS_SEL_MASK, 3)
 
 #define ACCEL_CONFIG_ZA_ST              BIT(5)
 #define ACCEL_CONFIG_YA_ST              BIT(6)

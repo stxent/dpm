@@ -458,36 +458,38 @@ static inline uint8_t oversamplingToMode(const struct MS56XX *sensor)
 /*----------------------------------------------------------------------------*/
 static uint32_t oversamplingToTime(const struct MS56XX *sensor)
 {
-  static const uint32_t DIVISOR = 100000;
+  const uint32_t frequency = timerGetFrequency(sensor->timer);
+  uint64_t overflow;
 
-  const uint64_t frequency = (uint64_t)timerGetFrequency(sensor->timer);
-  uint32_t overflow;
-
-  /* TODO Optimize */
   switch (sensor->oversampling)
   {
     case MS56XX_OVERSAMPLING_256:
-      overflow = (frequency * 60 + (DIVISOR - 1)) / DIVISOR;
+      /* 0.6 ms */
+      overflow = frequency * (60 * (1ULL << 32) / 100000);
       break;
 
     case MS56XX_OVERSAMPLING_512:
-      overflow = (frequency * 117 + (DIVISOR - 1)) / DIVISOR;
+      /* 1.17 ms */
+      overflow = frequency * (117 * (1ULL << 32) / 100000);
       break;
 
     case MS56XX_OVERSAMPLING_1024:
-      overflow = (frequency * 228 + (DIVISOR - 1)) / DIVISOR;
+      /* 2.28 ms */
+      overflow = frequency * (228 * (1ULL << 32) / 100000);
       break;
 
     case MS56XX_OVERSAMPLING_2048:
-      overflow = (frequency * 454 + (DIVISOR - 1)) / DIVISOR;
+      /* 4.54 ms */
+      overflow = frequency * (454 * (1ULL << 32) / 100000);
       break;
 
     default:
-      overflow = (frequency * 904 + (DIVISOR - 1)) / DIVISOR;
+      /* 9.04 ms */
+      overflow = frequency * (904 * (1ULL << 32) / 100000);
       break;
   }
 
-  return overflow;
+  return (overflow + ((1ULL << 32) - 1)) >> 32;
 }
 /*----------------------------------------------------------------------------*/
 static void startPressureConversion(struct MS56XX *sensor)

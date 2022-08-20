@@ -244,66 +244,64 @@ static uint8_t resolutionToConfig(const struct SHT2X *sensor)
 /*----------------------------------------------------------------------------*/
 static uint32_t resolutionToHumidityTime(const struct SHT2X *sensor)
 {
-  /* TODO Optimize */
-  const uint64_t frequency = (uint64_t)timerGetFrequency(sensor->timer);
-  uint32_t overflow;
+  const uint32_t frequency = timerGetFrequency(sensor->timer);
+  uint64_t overflow;
 
   switch (sensor->resolution)
   {
     case SHT2X_RESOLUTION_8BIT:
       /* 4 ms */
-      overflow = (frequency + 249) / 250;
+      overflow = frequency * (4 * (1ULL << 32) / 1000);
       break;
 
     case SHT2X_RESOLUTION_10BIT:
       /* 9 ms */
-      overflow = (frequency * 9 + 999) / 1000;
+      overflow = frequency * (9 * (1ULL << 32) / 1000);
       break;
 
     case SHT2X_RESOLUTION_11BIT:
       /* 15 ms */
-      overflow = (frequency * 15 + 999) / 1000;
+      overflow = frequency * (15 * (1ULL << 32) / 1000);
       break;
 
     default:
       /* Default overflow period is 29 ms */
-      overflow = (frequency * 29 + 999) / 1000;
+      overflow = frequency * (29 * (1ULL << 32) / 1000);
       break;
   }
 
-  return overflow;
+  return (overflow + ((1ULL << 32) - 1)) >> 32;
 }
 /*----------------------------------------------------------------------------*/
 static uint32_t resolutionToTemperatureTime(const struct SHT2X *sensor)
 {
-  /* TODO Optimize */
-  const uint64_t frequency = (uint64_t)timerGetFrequency(sensor->timer);
-  uint32_t overflow;
+  const uint32_t frequency = timerGetFrequency(sensor->timer);
+  uint64_t overflow;
 
   switch (sensor->resolution)
   {
     case SHT2X_RESOLUTION_8BIT:
       /* Temperature resolution is 12 bit: 22 ms */
-      overflow = (frequency * 22 + 999) / 1000;
+      overflow = frequency * (22 * (1ULL << 32) / 1000);
       break;
 
     case SHT2X_RESOLUTION_10BIT:
       /* Temperature resolution is 13 bit: 43 ms */
-      overflow = (frequency * 43 + 999) / 1000;
+      overflow = frequency * (43 * (1ULL << 32) / 1000);
       break;
 
     case SHT2X_RESOLUTION_11BIT:
       /* Temperature resolution is 11 bit: 11 ms */
-      overflow = (frequency * 11 + 999) / 1000;
+      overflow = frequency * (11 * (1ULL << 32) / 1000);
       break;
 
     default:
       /* Default temperature resolution is 14 bit: 85 ms */
-      overflow = (frequency * 85 + 999) / 1000;
+      overflow = frequency * (85 * (1ULL << 32) / 1000);
       break;
   }
 
-  return overflow;
+  return (overflow + ((1ULL << 32) - 1)) >> 32;
 }
 /*----------------------------------------------------------------------------*/
 static void startConfigWrite(struct SHT2X *sensor)

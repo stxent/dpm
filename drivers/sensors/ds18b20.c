@@ -197,32 +197,32 @@ static inline uint8_t resolutionToConfig(const struct DS18B20 *sensor)
 static inline uint32_t resolutionToTime(const struct DS18B20 *sensor)
 {
   const uint32_t frequency = timerGetFrequency(sensor->timer);
-  uint32_t overflow = (frequency * 3 + 3) / 4;
+  uint64_t overflow;
 
   switch (sensor->resolution)
   {
     case DS18B20_RESOLUTION_9BIT:
       /* 93.75 ms */
-      overflow = (overflow + 1) >> 1;
-      /* Falls through */
+      overflow = frequency * ((9375 * (1ULL << 32)) / 100000);
+      break;
 
     case DS18B20_RESOLUTION_10BIT:
       /* 187.5 ms */
-      overflow = (overflow + 1) >> 1;
-      /* Falls through */
+      overflow = frequency * ((18750 * (1ULL << 32)) / 100000);
+      break;
 
     case DS18B20_RESOLUTION_11BIT:
       /* 375 ms */
-      overflow = (overflow + 1) >> 1;
-      /* Falls through */
+      overflow = frequency * ((37500 * (1ULL << 32)) / 100000);
       break;
 
     default:
       /* Default overflow period is 750 ms */
+      overflow = frequency * ((75000 * (1ULL << 32)) / 100000);
       break;
   }
 
-  return overflow;
+  return (overflow + ((1ULL << 32) - 1)) >> 32;
 }
 /*----------------------------------------------------------------------------*/
 static void startConfigWrite(struct DS18B20 *sensor)

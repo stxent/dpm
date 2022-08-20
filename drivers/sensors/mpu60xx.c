@@ -25,12 +25,12 @@ enum ConfigState
   CONFIG_SIGNAL_PATH_RESET,
   CONFIG_USER_CTRL,
   CONFIG_STARTUP_WAIT,
+  CONFIG_PWR_MGMT_WAKEUP,
   CONFIG_GYRO,
   CONFIG_ACCEL,
-  CONFIG_INT_PIN,
-  CONFIG_PWR_MGMT_WAKEUP,
   CONFIG_BANDWIDTH,
   CONFIG_RATE,
+  CONFIG_INT_PIN,
   CONFIG_INT_ENABLE,
   CONFIG_READY_WAIT,
   CONFIG_END
@@ -70,6 +70,7 @@ static inline uint8_t makeAccelConfig(const struct MPU60XX *);
 static inline int32_t makeAccelMul(const struct MPU60XX *);
 static inline uint8_t makeGyroConfig(const struct MPU60XX *);
 static inline int32_t makeGyroDiv(const struct MPU60XX *);
+static inline int32_t makeGyroMul(void);
 static void onBusEvent(void *);
 static void onPinEvent(void *);
 static void onTimerEvent(void *);
@@ -150,14 +151,15 @@ static void calcValues(struct MPU60XX *sensor)
   if (flags & (FLAG_GYRO_LOOP | FLAG_GYRO_SAMPLE))
   {
     const int32_t div = makeGyroDiv(sensor);
+    const int32_t mul = makeGyroMul();
 
     int16_t raw[3];
     int32_t result[3];
 
     fetchGyroSample(sensor, raw);
-    result[0] = (int32_t)raw[0] * 65536 / div;
-    result[1] = (int32_t)raw[1] * 65536 / div;
-    result[2] = (int32_t)raw[2] * 65536 / div;
+    result[0] = (int32_t)raw[0] * mul / div;
+    result[1] = (int32_t)raw[1] * mul / div;
+    result[2] = (int32_t)raw[2] * mul / div;
 
     sensor->gyroscope->onResultCallback(
         sensor->gyroscope->callbackArgument, result, sizeof(result));
@@ -198,25 +200,12 @@ static int16_t fetchThermoSample(const struct MPU60XX *sensor)
 /*----------------------------------------------------------------------------*/
 static inline uint8_t makeAccelConfig(const struct MPU60XX *sensor)
 {
-  return ACCEL_CONFIG_FS_SEL(sensor->accelScale - 1);
+  return ACCEL_CONFIG_AFS_SEL(sensor->accelScale - 1);
 }
 /*----------------------------------------------------------------------------*/
 static inline int32_t makeAccelMul(const struct MPU60XX *sensor)
 {
-  switch (sensor->accelScale)
-  {
-    case MPU60XX_ACCEL_2:
-      return 256;
-
-    case MPU60XX_ACCEL_4:
-      return 128;
-
-    case MPU60XX_ACCEL_8:
-      return 64;
-
-    default:
-      return 32;
-  }
+  return 256 >> (sensor->accelScale - 1);
 }
 /*----------------------------------------------------------------------------*/
 static inline uint8_t makeGyroConfig(const struct MPU60XX *sensor)
@@ -226,20 +215,12 @@ static inline uint8_t makeGyroConfig(const struct MPU60XX *sensor)
 /*----------------------------------------------------------------------------*/
 static inline int32_t makeGyroDiv(const struct MPU60XX *sensor)
 {
-  switch (sensor->gyroScale)
-  {
-    case MPU60XX_GYRO_250:
-      return 250;
-
-    case MPU60XX_GYRO_500:
-      return 500;
-
-    case MPU60XX_GYRO_1000:
-      return 1000;
-
-    default:
-      return 2000;
-  }
+  return 4096 >> (sensor->gyroScale - 1);
+}
+/*----------------------------------------------------------------------------*/
+static inline int32_t makeGyroMul(void)
+{
+  return 35744;
 }
 /*----------------------------------------------------------------------------*/
 static void onBusEvent(void *object)
@@ -386,6 +367,11 @@ static bool startConfigUpdate(struct MPU60XX *sensor, bool *busy)
           | (sensor->address ? 0 : USER_CTRL_I2C_IF_DIS);
       break;
 
+    case CONFIG_PWR_MGMT_WAKEUP:
+      sensor->buffer[0] = REG_PWR_MGMT_1;
+      sensor->buffer[1] = PWR_MGMT_1_CLKSEL(CLKSEL_XG);
+      break;
+
     case CONFIG_GYRO:
       sensor->buffer[0] = REG_GYRO_CONFIG;
       sensor->buffer[1] = makeGyroConfig(sensor);
@@ -394,16 +380,6 @@ static bool startConfigUpdate(struct MPU60XX *sensor, bool *busy)
     case CONFIG_ACCEL:
       sensor->buffer[0] = REG_ACCEL_CONFIG;
       sensor->buffer[1] = makeAccelConfig(sensor);
-      break;
-
-    case CONFIG_INT_PIN:
-      sensor->buffer[0] = REG_INT_PIN_CFG;
-      sensor->buffer[1] = 0;
-      break;
-
-    case CONFIG_PWR_MGMT_WAKEUP:
-      sensor->buffer[0] = REG_PWR_MGMT_1;
-      sensor->buffer[1] = PWR_MGMT_1_CLKSEL(CLKSEL_XG);
       break;
 
     case CONFIG_BANDWIDTH:
@@ -416,6 +392,11 @@ static bool startConfigUpdate(struct MPU60XX *sensor, bool *busy)
       /* Sample rate should be configured after clearing sleep bit */
       sensor->buffer[0] = REG_SMPLRT_DIV;
       sensor->buffer[1] = 1000 / sensor->sampleRate - 1;
+      break;
+
+    case CONFIG_INT_PIN:
+      sensor->buffer[0] = REG_INT_PIN_CFG;
+      sensor->buffer[1] = 0;
       break;
 
     case CONFIG_INT_ENABLE:
