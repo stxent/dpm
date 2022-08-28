@@ -261,6 +261,7 @@ static void onBusEvent(void *object)
   if (!sensor->address)
     pinSet(sensor->gpio);
 
+  ifSetCallback(sensor->bus, 0, 0);
   ifSetParam(sensor->bus, IF_RELEASE, 0);
   proxy->onUpdateCallback(proxy->callbackArgument);
 }
@@ -290,8 +291,11 @@ static void onTimerEvent(void *object)
       break;
 
     default:
-      if (sensor->address)
-        ifSetParam(sensor->bus, IF_RELEASE, 0);
+      if (!sensor->address)
+        pinSet(sensor->gpio);
+
+      ifSetCallback(sensor->bus, 0, 0);
+      ifSetParam(sensor->bus, IF_RELEASE, 0);
       sensor->state = STATE_ERROR_TIMEOUT;
       break;
   }

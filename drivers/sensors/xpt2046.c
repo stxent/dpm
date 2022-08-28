@@ -111,6 +111,7 @@ static void onBusEvent(void *object)
   struct XPT2046 * const sensor = object;
 
   pinSet(sensor->cs);
+  ifSetCallback(sensor->bus, 0, 0);
   ifSetParam(sensor->bus, IF_RELEASE, 0);
 
   sensor->state = STATE_PROCESS;

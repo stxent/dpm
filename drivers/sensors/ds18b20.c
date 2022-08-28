@@ -156,7 +156,10 @@ static void onBusEvent(void *object)
   }
 
   if (release)
+  {
+    ifSetCallback(sensor->bus, 0, 0);
     ifSetParam(sensor->bus, IF_RELEASE, 0);
+  }
 
   sensor->onUpdateCallback(sensor->callbackArgument);
 }

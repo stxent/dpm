@@ -186,6 +186,7 @@ static void onBusEvent(void *object)
     timerEnable(sensor->timer);
   }
 
+  ifSetCallback(sensor->bus, 0, 0);
   ifSetParam(sensor->bus, IF_RELEASE, 0);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
@@ -209,6 +210,7 @@ static void onTimerEvent(void *object)
       break;
 
     default:
+      ifSetCallback(sensor->bus, 0, 0);
       ifSetParam(sensor->bus, IF_RELEASE, 0);
       sensor->state = STATE_ERROR_TIMEOUT;
       break;
