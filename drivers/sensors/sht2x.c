@@ -325,6 +325,7 @@ static void startHumidityConversion(struct SHT2X *sensor)
 /*----------------------------------------------------------------------------*/
 static void startSampleRead(struct SHT2X *sensor)
 {
+  busInit(sensor);
   ifRead(sensor->bus, sensor->buffer, sizeof(sensor->buffer));
 }
 /*----------------------------------------------------------------------------*/

@@ -40,7 +40,7 @@ enum
 /*----------------------------------------------------------------------------*/
 static void busInit(struct DS18B20 *);
 static void calcTemperature(void *);
-static int16_t makeSampleValue(struct DS18B20 *);
+static int32_t makeSampleValue(struct DS18B20 *);
 static void onBusEvent(void *);
 static void onTimerEvent(void *);
 static inline uint8_t resolutionToConfig(const struct DS18B20 *);
@@ -106,7 +106,7 @@ static void calcTemperature(void *object)
 
   if (checksum == sensor->scratchpad[8])
   {
-    const int16_t result = makeSampleValue(sensor);
+    const int32_t result = makeSampleValue(sensor);
     sensor->onResultCallback(sensor->callbackArgument, &result, sizeof(result));
   }
   else
@@ -116,13 +116,13 @@ static void calcTemperature(void *object)
   }
 }
 /*----------------------------------------------------------------------------*/
-static int16_t makeSampleValue(struct DS18B20 *sensor)
+static int32_t makeSampleValue(struct DS18B20 *sensor)
 {
   /* Process received buffer */
   const uint8_t * const buffer = sensor->scratchpad;
   const uint16_t value = (buffer[1] << 8) | buffer[0];
 
-  return (int16_t)value;
+  return (int32_t)((int16_t)value * 16);
 }
 /*----------------------------------------------------------------------------*/
 static void onBusEvent(void *object)
@@ -299,7 +299,7 @@ static void dsDeinit(void *object)
 /*----------------------------------------------------------------------------*/
 static const char *dsGetFormat(const void *object __attribute__((unused)))
 {
-  return "i12q4";
+  return "i24q8";
 }
 /*----------------------------------------------------------------------------*/
 static enum SensorStatus dsGetStatus(const void *object)
