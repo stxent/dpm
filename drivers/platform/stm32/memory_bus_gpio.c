@@ -46,7 +46,7 @@ static void interruptHandler(void *object)
   }
   else
   {
-    interface->active = false;
+    interface->busy = false;
 
     if (interface->callback)
       interface->callback(interface->callbackArgument);
@@ -73,8 +73,8 @@ static enum Result busInit(void *object, const void *configPtr)
     return E_ERROR;
   timerSetCallback(interface->timer, interruptHandler, interface);
 
-  interface->active = false;
   interface->blocking = true;
+  interface->busy = false;
   interface->bus = config->bus;
   interface->callback = 0;
 
@@ -105,7 +105,7 @@ static enum Result busGetParam(void *object, int parameter,
   switch ((enum IfParameter)parameter)
   {
     case IF_STATUS:
-      return interface->active ? E_BUSY : E_OK;
+      return interface->busy ? E_BUSY : E_OK;
 
     default:
       return E_ERROR;
@@ -146,7 +146,7 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
   {
     struct MemoryBusGpio * const interface = object;
 
-    interface->active = true;
+    interface->busy = true;
     interface->buffer = buffer;
     interface->left = length;
 
@@ -154,7 +154,7 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
 
     if (interface->blocking)
     {
-      while (interface->active)
+      while (interface->busy)
         barrier();
     }
   }

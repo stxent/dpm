@@ -16,7 +16,7 @@ static void setupChannels(struct MemoryBusDmaTimer *, uint8_t, PinNumber,
 static enum Result tmrClockInit(void *, const void *);
 static enum Result tmrControlInit(void *, const void *);
 static void tmrDeinit(void *);
-static void tmrCallback(void *, void (*)(void *), void *);
+static void tmrSetCallback(void *, void (*)(void *), void *);
 static void tmrEnable(void *);
 static void tmrDisable(void *);
 static void tmrClockSetOverflow(void *, uint32_t);
@@ -31,7 +31,7 @@ const struct TimerClass * const MemoryBusDmaClock =
     .enable = tmrEnable,
     .disable = tmrDisable,
     .setAutostop = 0,
-    .setCallback = tmrCallback,
+    .setCallback = tmrSetCallback,
     .getFrequency = 0,
     .setFrequency = 0,
     .getOverflow = 0,
@@ -96,14 +96,14 @@ static void setupChannels(struct MemoryBusDmaTimer *timer,
 static enum Result tmrClockInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaClockConfig * const config = configPtr;
-  const struct GpTimerBaseConfig parentConfig = {
+  const struct GpTimerBaseConfig baseConfig = {
       .channel = config->channel
   };
   struct MemoryBusDmaTimer * const timer = object;
   enum Result res;
 
   /* Call base class constructor */
-  if ((res = GpTimerBase->init(object, &parentConfig)) != E_OK)
+  if ((res = GpTimerBase->init(object, &baseConfig)) != E_OK)
     return res;
 
   /* Configure timer channels */
@@ -142,7 +142,7 @@ static enum Result tmrClockInit(void *object, const void *configPtr)
 static enum Result tmrControlInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaControlConfig * const config = configPtr;
-  const struct GpTimerBaseConfig parentConfig = {
+  const struct GpTimerBaseConfig baseConfig = {
       .channel = config->channel
   };
   struct MemoryBusDmaTimer * const timer = object;
@@ -153,7 +153,7 @@ static enum Result tmrControlInit(void *object, const void *configPtr)
   const uint32_t captureControl = CTCR_INPUT(captureChannel) | MODE_TOGGLE;
 
   /* Call base class constructor */
-  if ((res = GpTimerBase->init(object, &parentConfig)) != E_OK)
+  if ((res = GpTimerBase->init(object, &baseConfig)) != E_OK)
     return res;
 
   /* Configure timer channels */
@@ -194,7 +194,8 @@ static void tmrDeinit(void *object)
   GpTimerBase->deinit(timer);
 }
 /*----------------------------------------------------------------------------*/
-static void tmrCallback(void *object, void (*callback)(void *), void *argument)
+static void tmrSetCallback(void *object, void (*callback)(void *),
+    void *argument)
 {
   struct MemoryBusDmaTimer * const timer = object;
 

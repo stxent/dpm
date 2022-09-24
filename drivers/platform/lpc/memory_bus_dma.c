@@ -43,7 +43,7 @@ static void interruptHandler(void *object)
 {
   struct MemoryBusDma * const interface = object;
 
-  interface->active = false;
+  interface->busy = false;
 
   if (interface->callback)
     interface->callback(interface->callbackArgument);
@@ -190,8 +190,8 @@ static enum Result busInit(void *object, const void *configPtr)
   {
     timerSetCallback(interface->clock, interruptHandler, interface);
 
-    interface->active = false;
     interface->blocking = true;
+    interface->busy = false;
     interface->callback = 0;
 
     return E_OK;
@@ -226,7 +226,7 @@ static enum Result busGetParam(void *object, int parameter, void *data)
   switch ((enum IfParameter)parameter)
   {
     case IF_STATUS:
-      return interface->active ? E_BUSY : E_OK;
+      return interface->busy ? E_BUSY : E_OK;
 
     case IF_WIDTH:
       *(size_t *)data = 1 << (interface->width + 3);
@@ -272,7 +272,7 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
   if (!samples)
     return 0;
 
-  interface->active = true;
+  interface->busy = true;
 
   /* Configure and start control timer */
   timerSetOverflow(interface->control, samples + 1);
@@ -306,7 +306,7 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
 
   if (interface->blocking)
   {
-    while (interface->active)
+    while (interface->busy)
       barrier();
 
     if (dmaStatus(interface->dma) != E_OK)

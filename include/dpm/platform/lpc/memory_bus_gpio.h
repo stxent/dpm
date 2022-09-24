@@ -46,10 +46,10 @@ struct MemoryBusGpio
   const uint8_t *buffer;
   /* Number of bytes to be transmitted */
   uint32_t left;
-  /* Transmission is currently active */
-  bool active;
   /* Selection between blocking mode and zero copy mode */
   bool blocking;
+  /* Interface is busy transmitting data */
+  bool busy;
 };
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_PLATFORM_LPC_MEMORY_BUS_GPIO_H_ */

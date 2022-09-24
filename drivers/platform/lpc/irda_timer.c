@@ -66,7 +66,7 @@ static void setupChannels(struct IrdaTimer *timer)
 static enum Result tmrInit(void *object, const void *configPtr)
 {
   const struct IrdaTimerConfig * const config = configPtr;
-  const struct GpTimerBaseConfig parentConfig = {
+  const struct GpTimerBaseConfig baseConfig = {
       .channel = config->channel
   };
   struct IrdaTimer * const timer = object;
@@ -75,7 +75,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
   assert(config->frequency);
 
   /* Call base class constructor */
-  if ((res = GpTimerBase->init(object, &parentConfig)) != E_OK)
+  if ((res = GpTimerBase->init(object, &baseConfig)) != E_OK)
     return res;
 
   timer->base.handler = interruptHandler;

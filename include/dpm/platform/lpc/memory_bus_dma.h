@@ -75,10 +75,10 @@ struct MemoryBusDma
 
   /* Bus width in power of two */
   uint8_t width;
-  /* Transmission is currently active */
-  bool active;
   /* Selection between blocking mode and zero copy mode */
   bool blocking;
+  /* Transmission is currently active */
+  bool busy;
 };
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_PLATFORM_LPC_MEMORY_BUS_DMA_H_ */

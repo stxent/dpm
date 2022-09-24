@@ -69,7 +69,7 @@ static void setupChannels(struct MemoryBusGpioTimer *timer, uint8_t channel,
 static enum Result tmrInit(void *object, const void *configPtr)
 {
   const struct MemoryBusGpioTimerConfig * const config = configPtr;
-  const struct GpTimerBaseConfig parentConfig = {
+  const struct GpTimerBaseConfig baseConfig = {
       .channel = config->channel
   };
   struct MemoryBusGpioTimer * const timer = object;
@@ -78,7 +78,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
   assert(config->frequency);
 
   /* Call base class constructor */
-  if ((res = GpTimerBase->init(object, &parentConfig)) != E_OK)
+  if ((res = GpTimerBase->init(object, &baseConfig)) != E_OK)
     return res;
 
   timer->base.handler = interruptHandler;
