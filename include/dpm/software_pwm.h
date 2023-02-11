@@ -12,7 +12,7 @@
 #include <halm/timer.h>
 #include <stdbool.h>
 /*----------------------------------------------------------------------------*/
-extern const struct EntityClass * const SoftwarePwmUnit;
+extern const struct TimerClass * const SoftwarePwmUnit;
 
 struct SoftwarePwmUnitConfig
 {

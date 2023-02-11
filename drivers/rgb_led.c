@@ -23,7 +23,7 @@ static enum Result ledInit(void *object, const void *configBase)
   led->channels[0] = config->red;
   led->channels[1] = config->green;
   led->channels[2] = config->blue;
-  led->resolution = pwmGetResolution(led->channels[0]);
+  led->resolution = config->resolution;
 
   return E_OK;
 }
@@ -66,4 +66,12 @@ void rgbLedSet(struct RgbLed *led, uint16_t hue, uint8_t saturation,
   pwmSetDuration(led->channels[0], values[0]);
   pwmSetDuration(led->channels[1], values[1]);
   pwmSetDuration(led->channels[2], values[2]);
+}
+/*----------------------------------------------------------------------------*/
+void rgbLedSetRGB(struct RgbLed *led, uint8_t red, uint8_t green,
+    uint8_t blue)
+{
+  pwmSetDuration(led->channels[0], red);
+  pwmSetDuration(led->channels[1], green);
+  pwmSetDuration(led->channels[2], blue);
 }

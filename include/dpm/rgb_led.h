@@ -19,6 +19,8 @@ struct RgbLedConfig
   struct Pwm *green;
   /** Mandatory: blue channel. */
   struct Pwm *blue;
+  /** Mandatory: PWM resolution. */
+  uint32_t resolution;
 };
 
 struct RgbLed
@@ -27,13 +29,14 @@ struct RgbLed
 
   /* Color channels */
   struct Pwm *channels[3];
-  /* Signal resolution */
-  uint16_t resolution;
+  /* PWM resolution */
+  uint32_t resolution;
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS
 
-void rgbLedSet(struct RgbLed *, uint16_t, uint8_t, uint8_t);
+void rgbLedSetHSV(struct RgbLed *, uint16_t, uint8_t, uint8_t);
+void rgbLedSetRGB(struct RgbLed *, uint8_t, uint8_t, uint8_t);
 
 END_DECLS
 /*----------------------------------------------------------------------------*/

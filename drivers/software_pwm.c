@@ -12,24 +12,38 @@
 #define FREQUENCY_MULTIPLIER 2
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
-static void updateFrequency(struct SoftwarePwmUnit *, uint32_t);
 /*----------------------------------------------------------------------------*/
 static enum Result unitInit(void *, const void *);
 static void unitDeinit(void *);
+static void unitEnable(void *);
+static void unitDisable(void *);
+static uint32_t unitGetFrequency(const void *);
+static void unitSetFrequency(void *, uint32_t);
+static uint32_t unitGetOverflow(const void *);
+static void unitSetOverflow(void *, uint32_t);
 /*----------------------------------------------------------------------------*/
 static enum Result channelInit(void *, const void *);
 static void channelDeinit(void *);
 static void channelEnable(void *);
 static void channelDisable(void *);
-static uint32_t channelGetResolution(const void *);
 static void channelSetDuration(void *, uint32_t);
 static void channelSetEdges(void *, uint32_t, uint32_t);
-static void channelSetFrequency(void *, uint32_t);
 /*----------------------------------------------------------------------------*/
-const struct EntityClass * const SoftwarePwmUnit = &(const struct EntityClass){
+const struct TimerClass * const SoftwarePwmUnit = &(const struct TimerClass){
     .size = sizeof(struct SoftwarePwmUnit),
     .init = unitInit,
-    .deinit = unitDeinit
+    .deinit = unitDeinit,
+
+    .enable = unitEnable,
+    .disable = unitDisable,
+    .setAutostop = 0,
+    .setCallback = 0,
+    .getFrequency = unitGetFrequency,
+    .setFrequency = unitSetFrequency,
+    .getOverflow = unitGetOverflow,
+    .setOverflow = unitSetOverflow,
+    .getValue = 0,
+    .setValue = 0
 };
 
 const struct PwmClass * const SoftwarePwm = &(const struct PwmClass){
@@ -39,10 +53,8 @@ const struct PwmClass * const SoftwarePwm = &(const struct PwmClass){
 
     .enable = channelEnable,
     .disable = channelDisable,
-    .getResolution = channelGetResolution,
     .setDuration = channelSetDuration,
-    .setEdges = channelSetEdges,
-    .setFrequency = channelSetFrequency
+    .setEdges = channelSetEdges
 };
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
@@ -63,12 +75,6 @@ static void interruptHandler(void *object)
   }
 }
 /*----------------------------------------------------------------------------*/
-static void updateFrequency(struct SoftwarePwmUnit *unit, uint32_t frequency)
-{
-  timerSetFrequency(unit->timer,
-      FREQUENCY_MULTIPLIER * frequency * unit->resolution);
-}
-/*----------------------------------------------------------------------------*/
 static enum Result unitInit(void *object, const void *configBase)
 {
   const struct SoftwarePwmUnitConfig * const config = configBase;
@@ -80,9 +86,9 @@ static enum Result unitInit(void *object, const void *configBase)
   unit->resolution = config->resolution;
   unit->timer = config->timer;
 
-  updateFrequency(unit, config->frequency);
-  timerSetOverflow(unit->timer, FREQUENCY_MULTIPLIER);
   timerSetCallback(unit->timer, interruptHandler, unit);
+  timerSetFrequency(unit->timer, FREQUENCY_MULTIPLIER * config->frequency);
+  timerSetOverflow(unit->timer, FREQUENCY_MULTIPLIER);
   timerEnable(unit->timer);
 
   return E_OK;
@@ -95,6 +101,42 @@ static void unitDeinit(void *object)
   timerDisable(unit->timer);
   timerSetCallback(unit->timer, 0, 0);
   pointerListDeinit(&unit->channels);
+}
+/*----------------------------------------------------------------------------*/
+static void unitEnable(void *object)
+{
+  struct SoftwarePwmUnit * const unit = object;
+  timerEnable(unit->timer);
+}
+/*----------------------------------------------------------------------------*/
+static void unitDisable(void *object)
+{
+  struct SoftwarePwmUnit * const unit = object;
+  timerDisable(unit->timer);
+}
+/*----------------------------------------------------------------------------*/
+static uint32_t unitGetFrequency(const void *object)
+{
+  const struct SoftwarePwmUnit * const unit = object;
+  return timerGetFrequency(unit->timer) / FREQUENCY_MULTIPLIER;
+}
+/*----------------------------------------------------------------------------*/
+static void unitSetFrequency(void *object, uint32_t frequency)
+{
+  struct SoftwarePwmUnit * const unit = object;
+  timerSetFrequency(unit->timer, frequency * FREQUENCY_MULTIPLIER);
+}
+/*----------------------------------------------------------------------------*/
+static uint32_t unitGetOverflow(const void *object)
+{
+  const struct SoftwarePwmUnit * const unit = object;
+  return unit->resolution;
+}
+/*----------------------------------------------------------------------------*/
+static void unitSetOverflow(void *object, uint32_t overflow)
+{
+  struct SoftwarePwmUnit * const unit = object;
+  unit->resolution = overflow;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result channelInit(void *object, const void *configBase)
@@ -140,12 +182,6 @@ static void channelDisable(void *object)
   pwm->enabled = false;
 }
 /*----------------------------------------------------------------------------*/
-static uint32_t channelGetResolution(const void *object)
-{
-  const struct SoftwarePwm * const pwm = object;
-  return pwm->unit->resolution;
-}
-/*----------------------------------------------------------------------------*/
 static void channelSetDuration(void *object, uint32_t duration)
 {
   struct SoftwarePwm * const pwm = object;
@@ -159,12 +195,6 @@ static void channelSetEdges(void *object,
 {
   assert(leading == 0);
   channelSetDuration(object, trailing);
-}
-/*----------------------------------------------------------------------------*/
-static void channelSetFrequency(void *object, uint32_t frequency)
-{
-  struct SoftwarePwm * const pwm = object;
-  updateFrequency(pwm->unit, frequency);
 }
 /*----------------------------------------------------------------------------*/
 /**
