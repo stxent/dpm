@@ -64,7 +64,7 @@ static void bridgeReset(struct DfuBridge *loader)
   loader->currentPosition = loader->flashOffset;
   loader->erasingPosition = 0;
   loader->eraseQueued = false;
-  memset(loader->chunk, 0xFF, loader->pageSize);
+  memset(loader->chunk, 0xFF, loader->chunkSize);
 }
 /*----------------------------------------------------------------------------*/
 static void flashProgramTask(void *argument)
@@ -120,7 +120,7 @@ static size_t onDownloadRequest(void *object, size_t position,
 
   do
   {
-    if (!length || loader->bufferSize == loader->pageSize)
+    if (!length || loader->bufferSize == loader->chunkSize)
     {
       const enum Result res = ifSetParam(loader->flash, IF_POSITION,
           &loader->currentPosition);
@@ -129,14 +129,14 @@ static size_t onDownloadRequest(void *object, size_t position,
         return 0;
 
       const size_t written = ifWrite(loader->flash, loader->chunk,
-          loader->pageSize);
+          loader->chunkSize);
 
-      if (written != loader->pageSize)
+      if (written != loader->chunkSize)
         return 0;
 
       loader->currentPosition += loader->bufferSize;
       loader->bufferSize = 0;
-      memset(loader->chunk, 0xFF, loader->pageSize);
+      memset(loader->chunk, 0xFF, loader->chunkSize);
 
       if (isSectorAddress(loader, loader->currentPosition))
       {
@@ -147,8 +147,8 @@ static size_t onDownloadRequest(void *object, size_t position,
       }
     }
 
-    const size_t chunkSize = length <= loader->pageSize - loader->bufferSize ?
-        length : loader->pageSize - loader->bufferSize;
+    const size_t chunkSize = length <= loader->chunkSize - loader->bufferSize ?
+        length : loader->chunkSize - loader->bufferSize;
 
     memcpy(loader->chunk + loader->bufferSize,
         (const uint8_t *)buffer + processed, chunkSize);
@@ -181,10 +181,10 @@ static size_t onUploadRequest(void *object, size_t position, void *buffer,
 static enum Result bridgeInit(void *object, const void *configBase)
 {
   const struct DfuBridgeConfig * const config = configBase;
+  assert(config);
+
   struct DfuBridge * const loader = object;
   enum Result res;
-
-  assert(config);
 
   loader->flash = config->flash;
   loader->device = config->device;
@@ -198,11 +198,15 @@ static enum Result bridgeInit(void *object, const void *configBase)
   if (loader->flashOffset >= loader->flashSize)
     return E_VALUE;
 
-  res = ifGetParam(loader->flash, IF_FLASH_PAGE_SIZE, &loader->pageSize);
+  res = ifGetParam(loader->flash, IF_FLASH_PAGE_SIZE, &loader->chunkSize);
+  if (res != E_OK)
+    res = ifGetParam(loader->flash, IF_FLASH_SECTOR_SIZE, &loader->chunkSize);
+  if (res != E_OK)
+    res = ifGetParam(loader->flash, IF_FLASH_BLOCK_SIZE, &loader->chunkSize);
   if (res != E_OK)
     return res;
 
-  loader->chunk = malloc(loader->pageSize);
+  loader->chunk = malloc(loader->chunkSize);
   if (!loader->chunk)
     return E_MEMORY;
 

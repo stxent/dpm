@@ -50,7 +50,7 @@ struct DfuBridge
 
   size_t flashOffset;
   size_t flashSize;
-  size_t pageSize;
+  size_t chunkSize;
 
   size_t bufferSize;
   size_t currentPosition;

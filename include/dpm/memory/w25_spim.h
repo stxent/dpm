@@ -17,7 +17,7 @@ struct W25SPIMConfig
 {
   /** Mandatory: underlying SPIM interface. */
   void *spim;
-  /** Optional: force 3-byte memory addresses. */
+  /** Optional: force 3-byte memory addresses in memory-mapped mode. */
   bool shrink;
   /** Optional: allow DTR mode. */
   bool dtr;
@@ -43,7 +43,9 @@ struct W25SPIM
   {
     /* Buffer address */
     const void *buffer;
-    /* Buffer length */
+    /* Number of bytes to be written */
+    size_t left;
+    /* Total buffer length */
     size_t length;
     /* Memory address during write and erase opertions */
     uint32_t position;
@@ -55,12 +57,14 @@ struct W25SPIM
   bool blocking;
   /* Enable DTR mode */
   bool dtr;
-  /* Enable 4-byte address mode */
+  /* Memory capacity exceeds 16 MiB */
   bool extended;
-  /* Enable QPI mode */
+  /* Enable QPI in memory-mapped mode */
   bool qpi;
   /* Enable QUAD IO mode */
   bool quad;
+  /* Force 3-byte memory addresses in memory-mapped mode. */
+  bool shrink;
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS

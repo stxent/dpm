@@ -86,6 +86,11 @@
 #define CMD_RESET_ENABLE                  0x66
 #define CMD_RESET_DEVICE                  0x99
 #define CMD_EXIT_QPI                      0xFF
+/*----------------------------------------------------------------------------*/
+#define MEMORY_PAGE_SIZE                  256
+#define MEMORY_SECTOR_4KB_SIZE            4096
+#define MEMORY_BLOCK_32KB_SIZE            32768
+#define MEMORY_BLOCK_64KB_SIZE            65536
 /*------------------Status Register 1-----------------------------------------*/
 #define SR1_BUSY  BIT(0)
 #define SR1_WEL   BIT(1)

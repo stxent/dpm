@@ -215,10 +215,21 @@ static void interruptHandler(void *argument)
       break;
 
     case STATE_WRITE_ENABLE:
+    {
+      const uint8_t * const data = (const uint8_t *)memory->context.buffer;
+      const uint32_t position = memory->context.position;
+      const uint32_t available = MEMORY_PAGE_SIZE
+          - (position & (MEMORY_PAGE_SIZE - 1));
+      const uint32_t chunk = MIN(available, memory->context.left);
+
+      memory->context.buffer = data + chunk;
+      memory->context.left -= chunk;
+      memory->context.position += chunk;
       memory->context.state = STATE_WRITE_START;
-      pageProgram(memory, memory->context.position, memory->context.buffer,
-          memory->context.length);
+
+      pageProgram(memory, position, data, chunk);
       break;
+    }
 
     case STATE_WRITE_START:
       /* Poll BUSY bit in SR1 */
@@ -227,25 +238,34 @@ static void interruptHandler(void *argument)
       break;
 
     case STATE_WRITE_WAIT:
-      memory->context.state = STATE_IDLE;
-      event = true;
+      if (memory->context.left)
+      {
+        memory->context.state = STATE_WRITE_ENABLE;
+        writeEnable(memory, true);
+      }
+      else
+      {
+        memory->context.state = STATE_IDLE;
+        event = true;
 
-      memory->position += memory->context.length;
-      if (memory->position >= memory->capacity)
-        memory->position = 0;
+        memory->position += memory->context.length;
+        if (memory->position >= memory->capacity)
+          memory->position = 0;
 
-      memory->context.buffer = 0;
-      memory->context.length = 0;
-      memory->context.position = 0;
-      busRelease(memory);
+        memory->context.buffer = 0;
+        memory->context.left = 0;
+        memory->context.length = 0;
+        memory->context.position = 0;
+        busRelease(memory);
+      }
       break;
 
     case STATE_ERASE_ENABLE:
-      assert(memory->context.length == 4 * 1024
-          || memory->context.length == 64 * 1024);
+      assert(memory->context.length == MEMORY_SECTOR_4KB_SIZE
+          || memory->context.length == MEMORY_BLOCK_64KB_SIZE);
 
       memory->context.state = STATE_ERASE_START;
-      if (memory->context.length == 4 * 1024)
+      if (memory->context.length == MEMORY_SECTOR_4KB_SIZE)
         eraseSector4KB(memory, memory->context.position);
       else
         eraseBlock64KB(memory, memory->context.position);
@@ -482,7 +502,7 @@ void w25MemoryMappingEnable(struct W25SPIM *memory)
     ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
   }
 
-  if (memory->extended)
+  if (memory->extended && !memory->shrink)
   {
     ifSetParam(memory->spim, IF_SPIM_ADDRESS_32, &address);
     command = memory->quad ?
@@ -526,8 +546,10 @@ static enum Result memoryInit(void *object, const void *configBase)
   memory->extended = false;
   memory->dtr = false;
   memory->qpi = false;
+  memory->shrink = config->shrink;
 
   memory->context.buffer = 0;
+  memory->context.left = 0;
   memory->context.length = 0;
   memory->context.position = 0;
   memory->context.state = STATE_IDLE;
@@ -581,25 +603,22 @@ static enum Result memoryInit(void *object, const void *configBase)
 
     case JEDEC_CAPACITY_W25Q256:
       memory->capacity = 32 * 1024 * 1024;
-      if (!config->shrink)
-        memory->extended = true;
       break;
 
     case JEDEC_CAPACITY_W25Q512:
       memory->capacity = 64 * 1024 * 1024;
-      if (!config->shrink)
-        memory->extended = true;
       break;
 
     case JEDEC_CAPACITY_W25Q00:
       memory->capacity = 128 * 1024 * 1024;
-      if (!config->shrink)
-        memory->extended = true;
       break;
 
     default:
       return E_DEVICE;
   }
+
+  if (memory->capacity > (1UL << 24))
+    memory->extended = true;
 
   /* Configure memory bus mode */
   busAcquire(memory);
@@ -630,11 +649,15 @@ static enum Result memoryGetParam(void *object, int parameter, void *data)
   switch ((enum FlashParameter)parameter)
   {
     case IF_FLASH_BLOCK_SIZE:
-      *(uint32_t *)data = 64 * 1024;
+      *(uint32_t *)data = MEMORY_BLOCK_64KB_SIZE;
       return E_OK;
 
     case IF_FLASH_SECTOR_SIZE:
-      *(uint32_t *)data = 4 * 1024;
+      *(uint32_t *)data = MEMORY_SECTOR_4KB_SIZE;
+      return E_OK;
+
+    case IF_FLASH_PAGE_SIZE:
+      *(uint32_t *)data = MEMORY_PAGE_SIZE;
       return E_OK;
 
     default:
@@ -701,7 +724,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
         }
         else
         {
-          memory->context.length = 64 * 1024;
+          memory->context.length = MEMORY_BLOCK_64KB_SIZE;
           memory->context.position = position;
           memory->context.state = STATE_ERASE_ENABLE;
 
@@ -732,7 +755,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
         }
         else
         {
-          memory->context.length = 4 * 1024;
+          memory->context.length = MEMORY_SECTOR_4KB_SIZE;
           memory->context.position = position;
           memory->context.state = STATE_ERASE_ENABLE;
 
@@ -796,12 +819,11 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
 
   if (memory->blocking)
   {
-    memory->context.state = STATE_IDLE;
-
     busAcquire(memory);
     pageRead(memory, memory->position, buffer, length);
     busRelease(memory);
 
+    memory->context.state = STATE_IDLE;
     memory->position += length;
     if (memory->position >= memory->capacity)
       memory->position = 0;
@@ -824,14 +846,28 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
 
   if (memory->blocking)
   {
-    memory->context.state = STATE_IDLE;
+    const uint8_t *data = buffer;
+    uint32_t left = (uint32_t)length;
+    uint32_t position = memory->position;
 
     busAcquire(memory);
-    writeEnable(memory, true);
-    pageProgram(memory, memory->position, buffer, length);
-    waitMemoryBusy(memory);
+    while (left)
+    {
+      const uint32_t available = MEMORY_PAGE_SIZE
+          - (position & (MEMORY_PAGE_SIZE - 1));
+      const uint32_t chunk = MIN(available, left);
+
+      writeEnable(memory, true);
+      pageProgram(memory, position, data, chunk);
+      waitMemoryBusy(memory);
+
+      left -= chunk;
+      data += chunk;
+      position += chunk;
+    }
     busRelease(memory);
 
+    memory->context.state = STATE_IDLE;
     memory->position += length;
     if (memory->position >= memory->capacity)
       memory->position = 0;
@@ -839,6 +875,7 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
   else
   {
     memory->context.buffer = buffer;
+    memory->context.left = length;
     memory->context.length = length;
     memory->context.position = memory->position;
     memory->context.state = STATE_WRITE_ENABLE;
