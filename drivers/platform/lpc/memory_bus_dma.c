@@ -233,7 +233,7 @@ static enum Result busGetParam(void *object, int parameter, void *data)
       return E_OK;
 
     default:
-      return E_ERROR;
+      return E_INVALID;
   }
 }
 /*----------------------------------------------------------------------------*/

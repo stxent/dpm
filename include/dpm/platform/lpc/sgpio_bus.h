@@ -27,10 +27,16 @@ struct SgpioBusConfig
 
   struct
   {
+    /** Mandatory: clock output. */
     PinNumber clock;
-    // XXX Internal clock feedback
-    PinNumber dma;
+    /** Mandatory: data outputs. */
     PinNumber data[8];
+
+    /**
+     * Mandatory: internal clock for DMA event timer. Possible values are
+     * @b SGPIO_3 and @b SGPIO_12.
+     */
+    enum SgpioPin dma;
   } pins;
 
   struct
@@ -70,6 +76,10 @@ struct SgpioBus
 
   /* Peripheral clock prescaler */
   uint32_t prescaler;
+  /* Slice count disable register mask */
+  uint16_t controlDisableMask;
+  /* Slice count enable register mask */
+  uint16_t controlEnableMask;
   /* Enable clock signal inversion */
   bool inversion;
 };

@@ -111,7 +111,7 @@ static enum Result busGetParam(void *object, int parameter,
       return interface->busy ? E_BUSY : E_OK;
 
     default:
-      return E_ERROR;
+      return E_INVALID;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -131,7 +131,7 @@ static enum Result busSetParam(void *object, int parameter,
       return E_OK;
 
     default:
-      return E_ERROR;
+      return E_INVALID;
   }
 }
 /*----------------------------------------------------------------------------*/

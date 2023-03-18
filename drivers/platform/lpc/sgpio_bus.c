@@ -39,7 +39,8 @@ const struct InterfaceClass * const SgpioBus =
 /*----------------------------------------------------------------------------*/
 static bool enqueueNextTransfer(struct SgpioBus *interface)
 {
-  uint32_t chunk = MIN(interface->length, 255);
+  /* Maximum chunk size is 255 * 16 words or 16320 bytes */
+  uint32_t chunk = MIN(interface->length, 16320);
   const int chunkPow = 32 - countLeadingZeros32((uint32_t)chunk);
   const int prescalerPow = MAX(chunkPow - 8, 0);
   const uint32_t chunkMask = MASK(chunkPow) ^ MASK(prescalerPow);
@@ -79,7 +80,7 @@ static bool enqueueNextTransfer(struct SgpioBus *interface)
   if (chunk > sizeof(uint32_t))
   {
     qualifierDiv = ((interface->prescaler * 4) << prescalerPow) - 1;
-    qualifierPos = (chunk >> prescalerPow) - 1;
+    qualifierPos = chunk >> prescalerPow;
 
     /* Enable the timer and clear pending DMA requests */
     timerEnable(interface->timer);
@@ -87,14 +88,14 @@ static bool enqueueNextTransfer(struct SgpioBus *interface)
     /* Remaining data will be transmitted over DMA */
     dmaAppend(interface->dma, (void *)&reg->REG_SS[interface->slices.chain],
         (const void *)(interface->buffer + sizeof(uint32_t)),
-        (chunk - sizeof(uint32_t)) / 4);
+        chunk / sizeof(uint32_t) - 1);
     if (dmaEnable(interface->dma) != E_OK)
       return false;
   }
   else
   {
     qualifierDiv = interface->prescaler * 4 - 1;
-    qualifierPos = chunk - 1;
+    qualifierPos = chunk;
   }
 
   interface->buffer += chunk;
@@ -105,25 +106,24 @@ static bool enqueueNextTransfer(struct SgpioBus *interface)
   reg->CTRL_DISABLE = 0;
 
   reg->PRESET[interface->slices.qualifier] = qualifierDiv;
-  /* Shift qualifier phase by 2 output clocks */
-  reg->COUNT[interface->slices.qualifier] = interface->prescaler * 2 - 1;
-  reg->POS[interface->slices.qualifier] =
-      POS_POS(qualifierPos) | POS_POS_RESET(qualifierPos);
+  reg->COUNT[interface->slices.qualifier] = 0;
+  reg->POS[interface->slices.qualifier] = POS_POS(qualifierPos);
   reg->REG[interface->slices.qualifier] = 0xFFFFFFFFUL;
   reg->REG_SS[interface->slices.qualifier] = 0;
 
-  /* Shift internal data clock by 1.5 output clocks */
-  reg->COUNT[interface->slices.gate] = interface->prescaler * 3 - 1;
+  /* Shift internal data clock by 4 cycles */
+  reg->COUNT[interface->slices.gate] = interface->prescaler * 4 - 1;
   reg->POS[interface->slices.gate] = POS_POS(31) | POS_POS_RESET(31);
-  reg->REG[interface->slices.gate] = 0x22222222UL;
+  reg->REG[interface->slices.gate] = 0;
 
-  reg->COUNT[interface->slices.clock] = 0;
+  /* Shift output clock phase by 1 cycle */
+  reg->COUNT[interface->slices.clock] = interface->prescaler - 1;
   reg->POS[interface->slices.clock] = POS_POS(31) | POS_POS_RESET(31);
   reg->REG[interface->slices.clock] = interface->inversion ?
       0x99999999UL : 0x66666666UL;
 
-  /* Shift DMA request phase by 1 peripheral clock */
-  reg->COUNT[interface->slices.dma] = 0;
+  /* Shift output clock phase by 1 cycle */
+  reg->COUNT[interface->slices.dma] = interface->prescaler - 1;
   reg->POS[interface->slices.dma] = POS_POS(31) | POS_POS_RESET(31);
   reg->REG[interface->slices.dma] = 0x66666666UL;
 
@@ -132,17 +132,10 @@ static bool enqueueNextTransfer(struct SgpioBus *interface)
   reg->REG[interface->slices.chain] = word;
   reg->REG_SS[interface->slices.chain] = 0;
 
-    /* Enable slices */
-  const uint32_t controlEnable = 1 << interface->slices.qualifier
-      | 1 << interface->slices.clock
-      | 1 << interface->slices.dma
-      | 1 << interface->slices.gate
-      | 1 << interface->slices.chain;
-  const uint32_t controlDisable = 1 << interface->slices.qualifier;
-
+  /* Enable slices */
   const IrqState state = irqSave();
-  reg->CTRL_ENABLE = controlEnable;
-  reg->CTRL_DISABLE = controlDisable;
+  reg->CTRL_ENABLE = interface->controlEnableMask;
+  reg->CTRL_DISABLE = interface->controlDisableMask;
   irqRestore(state);
 
   return true;
@@ -227,16 +220,14 @@ static enum Result busInit(void *object, const void *configBase)
   if ((res = SgpioBase->init(interface, 0)) != E_OK)
     return res;
 
-  const enum SgpioPin sliceClock = sgpioConfigPin(config->pins.clock,
-      PIN_NOPULL);
-  const enum SgpioPin sliceDma = sgpioConfigPin(config->pins.dma,
-      PIN_NOPULL);
+  const enum SgpioPin pinClock = sgpioConfigPin(config->pins.clock, PIN_NOPULL);
+  const enum SgpioPin pinTimer = config->pins.dma;
 
-  if (sliceDma != SGPIO_3 && sliceDma != SGPIO_12)
+  if (pinTimer != SGPIO_3 && pinTimer != SGPIO_12)
     return E_VALUE;
 
   const struct SgpioBusTimerConfig timerConfig = {
-      .channel = sliceDma == SGPIO_3 ? 0 : 1,
+      .channel = pinTimer == SGPIO_3 ? 0 : 1,
       .capture = 0,
       .match = 0
   };
@@ -247,7 +238,7 @@ static enum Result busInit(void *object, const void *configBase)
   if (!setupDma(interface, config->dma, timerConfig.channel, 0))
     return E_ERROR;
 
-  if (sliceDma == SGPIO_3)
+  if (pinTimer == SGPIO_3)
   {
     LPC_GIMA->CAP0_0_IN = GIMA_SYNCH | GIMA_SELECT(1);
   }
@@ -256,7 +247,7 @@ static enum Result busInit(void *object, const void *configBase)
     LPC_GIMA->CAP1_0_IN = GIMA_SYNCH | GIMA_SELECT(1);
   }
 
-  const enum SgpioPin sliceData[8] = {
+  const enum SgpioPin pinOutput[8] = {
       sgpioConfigPin(config->pins.data[0], PIN_NOPULL),
       sgpioConfigPin(config->pins.data[1], PIN_NOPULL),
       sgpioConfigPin(config->pins.data[2], PIN_NOPULL),
@@ -267,10 +258,16 @@ static enum Result busInit(void *object, const void *configBase)
       sgpioConfigPin(config->pins.data[7], PIN_NOPULL)
   };
 
-  interface->slices.clock = sgpioPinToSlice(sliceClock, OUT_DOUTM1);
-  interface->slices.dma = sgpioPinToSlice(sliceDma, OUT_DOUTM1);
+  interface->slices.clock = sgpioPinToSlice(pinClock, OUT_DOUTM1);
+  interface->slices.dma = sgpioPinToSlice(pinTimer, OUT_DOUTM1);
   interface->slices.gate = config->slices.gate;
   interface->slices.qualifier = config->slices.qualifier;
+  interface->controlEnableMask = 1 << interface->slices.qualifier
+      | 1 << interface->slices.clock
+      | 1 << interface->slices.dma
+      | 1 << interface->slices.gate
+      | 1 << interface->slices.chain;
+  interface->controlDisableMask = 1 << interface->slices.qualifier;
 
   interface->base.handler = interruptHandler;
   interface->callback = 0;
@@ -283,7 +280,7 @@ static enum Result busInit(void *object, const void *configBase)
   interface->prescaler = config->prescaler;
   interface->inversion = config->inversion;
 
-  const enum SgpioSlice firstDataSlice = sgpioPinToSlice(sliceData[0],
+  const enum SgpioSlice firstDataSlice = sgpioPinToSlice(pinOutput[0],
       OUT_DOUTM8A);
 
   if (firstDataSlice == SGPIO_SLICE_A)
@@ -308,20 +305,20 @@ static enum Result busInit(void *object, const void *configBase)
   reg->OUT_MUX_CFG[0] = OUT_MUX_CFG_P_OUT_CFG(OUT_DOUTM1)
       | OUT_MUX_CFG_P_OE_CFG(OE_GPIO);
 
-  reg->OUT_MUX_CFG[sliceClock] = OUT_MUX_CFG_P_OUT_CFG(OUT_DOUTM1)
+  reg->OUT_MUX_CFG[pinClock] = OUT_MUX_CFG_P_OUT_CFG(OUT_DOUTM1)
       | OUT_MUX_CFG_P_OE_CFG(OE_GPIO);
-  reg->OUT_MUX_CFG[sliceDma] = OUT_MUX_CFG_P_OUT_CFG(OUT_DOUTM1)
+  reg->OUT_MUX_CFG[pinTimer] = OUT_MUX_CFG_P_OUT_CFG(OUT_DOUTM1)
       | OUT_MUX_CFG_P_OE_CFG(OE_GPIO);
 
-  for (size_t i = 0; i < ARRAY_SIZE(sliceData); ++i)
+  for (size_t i = 0; i < ARRAY_SIZE(pinOutput); ++i)
   {
-    reg->OUT_MUX_CFG[sliceData[i]] = OUT_MUX_CFG_P_OUT_CFG(OUT_DOUTM8A)
+    reg->OUT_MUX_CFG[pinOutput[i]] = OUT_MUX_CFG_P_OUT_CFG(OUT_DOUTM8A)
         | OUT_MUX_CFG_P_OE_CFG(OE_GPIO);
   }
 
-  oenreg |= 1 << (uint8_t)sliceClock;
-  for (size_t i = 0; i < ARRAY_SIZE(sliceData); ++i)
-    oenreg |= 1 << (uint8_t)sliceData[i];
+  oenreg |= 1 << (uint8_t)pinClock;
+  for (size_t i = 0; i < ARRAY_SIZE(pinOutput); ++i)
+    oenreg |= 1 << (uint8_t)pinOutput[i];
 
   reg->GPIO_OENREG = oenreg;
 
@@ -358,8 +355,6 @@ static enum Result busInit(void *object, const void *configBase)
       | SLICE_MUX_CFG_CLK_CAPTURE_MODE(CLK_CAP_RISING)
       | SLICE_MUX_CFG_CLKGEN_MODE(CLK_GEN_INTERNAL);
   reg->PRESET[interface->slices.clock] = interface->prescaler - 1;
-  reg->REG[interface->slices.clock] = interface->inversion ?
-      0x99999999UL : 0x66666666UL;
 
   /* Configure DMA event slice */
   reg->SGPIO_MUX_CFG[interface->slices.dma] = SGPIO_MUX_CFG_INT_CLK_ENABLE
@@ -416,15 +411,19 @@ static void busSetCallback(void *object, void (*callback)(void *),
   interface->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static enum Result busGetParam(void *object, int parameter, void *data)
+static enum Result busGetParam(void *object, int parameter,
+    void *data __attribute__((unused)))
 {
   struct SgpioBus * const interface = object;
 
-  (void)interface;
-  (void)parameter;
-  (void)data;
+  switch ((enum IfParameter)parameter)
+  {
+    case IF_STATUS:
+      return interface->busy ? E_BUSY : E_OK;
 
-  return E_INVALID;
+    default:
+      return E_INVALID;
+  }
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busSetParam(void *object, int parameter,
