@@ -28,6 +28,10 @@ struct ILI9325
 {
   struct Interface parent;
 
+  void (*callback)(void *);
+  void *callbackArgument;
+
+  /* Parallel bus */
   struct Interface *bus;
 
   /* Chip Select output */
@@ -41,6 +45,8 @@ struct ILI9325
   struct DisplayWindow window;
   /* Current orientation */
   uint8_t orientation;
+  /* Enable blocking mode */
+  bool blocking;
 };
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DISPLAYS_ILI9325_H_ */

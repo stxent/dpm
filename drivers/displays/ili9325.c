@@ -92,6 +92,7 @@ static void deselectChip(struct ILI9325 *);
 static void selectChip(struct ILI9325 *);
 static void selectCommandMode(struct ILI9325 *);
 static void selectDataMode(struct ILI9325 *);
+static void interruptHandler(void *);
 static void setOrientation(struct ILI9325 *, enum DisplayOrientation);
 static void setWindow(struct ILI9325 *, const struct DisplayWindow *);
 static void writeAddress(struct ILI9325 *, enum DisplayRegister);
@@ -100,9 +101,9 @@ static void writeRegister(struct ILI9325 *, enum DisplayRegister, uint16_t);
 /*----------------------------------------------------------------------------*/
 static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
+static void displaySetCallback(void *, void (*)(void *), void *);
 static enum Result displayGetParam(void *, int, void *);
 static enum Result displaySetParam(void *, int, const void *);
-static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
 const struct InterfaceClass * const ILI9325 = &(const struct InterfaceClass){
@@ -110,10 +111,10 @@ const struct InterfaceClass * const ILI9325 = &(const struct InterfaceClass){
     .init = displayInit,
     .deinit = displayDeinit,
 
-    .setCallback = 0,
+    .setCallback = displaySetCallback,
     .getParam = displayGetParam,
     .setParam = displaySetParam,
-    .read = displayRead,
+    .read = 0,
     .write = displayWrite
 };
 /*----------------------------------------------------------------------------*/
@@ -196,6 +197,20 @@ static void selectCommandMode(struct ILI9325 *display)
 static void selectDataMode(struct ILI9325 *display)
 {
   pinSet(display->rs);
+}
+/*----------------------------------------------------------------------------*/
+static void interruptHandler(void *object)
+{
+  struct ILI9325 * const display = object;
+
+  /* Release Chip Select */
+  deselectChip(display);
+  /* Restore blocking mode */
+  ifSetCallback(display->bus, 0, 0);
+  ifSetParam(display->bus, IF_BLOCKING, 0);
+
+  if (display->callback)
+    display->callback(display->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static void setOrientation(struct ILI9325 *display,
@@ -290,13 +305,19 @@ static enum Result displayInit(void *object, const void *configPtr)
     return E_VALUE;
   pinOutput(display->rs, false);
 
+  display->callback = 0;
   display->bus = config->bus;
+  display->blocking = true;
 
   /* Reset display */
   pinReset(display->reset);
   mdelay(20);
   pinSet(display->reset);
   mdelay(20);
+
+  /* Enable blocking mode by default */
+  ifSetCallback(display->bus, 0, 0);
+  ifSetParam(display->bus, IF_BLOCKING, 0);
 
   selectChip(display);
   for (size_t index = 0; index < ARRAY_SIZE(initSequence); ++index)
@@ -324,6 +345,15 @@ static enum Result displayInit(void *object, const void *configPtr)
 /*----------------------------------------------------------------------------*/
 static void displayDeinit(void *object __attribute__((unused)))
 {
+}
+/*----------------------------------------------------------------------------*/
+static void displaySetCallback(void *object, void (*callback)(void *),
+    void *argument)
+{
+  struct ILI9325 * const display = object;
+
+  display->callbackArgument = argument;
+  display->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result displayGetParam(void *object, int parameter, void *data)
@@ -408,21 +438,6 @@ static enum Result displaySetParam(void *object, int parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static size_t displayRead(void *object, void *buffer, size_t length)
-{
-  struct ILI9325 * const display = object;
-  size_t bytesRead;
-
-  selectChip(display);
-  writeAddress(display, REG_WRITE_DATA_TO_GRAM);
-
-  selectDataMode(display);
-  bytesRead = ifRead(display->bus, buffer, length);
-  deselectChip(display);
-
-  return bytesRead;
-}
-/*----------------------------------------------------------------------------*/
 static size_t displayWrite(void *object, const void *buffer, size_t length)
 {
   struct ILI9325 * const display = object;
@@ -432,8 +447,27 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   writeAddress(display, REG_WRITE_DATA_TO_GRAM);
 
   selectDataMode(display);
-  bytesWritten = ifWrite(display->bus, buffer, length);
-  deselectChip(display);
+
+  if (display->blocking)
+  {
+    bytesWritten = ifWrite(display->bus, buffer, length);
+    deselectChip(display);
+  }
+  else
+  {
+    ifSetCallback(display->bus, interruptHandler, display);
+    ifSetParam(display->bus, IF_ZEROCOPY, 0);
+
+    bytesWritten = ifWrite(display->bus, buffer, length);
+
+    if (bytesWritten != length)
+    {
+      /* Error occurred, restore bus state */
+      deselectChip(display);
+      ifSetCallback(display->bus, 0, 0);
+      ifSetParam(display->bus, IF_BLOCKING, 0);
+    }
+  }
 
   return bytesWritten;
 }

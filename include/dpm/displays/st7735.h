@@ -29,6 +29,10 @@ struct ST7735
 {
   struct Interface parent;
 
+  void (*callback)(void *);
+  void *callbackArgument;
+
+  /* Serial bus */
   struct Interface *bus;
 
   /* Chip Select output */
@@ -42,6 +46,8 @@ struct ST7735
   struct DisplayWindow window;
   /* Current orientation */
   uint8_t orientation;
+  /* Enable blocking mode */
+  bool blocking;
   /* GRAM register is selected */
   bool gramActive;
 };

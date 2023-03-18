@@ -81,6 +81,7 @@ static void deselectChip(struct ST7735 *);
 static void selectChip(struct ST7735 *);
 static void selectCommandMode(struct ST7735 *);
 static void selectDataMode(struct ST7735 *);
+static void interruptHandler(void *);
 static void loadLUT(struct ST7735 *);
 static void sendCommand(struct ST7735 *, enum DisplayCommand);
 static void sendData(struct ST7735 *, const uint8_t *, size_t);
@@ -89,6 +90,7 @@ static void setWindow(struct ST7735 *, const struct DisplayWindow *);
 /*----------------------------------------------------------------------------*/
 static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
+static void displaySetCallback(void *, void (*)(void *), void *);
 static enum Result displayGetParam(void *, int, void *);
 static enum Result displaySetParam(void *, int, const void *);
 static size_t displayRead(void *, void *, size_t);
@@ -99,7 +101,7 @@ const struct InterfaceClass * const ST7735 = &(const struct InterfaceClass){
     .init = displayInit,
     .deinit = displayDeinit,
 
-    .setCallback = 0,
+    .setCallback = displaySetCallback,
     .getParam = displayGetParam,
     .setParam = displaySetParam,
     .read = displayRead,
@@ -126,6 +128,21 @@ static void selectCommandMode(struct ST7735 *display)
 static void selectDataMode(struct ST7735 *display)
 {
   pinSet(display->rs);
+}
+/*----------------------------------------------------------------------------*/
+static void interruptHandler(void *object)
+{
+  struct ST7735 * const display = object;
+
+  /* Restore blocking mode */
+  ifSetCallback(display->bus, 0, 0);
+  ifSetParam(display->bus, IF_BLOCKING, 0);
+
+  /* Release the interface */
+  deselectChip(display);
+
+  if (display->callback)
+    display->callback(display->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static void loadLUT(struct ST7735 *display)
@@ -219,13 +236,19 @@ static enum Result displayInit(void *object, const void *configPtr)
     return E_VALUE;
   pinOutput(display->rs, false);
 
+  display->callback = 0;
   display->bus = config->bus;
+  display->blocking = true;
 
   /* Reset display */
   pinReset(display->reset);
   mdelay(20);
   pinSet(display->reset);
   mdelay(20);
+
+  /* Enable blocking mode by default */
+  ifSetCallback(display->bus, 0, 0);
+  ifSetParam(display->bus, IF_BLOCKING, 0);
 
   /* Start of the initialization */
   selectChip(display);
@@ -277,6 +300,15 @@ static enum Result displayInit(void *object, const void *configPtr)
 /*----------------------------------------------------------------------------*/
 static void displayDeinit(void *object __attribute__((unused)))
 {
+}
+/*----------------------------------------------------------------------------*/
+static void displaySetCallback(void *object, void (*callback)(void *),
+    void *argument)
+{
+  struct ST7735 * const display = object;
+
+  display->callbackArgument = argument;
+  display->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result displayGetParam(void *object, int parameter, void *data)
@@ -399,10 +431,31 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   }
 
   selectDataMode(display);
-  bytesWritten = ifWrite(display->bus, buffer, length);
 
-  /* Release the interface */
-  deselectChip(display);
+  if (display->blocking)
+  {
+    bytesWritten = ifWrite(display->bus, buffer, length);
+
+    /* Release the interface */
+    deselectChip(display);
+  }
+  else
+  {
+    ifSetCallback(display->bus, interruptHandler, display);
+    ifSetParam(display->bus, IF_ZEROCOPY, 0);
+
+    bytesWritten = ifWrite(display->bus, buffer, length);
+
+    if (bytesWritten != length)
+    {
+      /* Error occurred, restore bus state */
+      ifSetCallback(display->bus, 0, 0);
+      ifSetParam(display->bus, IF_BLOCKING, 0);
+
+      /* Release the interface */
+      deselectChip(display);
+    }
+  }
 
   return bytesWritten;
 }

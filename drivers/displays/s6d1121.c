@@ -102,6 +102,7 @@ static void deselectChip(struct S6D1121 *);
 static void selectChip(struct S6D1121 *);
 static void selectCommandMode(struct S6D1121 *);
 static void selectDataMode(struct S6D1121 *);
+static void interruptHandler(void *);
 static void setOrientation(struct S6D1121 *, enum DisplayOrientation);
 static void setWindow(struct S6D1121 *, const struct DisplayWindow *);
 static void writeAddress(struct S6D1121 *, enum DisplayRegister);
@@ -110,9 +111,9 @@ static void writeRegister(struct S6D1121 *, enum DisplayRegister, uint16_t);
 /*----------------------------------------------------------------------------*/
 static enum Result displayInit(void *, const void *);
 static void displayDeinit(void *);
+static void displaySetCallback(void *, void (*)(void *), void *);
 static enum Result displayGetParam(void *, int, void *);
 static enum Result displaySetParam(void *, int, const void *);
-static size_t displayRead(void *, void *, size_t);
 static size_t displayWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
 const struct InterfaceClass * const S6D1121 = &(const struct InterfaceClass){
@@ -120,10 +121,10 @@ const struct InterfaceClass * const S6D1121 = &(const struct InterfaceClass){
     .init = displayInit,
     .deinit = displayDeinit,
 
-    .setCallback = 0,
+    .setCallback = displaySetCallback,
     .getParam = displayGetParam,
     .setParam = displaySetParam,
-    .read = displayRead,
+    .read = 0,
     .write = displayWrite
 };
 /*----------------------------------------------------------------------------*/
@@ -199,6 +200,20 @@ static void selectCommandMode(struct S6D1121 *display)
 static void selectDataMode(struct S6D1121 *display)
 {
   pinSet(display->rs);
+}
+/*----------------------------------------------------------------------------*/
+static void interruptHandler(void *object)
+{
+  struct S6D1121 * const display = object;
+
+  /* Release Chip Select */
+  deselectChip(display);
+  /* Restore blocking mode */
+  ifSetCallback(display->bus, 0, 0);
+  ifSetParam(display->bus, IF_BLOCKING, 0);
+
+  if (display->callback)
+    display->callback(display->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static void setOrientation(struct S6D1121 *display,
@@ -293,13 +308,19 @@ static enum Result displayInit(void *object, const void *configPtr)
     return E_VALUE;
   pinOutput(display->rs, false);
 
+  display->callback = 0;
   display->bus = config->bus;
+  display->blocking = true;
 
   /* Reset display */
   pinReset(display->reset);
   mdelay(20);
   pinSet(display->reset);
   mdelay(20);
+
+  /* Enable blocking mode by default */
+  ifSetCallback(display->bus, 0, 0);
+  ifSetParam(display->bus, IF_BLOCKING, 0);
 
   selectChip(display);
   for (size_t index = 0; index < ARRAY_SIZE(initSequence); ++index)
@@ -327,6 +348,15 @@ static enum Result displayInit(void *object, const void *configPtr)
 /*----------------------------------------------------------------------------*/
 static void displayDeinit(void *object __attribute__((unused)))
 {
+}
+/*----------------------------------------------------------------------------*/
+static void displaySetCallback(void *object, void (*callback)(void *),
+    void *argument)
+{
+  struct S6D1121 * const display = object;
+
+  display->callbackArgument = argument;
+  display->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result displayGetParam(void *object, int parameter, void *data)
@@ -411,21 +441,6 @@ static enum Result displaySetParam(void *object, int parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static size_t displayRead(void *object, void *buffer, size_t length)
-{
-  struct S6D1121 * const display = object;
-  size_t bytesRead;
-
-  selectChip(display);
-  writeAddress(display, REG_GRAM_DATA);
-
-  selectDataMode(display);
-  bytesRead = ifRead(display->bus, buffer, length);
-  deselectChip(display);
-
-  return bytesRead;
-}
-/*----------------------------------------------------------------------------*/
 static size_t displayWrite(void *object, const void *buffer, size_t length)
 {
   struct S6D1121 * const display = object;
@@ -435,8 +450,27 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   writeAddress(display, REG_GRAM_DATA);
 
   selectDataMode(display);
-  bytesWritten = ifWrite(display->bus, buffer, length);
-  deselectChip(display);
+
+  if (display->blocking)
+  {
+    bytesWritten = ifWrite(display->bus, buffer, length);
+    deselectChip(display);
+  }
+  else
+  {
+    ifSetCallback(display->bus, interruptHandler, display);
+    ifSetParam(display->bus, IF_ZEROCOPY, 0);
+
+    bytesWritten = ifWrite(display->bus, buffer, length);
+
+    if (bytesWritten != length)
+    {
+      /* Error occurred, restore bus state */
+      deselectChip(display);
+      ifSetCallback(display->bus, 0, 0);
+      ifSetParam(display->bus, IF_BLOCKING, 0);
+    }
+  }
 
   return bytesWritten;
 }

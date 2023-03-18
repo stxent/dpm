@@ -28,6 +28,10 @@ struct S6D1121
 {
   struct Interface parent;
 
+  void (*callback)(void *);
+  void *callbackArgument;
+
+  /* Parallel bus */
   struct Interface *bus;
 
   /* Chip Select output */
@@ -41,6 +45,8 @@ struct S6D1121
   struct DisplayWindow window;
   /* Current orientation */
   uint8_t orientation;
+  /* Enable blocking mode */
+  bool blocking;
 };
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_DISPLAYS_S6D1121_H_ */
