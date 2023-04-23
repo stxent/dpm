@@ -1,10 +1,10 @@
 # Copyright (C) 2018 xent
 # Project is distributed under the terms of the MIT License
 
-project(dpm C)
 cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0054 NEW)
 cmake_policy(SET CMP0069 NEW)
+project(dpm C)
 
 option(USE_LTO "Enable Link Time Optimization." OFF)
 
