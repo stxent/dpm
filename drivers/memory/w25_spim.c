@@ -534,7 +534,8 @@ void w25MemoryMappingEnable(struct W25SPIM *memory)
 static enum Result memoryInit(void *object, const void *configBase)
 {
   const struct W25SPIMConfig * const config = configBase;
-  assert(config);
+  assert(config != NULL);
+  assert(config->spim != NULL);
 
   struct W25SPIM * const memory = object;
   struct JedecInfo info;

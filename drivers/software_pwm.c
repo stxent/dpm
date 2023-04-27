@@ -36,14 +36,14 @@ const struct TimerClass * const SoftwarePwmUnit = &(const struct TimerClass){
 
     .enable = unitEnable,
     .disable = unitDisable,
-    .setAutostop = 0,
-    .setCallback = 0,
+    .setAutostop = NULL,
+    .setCallback = NULL,
     .getFrequency = unitGetFrequency,
     .setFrequency = unitSetFrequency,
     .getOverflow = unitGetOverflow,
     .setOverflow = unitSetOverflow,
-    .getValue = 0,
-    .setValue = 0
+    .getValue = NULL,
+    .setValue = NULL
 };
 
 const struct PwmClass * const SoftwarePwm = &(const struct PwmClass){
@@ -66,7 +66,7 @@ static void interruptHandler(void *object)
   if (++unit->iteration >= unit->resolution)
     unit->iteration = 0;
 
-  while (current)
+  while (current != NULL)
   {
     const struct SoftwarePwm * const pwm = *pointerListData(current);
 
@@ -99,7 +99,7 @@ static void unitDeinit(void *object)
   struct SoftwarePwmUnit * const unit = object;
 
   timerDisable(unit->timer);
-  timerSetCallback(unit->timer, 0, 0);
+  timerSetCallback(unit->timer, NULL, NULL);
   pointerListDeinit(&unit->channels);
 }
 /*----------------------------------------------------------------------------*/

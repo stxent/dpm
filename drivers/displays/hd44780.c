@@ -156,16 +156,17 @@ static void updateDisplay(struct HD44780 *display)
 static enum Result displayInit(void *object, const void *configPtr)
 {
   const struct HD44780Config * const config = configPtr;
+  assert(config != NULL);
+  assert(config->bus != NULL);
+  assert(config->resolution.width && config->resolution.height);
+
   struct HD44780 * const display = object;
   enum Result res;
 
   const size_t bufferSize =
       config->resolution.width * config->resolution.height;
 
-  assert(config->bus);
-  assert(config->resolution.width && config->resolution.height);
-
-  if ((res = ifSetParam(config->bus, IF_ZEROCOPY, 0)) != E_OK)
+  if ((res = ifSetParam(config->bus, IF_ZEROCOPY, NULL)) != E_OK)
     return res;
   ifSetCallback(config->bus, interruptHandler, display);
 
@@ -176,11 +177,11 @@ static enum Result displayInit(void *object, const void *configPtr)
   pinOutput(display->rs, false);
 
   display->buffer = malloc(bufferSize);
-  if (!display->buffer)
+  if (display->buffer == NULL)
     return E_MEMORY;
   memset(display->buffer, ' ', bufferSize);
 
-  display->callback = 0;
+  display->callback = NULL;
   display->bus = config->bus;
   display->line = 0;
   display->state = STATE_RESET;

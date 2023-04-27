@@ -41,8 +41,8 @@ struct DfuBridge
 {
   struct Entity base;
 
-  struct Interface *flash;
   struct Dfu *device;
+  struct Interface *flash;
   void (*reset)(void);
 
   const struct FlashGeometry *geometry;

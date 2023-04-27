@@ -38,11 +38,11 @@ const struct TimerClass * const MemoryBusGpioTimer = &(const struct TimerClass){
 
     .enable = tmrEnable,
     .disable = tmrDisable,
-    .setAutostop = 0,
+    .setAutostop = NULL,
     .setCallback = tmrSetCallback,
-    .getFrequency = 0,
+    .getFrequency = NULL,
     .setFrequency = tmrSetFrequency,
-    .getOverflow = 0,
+    .getOverflow = NULL,
     .setOverflow = tmrSetOverflow,
     .getValue = tmrGetValue,
     .setValue = tmrSetValue
@@ -113,13 +113,14 @@ static enum Result setupChannels(struct MemoryBusGpioTimer *timer,
 static enum Result tmrInit(void *object, const void *configPtr)
 {
   const struct MemoryBusGpioTimerConfig * const config = configPtr;
+  assert(config != NULL);
+  assert(config->frequency);
+
   const struct GpTimerBaseConfig baseConfig = {
       .channel = config->channel
   };
   struct MemoryBusGpioTimer * const timer = object;
   enum Result res;
-
-  assert(config->frequency);
 
   /* Call base class constructor */
   if ((res = GpTimerBase->init(object, &baseConfig)) != E_OK)
@@ -187,7 +188,7 @@ static void tmrSetCallback(void *object, void (*callback)(void *),
   timer->callbackArgument = argument;
   timer->callback = callback;
 
-  if (callback)
+  if (timer->callback != NULL)
   {
     /* Clear pending interrupt flags */
     reg->SR = 0;

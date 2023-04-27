@@ -48,7 +48,7 @@ static void onTimerOverflow(void *argument)
       timerDisable(button->timer);
       interruptEnable(button->interrupt);
 
-      if (button->callback)
+      if (button->callback != NULL)
         button->callback(button->callbackArgument);
     }
     else
@@ -69,14 +69,15 @@ static void onTimerOverflow(void *argument)
 static enum Result buttonInit(void *object, const void *configBase)
 {
   const struct ButtonConfig * const config = configBase;
-  assert(config);
+  assert(config != NULL);
+  assert(config->interrupt != NULL && config->timer != NULL);
 
   struct Button * const button = object;
 
   button->pin = pinInit(config->pin);
   assert(pinValid(button->pin));
 
-  button->callback = 0;
+  button->callback = NULL;
   button->interrupt = config->interrupt;
   button->timer = config->timer;
   button->delay = config->delay;
@@ -94,8 +95,8 @@ static void buttonDeinit(void *object)
 
   buttonDisable(button);
 
-  timerSetCallback(button->timer, 0, 0);
-  interruptSetCallback(button->interrupt, 0, 0);
+  timerSetCallback(button->timer, NULL, NULL);
+  interruptSetCallback(button->interrupt, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
 static void buttonEnable(void *object)

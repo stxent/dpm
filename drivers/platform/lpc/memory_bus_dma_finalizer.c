@@ -37,9 +37,10 @@ void memoryBusDmaFinalizerStop(struct MemoryBusDmaFinalizer *finalizer)
 static enum Result finalizerInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaFinalizerConfig * const config = configPtr;
-  struct MemoryBusDmaFinalizer * const finalizer = object;
+  assert(config != NULL);
+  assert(config->marshal != NULL && config->sender != NULL);
 
-  assert(config->marshal && config->sender);
+  struct MemoryBusDmaFinalizer * const finalizer = object;
 
   finalizer->marshal = config->marshal;
   finalizer->sender = config->sender;
@@ -71,7 +72,7 @@ static enum Result finalizerInit(void *object, const void *configPtr)
 
   finalizer->dma = init(GpDmaOneShot, &dmaConfig);
 
-  if (finalizer->dma)
+  if (finalizer->dma != NULL)
   {
     dmaConfigure(finalizer->dma, &dmaSettings);
 

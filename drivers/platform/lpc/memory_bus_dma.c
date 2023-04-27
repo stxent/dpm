@@ -45,14 +45,14 @@ static void interruptHandler(void *object)
 
   interface->busy = false;
 
-  if (interface->callback)
+  if (interface->callback != NULL)
     interface->callback(interface->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static void setupGpio(struct MemoryBusDma *interface,
     const struct MemoryBusDmaConfig *config)
 {
-  assert(config->pins);
+  assert(config->pins != NULL);
 
   /* First pin number should be aligned along byte boundary */
   assert(!(PIN_TO_OFFSET(config->pins[0]) & 0x07));
@@ -134,7 +134,7 @@ static bool setupDma(struct MemoryBusDma *interface,
     interface->dma = init(GpDmaCircular, &dmaConfig);
   }
 
-  if (interface->dma)
+  if (interface->dma != NULL)
   {
     dmaConfigure(interface->dma, &dmaSettings);
     return true;
@@ -146,6 +146,8 @@ static bool setupDma(struct MemoryBusDma *interface,
 static enum Result busInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaConfig * const config = configPtr;
+  assert(config != NULL);
+
   const struct MemoryBusDmaClockConfig clockConfig = {
       .cycle = config->cycle,
       .leading = config->clock.leading,
@@ -166,11 +168,11 @@ static enum Result busInit(void *object, const void *configPtr)
   setupGpio(interface, config);
 
   interface->clock = init(MemoryBusDmaClock, &clockConfig);
-  if (!interface->clock)
+  if (interface->clock == NULL)
     return E_ERROR;
 
   interface->control = init(MemoryBusDmaControl, &controlConfig);
-  if (!interface->control)
+  if (interface->control == NULL)
     return E_ERROR;
 
   struct MemoryBusDmaFinalizerConfig finalizerConfig = {
@@ -180,7 +182,7 @@ static enum Result busInit(void *object, const void *configPtr)
   };
 
   interface->finalizer = init(MemoryBusDmaFinalizer, &finalizerConfig);
-  if (!interface->finalizer)
+  if (interface->finalizer == NULL)
     return E_ERROR;
 
   const uint8_t dmaEvent = config->clock.swap ?
@@ -192,7 +194,7 @@ static enum Result busInit(void *object, const void *configPtr)
 
     interface->blocking = true;
     interface->busy = false;
-    interface->callback = 0;
+    interface->callback = NULL;
 
     return E_OK;
   }

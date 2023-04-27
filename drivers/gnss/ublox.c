@@ -101,7 +101,7 @@ static void onMessageReceivedNavSat(struct Ublox *receiver,
     }
   }
 
-  if (receiver->onSatelliteCountReceived)
+  if (receiver->onSatelliteCountReceived != NULL)
     receiver->onSatelliteCountReceived(receiver->callbackArgument, &satellites);
 }
 /*----------------------------------------------------------------------------*/
@@ -154,7 +154,7 @@ static void onMessageReceivedNavStatus(struct Ublox *receiver,
       break;
   }
 
-  if (receiver->onStatusReceived)
+  if (receiver->onStatusReceived != NULL)
     receiver->onStatusReceived(receiver->callbackArgument, fix);
 }
 /*----------------------------------------------------------------------------*/
@@ -214,7 +214,7 @@ static void onTimePulseEvent(void *argument)
   struct Ublox * const receiver = argument;
   receiver->timestamp = timerGetValue64(receiver->timer);
 
-  if (receiver->timedelta && receiver->onTimeReceived)
+  if (receiver->timedelta && receiver->onTimeReceived != NULL)
   {
     receiver->onTimeReceived(receiver->callbackArgument,
         timerGetValue64(receiver->timer) + receiver->timedelta);
@@ -248,7 +248,7 @@ static void parseSerialDataTask(void *argument)
       }
     }
 
-    if (receiver->onDataReceived)
+    if (receiver->onDataReceived != NULL)
       receiver->onDataReceived(receiver->callbackArgument, buffer, length);
   }
 }
@@ -256,9 +256,9 @@ static void parseSerialDataTask(void *argument)
 void ubloxDisable(struct Ublox *receiver)
 {
   interruptDisable(receiver->pps);
-  interruptSetCallback(receiver->pps, 0, 0);
+  interruptSetCallback(receiver->pps, NULL, NULL);
 
-  ifSetCallback(receiver->serial, 0, 0);
+  ifSetCallback(receiver->serial, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
 void ubloxEnable(struct Ublox *receiver)
@@ -296,9 +296,9 @@ static enum Result ubloxInit(void *object, const void *configBase)
   receiver->timer = config->timer;
   receiver->wq = config->wq ? config->wq : WQ_DEFAULT;
 
-  receiver->callbackArgument = 0;
-  receiver->onDataReceived = 0;
-  receiver->onTimeReceived = 0;
+  receiver->callbackArgument = NULL;
+  receiver->onDataReceived = NULL;
+  receiver->onTimeReceived = NULL;
 
   return E_OK;
 }

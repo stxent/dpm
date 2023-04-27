@@ -89,7 +89,7 @@ static uint32_t getSectorEraseTime(const struct DfuBridge *loader,
 static bool isSectorAddress(const struct DfuBridge *loader, size_t address)
 {
   const struct FlashGeometry * const region = findFlashRegion(loader, address);
-  return region != 0;
+  return region != NULL;
 }
 /*----------------------------------------------------------------------------*/
 static void onDetachRequest(void *object,
@@ -181,13 +181,15 @@ static size_t onUploadRequest(void *object, size_t position, void *buffer,
 static enum Result bridgeInit(void *object, const void *configBase)
 {
   const struct DfuBridgeConfig * const config = configBase;
-  assert(config);
+  assert(config != NULL);
+  assert(config->geometry != NULL);
+  assert(config->device != NULL && config->flash != NULL);
 
   struct DfuBridge * const loader = object;
   enum Result res;
 
-  loader->flash = config->flash;
   loader->device = config->device;
+  loader->flash = config->flash;
   loader->reset = config->reset;
   loader->geometry = config->geometry;
   loader->flashOffset = config->offset;
@@ -227,10 +229,10 @@ static void bridgeDeinit(void *object)
 {
   struct DfuBridge * const loader = object;
 
-  dfuSetUploadRequestCallback(loader->device, 0);
-  dfuSetDownloadRequestCallback(loader->device, 0);
-  dfuSetDetachRequestCallback(loader->device, 0);
-  dfuSetCallbackArgument(loader->device, 0);
+  dfuSetUploadRequestCallback(loader->device, NULL);
+  dfuSetDownloadRequestCallback(loader->device, NULL);
+  dfuSetDetachRequestCallback(loader->device, NULL);
+  dfuSetCallbackArgument(loader->device, NULL);
 
   free(loader->chunk);
 }

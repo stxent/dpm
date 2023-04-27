@@ -111,12 +111,12 @@ const struct InterfaceClass * const ST7735 = &(const struct InterfaceClass){
 static void deselectChip(struct ST7735 *display)
 {
   pinSet(display->cs);
-  ifSetParam(display->bus, IF_RELEASE, 0);
+  ifSetParam(display->bus, IF_RELEASE, NULL);
 }
 /*----------------------------------------------------------------------------*/
 static void selectChip(struct ST7735 *display)
 {
-  ifSetParam(display->bus, IF_ACQUIRE, 0);
+  ifSetParam(display->bus, IF_ACQUIRE, NULL);
   pinReset(display->cs);
 }
 /*----------------------------------------------------------------------------*/
@@ -135,13 +135,13 @@ static void interruptHandler(void *object)
   struct ST7735 * const display = object;
 
   /* Restore blocking mode */
-  ifSetCallback(display->bus, 0, 0);
-  ifSetParam(display->bus, IF_BLOCKING, 0);
+  ifSetCallback(display->bus, NULL, NULL);
+  ifSetParam(display->bus, IF_BLOCKING, NULL);
 
   /* Release the interface */
   deselectChip(display);
 
-  if (display->callback)
+  if (display->callback != NULL)
     display->callback(display->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -216,8 +216,8 @@ static void setWindow(struct ST7735 *display,
 static enum Result displayInit(void *object, const void *configPtr)
 {
   const struct ST7735Config * const config = configPtr;
-  assert(config);
-  assert(config->bus);
+  assert(config != NULL);
+  assert(config->bus != NULL);
 
   struct ST7735 * const display = object;
 
@@ -247,8 +247,8 @@ static enum Result displayInit(void *object, const void *configPtr)
   mdelay(20);
 
   /* Enable blocking mode by default */
-  ifSetCallback(display->bus, 0, 0);
-  ifSetParam(display->bus, IF_BLOCKING, 0);
+  ifSetCallback(display->bus, NULL, NULL);
+  ifSetParam(display->bus, IF_BLOCKING, NULL);
 
   /* Start of the initialization */
   selectChip(display);
@@ -345,7 +345,7 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
   switch ((enum IfParameter)parameter)
   {
     case IF_STATUS:
-      return ifGetParam(display->bus, IF_STATUS, 0);
+      return ifGetParam(display->bus, IF_STATUS, NULL);
 
     default:
       return E_INVALID;
@@ -442,15 +442,15 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   else
   {
     ifSetCallback(display->bus, interruptHandler, display);
-    ifSetParam(display->bus, IF_ZEROCOPY, 0);
+    ifSetParam(display->bus, IF_ZEROCOPY, NULL);
 
     bytesWritten = ifWrite(display->bus, buffer, length);
 
     if (bytesWritten != length)
     {
       /* Error occurred, restore bus state */
-      ifSetCallback(display->bus, 0, 0);
-      ifSetParam(display->bus, IF_BLOCKING, 0);
+      ifSetCallback(display->bus, NULL, NULL);
+      ifSetParam(display->bus, IF_BLOCKING, NULL);
 
       /* Release the interface */
       deselectChip(display);

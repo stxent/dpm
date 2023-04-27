@@ -25,14 +25,14 @@ const struct TimerClass * const SgpioBusTimer =
 
     .enable = tmrEnable,
     .disable = tmrDisable,
-    .setAutostop = 0,
-    .setCallback = 0,
-    .getFrequency = 0,
-    .setFrequency = 0,
-    .getOverflow = 0,
+    .setAutostop = NULL,
+    .setCallback = NULL,
+    .getFrequency = NULL,
+    .setFrequency = NULL,
+    .getOverflow = NULL,
     .setOverflow = tmrSetOverflow,
-    .getValue = 0,
-    .setValue = 0
+    .getValue = NULL,
+    .setValue = NULL
 };
 /*----------------------------------------------------------------------------*/
 static inline uint32_t getMaxValue(const struct SgpioBusTimer *timer)

@@ -132,6 +132,8 @@ static void sendReport(struct Mouse *device, uint8_t buttons,
 static enum Result mouseInit(void *object, const void *configBase)
 {
   const struct MouseConfig * const config = configBase;
+  assert(config != NULL);
+
   const struct HidConfig baseConfig = {
       .device = config->device,
       .descriptor = &mouseReportDescriptor,
@@ -147,7 +149,7 @@ static enum Result mouseInit(void *object, const void *configBase)
 
   device->txDataEp = usbDevCreateEndpoint(config->device,
       config->endpoints.interrupt);
-  if (!device->txDataEp)
+  if (device->txDataEp == NULL)
     return E_ERROR;
 
   if (!pointerQueueInit(&device->txQueue, REQUEST_QUEUE_SIZE))

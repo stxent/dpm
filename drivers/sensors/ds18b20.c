@@ -90,10 +90,10 @@ static const uint8_t writeScratchpadCommand[] = {0x4E};
 static void busInit(struct DS18B20 *sensor)
 {
   /* Lock the interface */
-  ifSetParam(sensor->bus, IF_ACQUIRE, 0);
+  ifSetParam(sensor->bus, IF_ACQUIRE, NULL);
 
   ifSetParam(sensor->bus, IF_ADDRESS_64, &sensor->address);
-  ifSetParam(sensor->bus, IF_ZEROCOPY, 0);
+  ifSetParam(sensor->bus, IF_ZEROCOPY, NULL);
   ifSetCallback(sensor->bus, onBusEvent, sensor);
 }
 /*----------------------------------------------------------------------------*/
@@ -111,7 +111,7 @@ static void calcTemperature(void *object)
   }
   else
   {
-    if (sensor->onErrorCallback)
+    if (sensor->onErrorCallback != NULL)
       sensor->onErrorCallback(sensor->callbackArgument, SENSOR_DATA_ERROR);
   }
 }
@@ -157,8 +157,8 @@ static void onBusEvent(void *object)
 
   if (release)
   {
-    ifSetCallback(sensor->bus, 0, 0);
-    ifSetParam(sensor->bus, IF_RELEASE, 0);
+    ifSetCallback(sensor->bus, NULL, NULL);
+    ifSetParam(sensor->bus, IF_RELEASE, NULL);
   }
 
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -260,15 +260,15 @@ static void startTemperatureRequest(struct DS18B20 *sensor)
 static enum Result dsInit(void *object, const void *configBase)
 {
   const struct DS18B20Config * const config = configBase;
-  assert(config);
-  assert(config->bus && config->timer);
+  assert(config != NULL);
+  assert(config->bus != NULL && config->timer != NULL);
 
   struct DS18B20 * const sensor = object;
 
-  sensor->callbackArgument = 0;
-  sensor->onErrorCallback = 0;
-  sensor->onResultCallback = 0;
-  sensor->onUpdateCallback = 0;
+  sensor->callbackArgument = NULL;
+  sensor->onErrorCallback = NULL;
+  sensor->onResultCallback = NULL;
+  sensor->onUpdateCallback = NULL;
 
   sensor->address = config->address;
   sensor->bus = config->bus;
@@ -294,7 +294,7 @@ static void dsDeinit(void *object)
   struct DS18B20 * const sensor = object;
 
   timerDisable(sensor->timer);
-  timerSetCallback(sensor->timer, 0, 0);
+  timerSetCallback(sensor->timer, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
 static const char *dsGetFormat(const void *object __attribute__((unused)))
@@ -346,8 +346,8 @@ static void dsSample(void *object)
 {
   struct DS18B20 * const sensor = object;
 
-  assert(sensor->onResultCallback);
-  assert(sensor->onUpdateCallback);
+  assert(sensor->onResultCallback != NULL);
+  assert(sensor->onUpdateCallback != NULL);
 
   atomicFetchOr(&sensor->flags, FLAG_SAMPLE);
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -357,8 +357,8 @@ static void dsStart(void *object)
 {
   struct DS18B20 * const sensor = object;
 
-  assert(sensor->onResultCallback);
-  assert(sensor->onUpdateCallback);
+  assert(sensor->onResultCallback != NULL);
+  assert(sensor->onUpdateCallback != NULL);
 
   atomicFetchOr(&sensor->flags, FLAG_LOOP);
   sensor->onUpdateCallback(sensor->callbackArgument);

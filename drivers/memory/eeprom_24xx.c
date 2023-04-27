@@ -30,7 +30,7 @@ const struct InterfaceClass * const Eeprom24xx = &(const struct InterfaceClass){
     .init = memoryInit,
     .deinit = memoryDeinit,
 
-    .setCallback = 0,
+    .setCallback = NULL,
     .getParam = memoryGetParam,
     .setParam = memorySetParam,
     .read = memoryRead,
@@ -61,10 +61,9 @@ static uint16_t makeSlaveAddress(const struct Eeprom24xx *memory,
 static enum Result memoryInit(void *object, const void *configBase)
 {
   const struct Eeprom24xxConfig * const config = configBase;
-  assert(config);
-
-  if (!config->blocks || !config->chipSize || !config->pageSize)
-    return E_VALUE;
+  assert(config != NULL);
+  assert(config->i2c != NULL);
+  assert(config->blocks && config->chipSize && config->pageSize);
 
   /* Determine if the size is a power of 2 */
   if ((config->chipSize & (config->chipSize - 1)) != 0)
@@ -148,7 +147,7 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
     return 0;
 
   /* Lock the interface */
-  ifSetParam(memory->i2c, IF_ACQUIRE, 0);
+  ifSetParam(memory->i2c, IF_ACQUIRE, NULL);
 
   /* Set rate */
   if (memory->rate && ifSetParam(memory->i2c, IF_RATE, &memory->rate) != E_OK)
@@ -184,7 +183,7 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
 
 read_end:
   /* Unlock the interface */
-  ifSetParam(memory->i2c, IF_RELEASE, 0);
+  ifSetParam(memory->i2c, IF_RELEASE, NULL);
   return (size_t)(position - (uint8_t *)buffer);
 }
 /*----------------------------------------------------------------------------*/
@@ -198,7 +197,7 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
     return 0;
 
   /* Lock the interface */
-  ifSetParam(memory->i2c, IF_ACQUIRE, 0);
+  ifSetParam(memory->i2c, IF_ACQUIRE, NULL);
 
   /* Set rate */
   if (memory->rate && ifSetParam(memory->i2c, IF_RATE, &memory->rate) != E_OK)
@@ -233,6 +232,6 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
 
 write_end:
   /* Unlock the interface */
-  ifSetParam(memory->i2c, IF_RELEASE, 0);
+  ifSetParam(memory->i2c, IF_RELEASE, NULL);
   return (size_t)(position - (const uint8_t *)buffer);
 }

@@ -98,10 +98,13 @@ const struct SensorClass * const MPU60XXThermometer =
 static void baseProxyInit(struct MPU60XXProxy *proxy,
     const struct MPU60XXProxyConfig *config)
 {
-  proxy->callbackArgument = 0;
-  proxy->onErrorCallback = 0;
-  proxy->onResultCallback = 0;
-  proxy->onUpdateCallback = 0;
+  assert(config != NULL);
+  assert(config->parent != NULL);
+
+  proxy->callbackArgument = NULL;
+  proxy->onErrorCallback = NULL;
+  proxy->onResultCallback = NULL;
+  proxy->onUpdateCallback = NULL;
   proxy->parent = config->parent;
 }
 /*----------------------------------------------------------------------------*/
@@ -220,8 +223,8 @@ static void proxySample(void *object)
 {
   struct MPU60XXProxy * const proxy = object;
 
-  assert(proxy->onResultCallback);
-  assert(proxy->onUpdateCallback);
+  assert(proxy->onResultCallback != NULL);
+  assert(proxy->onUpdateCallback != NULL);
 
   atomicFetchOr(&proxy->parent->flags, typeToSampleConstant(proxy));
   mpu60xxSample(proxy->parent);
@@ -231,8 +234,8 @@ static void proxyStart(void *object)
 {
   struct MPU60XXProxy * const proxy = object;
 
-  assert(proxy->onResultCallback);
-  assert(proxy->onUpdateCallback);
+  assert(proxy->onResultCallback != NULL);
+  assert(proxy->onUpdateCallback != NULL);
 
   atomicFetchOr(&proxy->parent->flags, typeToLoopConstant(proxy));
   mpu60xxStart(proxy->parent);

@@ -44,7 +44,7 @@ const struct DmaClass * const SgpioBusDma = &(const struct DmaClass){
 static enum Result channelInit(void *object, const void *configBase)
 {
   const struct SgpioBusDmaConfig * const config = configBase;
-  assert(config);
+  assert(config != NULL);
 
   const struct GpDmaOneShotConfig baseConfig = {
       .event = config->event,

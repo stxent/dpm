@@ -136,7 +136,7 @@ static void serialInterruptHandler(void *object)
 
   reg->CR1 = control;
 
-  if (interface->callback && event)
+  if (event && interface->callback != NULL)
     interface->callback(interface->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -167,7 +167,7 @@ static void timerInterruptHandler(void *object)
 static enum Result serialInit(void *object, const void *configBase)
 {
   const struct IrdaConfig * const config = configBase;
-  assert(config);
+  assert(config != NULL);
   assert(config->frameLength <= config->rxLength);
 
   const struct UartBaseConfig baseConfig = {
@@ -197,7 +197,7 @@ static enum Result serialInit(void *object, const void *configBase)
     return E_ERROR;
 
   interface->base.handler = serialInterruptHandler;
-  interface->callback = 0;
+  interface->callback = NULL;
   interface->pending = 0;
   interface->width = config->frameLength;
   interface->master = config->master;

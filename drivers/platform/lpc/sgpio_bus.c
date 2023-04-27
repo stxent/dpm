@@ -33,7 +33,7 @@ const struct InterfaceClass * const SgpioBus =
     .setCallback = busSetCallback,
     .getParam = busGetParam,
     .setParam = busSetParam,
-    .read = 0,
+    .read = NULL,
     .write = busWrite
 };
 /*----------------------------------------------------------------------------*/
@@ -164,7 +164,7 @@ static void interruptHandler(void *object)
   {
     interface->busy = false;
 
-    if (interface->callback)
+    if (interface->callback != NULL)
       interface->callback(interface->callbackArgument);
   }
 }
@@ -198,7 +198,7 @@ static bool setupDma(struct SgpioBus *interface, uint8_t dmaChannel,
 
   interface->dma = init(SgpioBusDma, &dmaConfig);
 
-  if (interface->dma)
+  if (interface->dma != NULL)
   {
     dmaConfigure(interface->dma, &dmaSettings);
     return true;
@@ -210,14 +210,14 @@ static bool setupDma(struct SgpioBus *interface, uint8_t dmaChannel,
 static enum Result busInit(void *object, const void *configBase)
 {
   const struct SgpioBusConfig * const config = configBase;
-  assert(config);
+  assert(config != NULL);
   assert(config->prescaler <= (1 << 5));
 
   struct SgpioBus * const interface = object;
   enum Result res;
 
   /* Call base class constructor */
-  if ((res = SgpioBase->init(interface, 0)) != E_OK)
+  if ((res = SgpioBase->init(interface, NULL)) != E_OK)
     return res;
 
   const enum SgpioPin pinClock = sgpioConfigPin(config->pins.clock, PIN_NOPULL);
@@ -233,7 +233,7 @@ static enum Result busInit(void *object, const void *configBase)
   };
 
   interface->timer = init(SgpioBusTimer, &timerConfig);
-  if (!interface->timer)
+  if (interface->timer == NULL)
     return E_ERROR;
   if (!setupDma(interface, config->dma, timerConfig.channel, 0))
     return E_ERROR;
@@ -270,7 +270,7 @@ static enum Result busInit(void *object, const void *configBase)
   interface->controlDisableMask = 1 << interface->slices.qualifier;
 
   interface->base.handler = interruptHandler;
-  interface->callback = 0;
+  interface->callback = NULL;
 
   interface->buffer = 0;
   interface->length = 0;

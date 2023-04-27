@@ -46,12 +46,15 @@ const struct SensorClass * const SHT2XThermometer =
 static enum Result thermoInit(void *object, const void *configBase)
 {
   const struct SHT2XThermometerConfig * const config = configBase;
+  assert(config != NULL);
+  assert(config->parent != NULL);
+
   struct SHT2XThermometer * const sensor = object;
 
-  sensor->callbackArgument = 0;
-  sensor->onErrorCallback = 0;
-  sensor->onResultCallback = 0;
-  sensor->onUpdateCallback = 0;
+  sensor->callbackArgument = NULL;
+  sensor->onErrorCallback = NULL;
+  sensor->onResultCallback = NULL;
+  sensor->onUpdateCallback = NULL;
   sensor->parent = config->parent;
 
   return E_OK;
@@ -107,8 +110,8 @@ static void thermoSample(void *object)
 {
   struct SHT2XThermometer * const sensor = object;
 
-  assert(sensor->onResultCallback);
-  assert(sensor->onUpdateCallback);
+  assert(sensor->onResultCallback != NULL);
+  assert(sensor->onUpdateCallback != NULL);
 
   atomicFetchOr(&sensor->parent->flags, FLAG_THERMO_SAMPLE);
 }
@@ -117,8 +120,8 @@ static void thermoStart(void *object)
 {
   struct SHT2XThermometer * const sensor = object;
 
-  assert(sensor->onResultCallback);
-  assert(sensor->onUpdateCallback);
+  assert(sensor->onResultCallback != NULL);
+  assert(sensor->onUpdateCallback != NULL);
 
   atomicFetchOr(&sensor->parent->flags, FLAG_THERMO_LOOP);
 }

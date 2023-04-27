@@ -114,7 +114,7 @@ const struct InterfaceClass * const ILI9325 = &(const struct InterfaceClass){
     .setCallback = displaySetCallback,
     .getParam = displayGetParam,
     .setParam = displaySetParam,
-    .read = 0,
+    .read = NULL,
     .write = displayWrite
 };
 /*----------------------------------------------------------------------------*/
@@ -206,10 +206,10 @@ static void interruptHandler(void *object)
   /* Release Chip Select */
   deselectChip(display);
   /* Restore blocking mode */
-  ifSetCallback(display->bus, 0, 0);
-  ifSetParam(display->bus, IF_BLOCKING, 0);
+  ifSetCallback(display->bus, NULL, NULL);
+  ifSetParam(display->bus, IF_BLOCKING, NULL);
 
-  if (display->callback)
+  if (display->callback != NULL)
     display->callback(display->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -285,8 +285,8 @@ static void writeRegister(struct ILI9325 *display, enum DisplayRegister address,
 static enum Result displayInit(void *object, const void *configPtr)
 {
   const struct ILI9325Config * const config = configPtr;
-  assert(config);
-  assert(config->bus);
+  assert(config != NULL);
+  assert(config->bus != NULL);
 
   struct ILI9325 * const display = object;
 
@@ -305,7 +305,7 @@ static enum Result displayInit(void *object, const void *configPtr)
     return E_VALUE;
   pinOutput(display->rs, false);
 
-  display->callback = 0;
+  display->callback = NULL;
   display->bus = config->bus;
   display->blocking = true;
 
@@ -316,8 +316,8 @@ static enum Result displayInit(void *object, const void *configPtr)
   mdelay(20);
 
   /* Enable blocking mode by default */
-  ifSetCallback(display->bus, 0, 0);
-  ifSetParam(display->bus, IF_BLOCKING, 0);
+  ifSetCallback(display->bus, NULL, NULL);
+  ifSetParam(display->bus, IF_BLOCKING, NULL);
 
   selectChip(display);
   for (size_t index = 0; index < ARRAY_SIZE(initSequence); ++index)
@@ -390,7 +390,7 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
   switch ((enum IfParameter)parameter)
   {
     case IF_STATUS:
-      return ifGetParam(display->bus, IF_STATUS, 0);
+      return ifGetParam(display->bus, IF_STATUS, NULL);
 
     default:
       return E_INVALID;
@@ -456,7 +456,7 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   else
   {
     ifSetCallback(display->bus, interruptHandler, display);
-    ifSetParam(display->bus, IF_ZEROCOPY, 0);
+    ifSetParam(display->bus, IF_ZEROCOPY, NULL);
 
     bytesWritten = ifWrite(display->bus, buffer, length);
 
@@ -464,8 +464,8 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
     {
       /* Error occurred, restore bus state */
       deselectChip(display);
-      ifSetCallback(display->bus, 0, 0);
-      ifSetParam(display->bus, IF_BLOCKING, 0);
+      ifSetCallback(display->bus, NULL, NULL);
+      ifSetParam(display->bus, IF_BLOCKING, NULL);
     }
   }
 
