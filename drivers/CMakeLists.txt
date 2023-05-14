@@ -1,6 +1,7 @@
 # Copyright (C) 2022 xent
 # Project is distributed under the terms of the MIT License
 
+add_subdirectory("audio")
 add_subdirectory("displays")
 add_subdirectory("gnss")
 add_subdirectory("memory")
