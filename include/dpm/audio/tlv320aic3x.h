@@ -7,13 +7,12 @@
 #ifndef DPM_AUDIO_TLV320AIC3X_H_
 #define DPM_AUDIO_TLV320AIC3X_H_
 /*----------------------------------------------------------------------------*/
+#include <dpm/audio/codec.h>
 #include <halm/pin.h>
-#include <xcore/entity.h>
 /*----------------------------------------------------------------------------*/
-extern const struct EntityClass * const TLV320AIC3x;
+extern const struct CodecClass * const TLV320AIC3x;
 
 struct Timer;
-struct WorkQueue;
 
 enum AIC3xPath
 {
@@ -41,7 +40,7 @@ enum AIC3xPath
   AIC3X_MIC_3_IN,
 
   AIC3X_END
-};
+} __attribute__((packed));
 
 struct TLV320AIC3xConfig
 {
@@ -53,13 +52,15 @@ struct TLV320AIC3xConfig
   uint32_t address;
   /** Optional: codec management interface rate. */
   uint32_t rate;
+  /** Optional: use master clock prescaler instead of PLL. */
+  uint16_t prescaler;
   /** Mandatory: codec reset enable pin. */
   PinNumber reset;
 };
 
 struct TLV320AIC3x
 {
-  struct Entity base;
+  struct Codec base;
 
   void (*errorCallback)(void *);
   void *errorCallbackArgument;
@@ -95,6 +96,8 @@ struct TLV320AIC3x
       uint8_t j;
       uint8_t p;
       uint8_t r;
+
+      uint8_t q;
     } pll;
 
     struct
@@ -115,25 +118,5 @@ struct TLV320AIC3x
     } output;
   } config;
 };
-/*----------------------------------------------------------------------------*/
-BEGIN_DECLS
-
-int aic3xGetInputGain(const struct TLV320AIC3x *);
-int aic3xGetOutputGain(const struct TLV320AIC3x *);
-void aic3xReset(struct TLV320AIC3x *, uint32_t, enum AIC3xPath, uint8_t, bool,
-    enum AIC3xPath, uint8_t);
-void aic3xSetInputGain(struct TLV320AIC3x *, uint8_t, bool);
-void aic3xSetInputGainLR(struct TLV320AIC3x *, uint8_t, uint8_t, bool);
-void aic3xSetInputPath(struct TLV320AIC3x *, enum AIC3xPath);
-void aic3xSetOutputGain(struct TLV320AIC3x *, uint8_t);
-void aic3xSetOutputGainLR(struct TLV320AIC3x *, uint8_t, uint8_t);
-void aic3xSetOutputPath(struct TLV320AIC3x *, enum AIC3xPath);
-void aic3xSetRate(struct TLV320AIC3x *, uint32_t);
-void aic3xSetErrorCallback(struct TLV320AIC3x *, void (*)(void *), void *);
-void aic3xSetUpdateCallback(struct TLV320AIC3x *, void (*)(void *), void *);
-void aic3xSetUpdateWorkQueue(struct TLV320AIC3x *, struct WorkQueue *);
-bool aic3xUpdate(void *);
-
-END_DECLS
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_AUDIO_TLV320AIC3X_H_ */

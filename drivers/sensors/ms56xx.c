@@ -258,7 +258,13 @@ static void busInit(struct MS56XX *sensor, bool read)
   if (sensor->rate)
     ifSetParam(sensor->bus, IF_RATE, &sensor->rate);
 
-  if (sensor->address)
+  if (pinValid(sensor->gpio))
+  {
+    /* SPI bus */
+    ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, NULL);
+    pinReset(sensor->gpio);
+  }
+  else
   {
     /* I2C bus */
     ifSetParam(sensor->bus, IF_ADDRESS, &sensor->address);
@@ -270,12 +276,6 @@ static void busInit(struct MS56XX *sensor, bool read)
     timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
     timerSetValue(sensor->timer, 0);
     timerEnable(sensor->timer);
-  }
-  else
-  {
-    /* SPI bus */
-    ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, NULL);
-    pinReset(sensor->gpio);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -341,8 +341,10 @@ static void onBusEvent(void *object)
 
   timerDisable(sensor->timer);
 
-  if (sensor->address && ifGetParam(sensor->bus, IF_STATUS, NULL) != E_OK)
+  if (!pinValid(sensor->gpio)
+      && ifGetParam(sensor->bus, IF_STATUS, NULL) != E_OK)
   {
+    /* I2C bus */
     sensor->state = STATE_ERROR_WAIT;
     timerSetOverflow(sensor->timer, oversamplingToTime(sensor));
 
@@ -414,7 +416,7 @@ static void onBusEvent(void *object)
 
   if (release)
   {
-    if (!sensor->address)
+    if (pinValid(sensor->gpio))
       pinSet(sensor->gpio);
 
     ifSetParam(sensor->bus, IF_RELEASE, NULL);
@@ -442,7 +444,7 @@ static void onTimerEvent(void *object)
       break;
 
     default:
-      if (!sensor->address)
+      if (pinValid(sensor->gpio))
         pinSet(sensor->gpio);
 
       ifSetCallback(sensor->bus, NULL, NULL);
@@ -576,10 +578,8 @@ static enum Result msInit(void *object, const void *configBase)
   }
   else
   {
-    if (!config->address)
-      return E_VALUE;
-
     sensor->address = config->address;
+    sensor->gpio = pinStub();
   }
 
   timerSetAutostop(sensor->timer, true);

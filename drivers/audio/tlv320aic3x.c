@@ -17,12 +17,6 @@
 #define CODEC_ADDRESS 0x18
 #define CODEC_RATE    400000
 
-enum Channel
-{
-  CH_LEFT,
-  CH_RIGHT
-} __attribute__((packed));
-
 enum ConfigGroup
 {
   GROUP_RESET         = 0x01,
@@ -132,31 +126,35 @@ static uint8_t convertAnalogOutputGain(uint8_t);
 static uint8_t convertInputGain(uint8_t);
 static inline enum ConfigStep groupIndexToConfigStep(unsigned int);
 static inline bool isLastConfigGroupStep(enum ConfigStep);
-static uint8_t makeRegAdcGainCtrl(const struct TLV320AIC3x *, enum Channel);
-static uint8_t makeRegAgcCtrlA(const struct TLV320AIC3x *, enum Channel);
-static uint8_t makeRegAgcCtrlB(const struct TLV320AIC3x *, enum Channel);
+static uint8_t makeRegAdcGainCtrl(const struct TLV320AIC3x *,
+    enum CodecChannel);
+static uint8_t makeRegAgcCtrlA(const struct TLV320AIC3x *, enum CodecChannel);
+static uint8_t makeRegAgcCtrlB(const struct TLV320AIC3x *, enum CodecChannel);
 static uint8_t makeRegASDIfCtrlA(const struct TLV320AIC3x *);
 static uint8_t makeRegASDIfCtrlB(const struct TLV320AIC3x *);
 static uint8_t makeRegCodecDataPathSetup(const struct TLV320AIC3x *);
 static uint8_t makeRegDacMux(const struct TLV320AIC3x *);
-static uint8_t makeRegDacToHpComVol(const struct TLV320AIC3x *, enum Channel);
-static uint8_t makeRegDacToHpOutVol(const struct TLV320AIC3x *, enum Channel);
-static uint8_t makeRegDacToLOPMVol(const struct TLV320AIC3x *, enum Channel);
-static uint8_t makeRegDacVol(const struct TLV320AIC3x *, enum Channel);
+static uint8_t makeRegDacToHpComVol(const struct TLV320AIC3x *,
+    enum CodecChannel);
+static uint8_t makeRegDacToHpOutVol(const struct TLV320AIC3x *,
+    enum CodecChannel);
+static uint8_t makeRegDacToLOPMVol(const struct TLV320AIC3x *,
+    enum CodecChannel);
+static uint8_t makeRegDacVol(const struct TLV320AIC3x *, enum CodecChannel);
 static uint8_t makeRegHpLCom(const struct TLV320AIC3x *);
 static uint8_t makeRegHpRCom(const struct TLV320AIC3x *);
-static uint8_t makeRegLOPMCtrl(const struct TLV320AIC3x *, enum Channel);
-static uint8_t makeRegHpComCtrl(const struct TLV320AIC3x *, enum Channel);
-static uint8_t makeRegHpOutCtrl(const struct TLV320AIC3x *, enum Channel);
+static uint8_t makeRegLOPMCtrl(const struct TLV320AIC3x *, enum CodecChannel);
+static uint8_t makeRegHpComCtrl(const struct TLV320AIC3x *, enum CodecChannel);
+static uint8_t makeRegHpOutCtrl(const struct TLV320AIC3x *, enum CodecChannel);
 static uint8_t makeRegHpOutSC(const struct TLV320AIC3x *);
 static uint8_t makeRegMicBiasCtrl(const struct TLV320AIC3x *);
 static uint8_t makeRegMicLine1ToAdcCtrl(const struct TLV320AIC3x *,
-    enum Channel);
+    enum CodecChannel);
 static uint8_t makeRegMicLine2ToAdcCtrl(const struct TLV320AIC3x *,
-    enum Channel);
+    enum CodecChannel);
 
 static void makeOutputVolTransfer(const struct TLV320AIC3x *, uint8_t *,
-    enum Channel);
+    enum CodecChannel);
 
 static void busInit(struct TLV320AIC3x *, bool);
 static void changeRateConfig(struct TLV320AIC3x *, unsigned int);
@@ -167,14 +165,46 @@ static void onTimerEvent(void *);
 static bool startConfigUpdate(struct TLV320AIC3x *);
 static void updateTask(void *);
 /*----------------------------------------------------------------------------*/
-static enum Result codecInit(void *, const void *);
-static void codecDeinit(void *);
+static enum Result aic3xInit(void *, const void *);
+static void aic3xDeinit(void *);
+
+uint8_t aic3xGetInputGain(const void *, enum CodecChannel);
+uint8_t aic3xGetOutputGain(const void *, enum CodecChannel);
+bool aic3xIsAGCEnabled(const void *);
+void aic3xSetAGCEnabled(void *, bool);
+void aic3xSetInputGain(void *, enum CodecChannel, uint8_t);
+void aic3xSetInputPath(void *, int);
+void aic3xSetOutputGain(void *, enum CodecChannel, uint8_t);
+void aic3xSetOutputPath(void *, int);
+void aic3xSetSampleRate(void *, uint32_t);
+void aic3xSetErrorCallback(void *, void (*)(void *), void *);
+void aic3xSetUpdateCallback(void *, void (*)(void *), void *);
+void aic3xSetUpdateWorkQueue(void *, struct WorkQueue *);
+void aic3xReset(void *, uint32_t, int, int);
+bool aic3xUpdate(void *);
 /*----------------------------------------------------------------------------*/
-const struct EntityClass * const TLV320AIC3x =
-    &(const struct EntityClass){
+const struct CodecClass * const TLV320AIC3x = &(const struct CodecClass){
     .size = sizeof(struct TLV320AIC3x),
-    .init = codecInit,
-    .deinit = codecDeinit
+    .init = aic3xInit,
+    .deinit = aic3xDeinit,
+
+    .getInputGain = aic3xGetInputGain,
+    .getOutputGain = aic3xGetOutputGain,
+    .isAGCEnabled = aic3xIsAGCEnabled,
+
+    .setAGCEnabled = aic3xSetAGCEnabled,
+    .setInputGain = aic3xSetInputGain,
+    .setInputPath = aic3xSetInputPath,
+    .setOutputGain = aic3xSetOutputGain,
+    .setOutputPath = aic3xSetOutputPath,
+    .setSampleRate = aic3xSetSampleRate,
+
+    .setErrorCallback = aic3xSetErrorCallback,
+    .setUpdateCallback = aic3xSetUpdateCallback,
+    .setUpdateWorkQueue = aic3xSetUpdateWorkQueue,
+
+    .reset = aic3xReset,
+    .update = aic3xUpdate
 };
 /*----------------------------------------------------------------------------*/
 static uint8_t convertAnalogOutputGain(uint8_t gain)
@@ -216,11 +246,11 @@ static inline bool isLastConfigGroupStep(enum ConfigStep step)
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegAdcGainCtrl(const struct TLV320AIC3x *codec,
-    enum Channel channel __attribute__((unused)))
+    enum CodecChannel channel __attribute__((unused)))
 {
   if (codec->config.input.path != AIC3X_NONE)
   {
-    const uint8_t gain = convertInputGain(channel == CH_LEFT ?
+    const uint8_t gain = convertInputGain(channel == CHANNEL_LEFT ?
         codec->config.input.gainL : codec->config.input.gainR);
 
     return ADC_PGA_GAIN(gain);
@@ -230,7 +260,7 @@ static uint8_t makeRegAdcGainCtrl(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegAgcCtrlA(const struct TLV320AIC3x *codec,
-    enum Channel channel __attribute__((unused)))
+    enum CodecChannel channel __attribute__((unused)))
 {
   if (codec->config.input.path != AIC3X_NONE)
   {
@@ -242,7 +272,7 @@ static uint8_t makeRegAgcCtrlA(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegAgcCtrlB(const struct TLV320AIC3x *codec
-    __attribute__((unused)), enum Channel channel __attribute__((unused)))
+    __attribute__((unused)), enum CodecChannel channel __attribute__((unused)))
 {
   return AGC_CTRL_B_MAX_GAIN(AGC_CTRL_B_MAX_GAIN_MAX);
 }
@@ -292,13 +322,13 @@ static uint8_t makeRegDacMux(const struct TLV320AIC3x *codec)
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegDacToHpComVol(const struct TLV320AIC3x *codec,
-    enum Channel channel)
+    enum CodecChannel channel)
 {
   switch (codec->config.output.path)
   {
     case AIC3X_HP_COM:
     {
-      const uint8_t gain = convertAnalogOutputGain(channel == CH_LEFT ?
+      const uint8_t gain = convertAnalogOutputGain(channel == CHANNEL_LEFT ?
           codec->config.output.gainL : codec->config.output.gainR);
 
       return DAC_PGA_ANALOG_VOL_GAIN(gain) | DAC_PGA_ANALOG_VOL_UNMUTE;
@@ -310,14 +340,14 @@ static uint8_t makeRegDacToHpComVol(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegDacToHpOutVol(const struct TLV320AIC3x *codec,
-    enum Channel channel)
+    enum CodecChannel channel)
 {
   switch (codec->config.output.path)
   {
     case AIC3X_HP_OUT:
     case AIC3X_HP_OUT_DIFF:
     {
-      const uint8_t gain = convertAnalogOutputGain(channel == CH_LEFT ?
+      const uint8_t gain = convertAnalogOutputGain(channel == CHANNEL_LEFT ?
           codec->config.output.gainL : codec->config.output.gainR);
 
       return DAC_PGA_ANALOG_VOL_GAIN(gain) | DAC_PGA_ANALOG_VOL_UNMUTE;
@@ -329,14 +359,14 @@ static uint8_t makeRegDacToHpOutVol(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegDacToLOPMVol(const struct TLV320AIC3x *codec,
-    enum Channel channel)
+    enum CodecChannel channel)
 {
   switch (codec->config.output.path)
   {
     case AIC3X_LINE_OUT:
     case AIC3X_LINE_OUT_DIFF:
     {
-      const uint8_t gain = convertAnalogOutputGain(channel == CH_LEFT ?
+      const uint8_t gain = convertAnalogOutputGain(channel == CHANNEL_LEFT ?
           codec->config.output.gainL : codec->config.output.gainR);
 
       return DAC_PGA_ANALOG_VOL_GAIN(gain) | DAC_PGA_ANALOG_VOL_UNMUTE;
@@ -348,7 +378,7 @@ static uint8_t makeRegDacToLOPMVol(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegDacVol(const struct TLV320AIC3x *codec,
-    enum Channel channel __attribute__((unused)))
+    enum CodecChannel channel __attribute__((unused)))
 {
   if (codec->config.output.path != AIC3X_NONE)
     return DAC_DIGITAL_VOL_GAIN(0);
@@ -411,7 +441,7 @@ static uint8_t makeRegHpRCom(const struct TLV320AIC3x *codec)
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegLOPMCtrl(const struct TLV320AIC3x *codec,
-    enum Channel channel __attribute__((unused)))
+    enum CodecChannel channel __attribute__((unused)))
 {
   switch (codec->config.output.path)
   {
@@ -426,7 +456,7 @@ static uint8_t makeRegLOPMCtrl(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegHpComCtrl(const struct TLV320AIC3x *codec,
-    enum Channel channel __attribute__((unused)))
+    enum CodecChannel channel __attribute__((unused)))
 {
   switch (codec->config.output.path)
   {
@@ -440,7 +470,7 @@ static uint8_t makeRegHpComCtrl(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegHpOutCtrl(const struct TLV320AIC3x *codec,
-    enum Channel channel __attribute__((unused)))
+    enum CodecChannel channel __attribute__((unused)))
 {
   switch (codec->config.output.path)
   {
@@ -484,7 +514,7 @@ static uint8_t makeRegMicBiasCtrl(const struct TLV320AIC3x *codec)
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegMicLine1ToAdcCtrl(const struct TLV320AIC3x *codec,
-    enum Channel channel __attribute__((unused)))
+    enum CodecChannel channel __attribute__((unused)))
 {
   uint8_t value = MIC_LINE_LP_RP_SOFT_STEPPING(MIC_LINE_SOFT_STEPPING_DISABLED);
 
@@ -512,13 +542,13 @@ static uint8_t makeRegMicLine1ToAdcCtrl(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegMicLine2ToAdcCtrl(const struct TLV320AIC3x *codec,
-    enum Channel channel)
+    enum CodecChannel channel)
 {
   switch (codec->config.input.path)
   {
     case AIC3X_MIC_2_IN:
     case AIC3X_LINE_2_IN:
-      if (channel == CH_LEFT)
+      if (channel == CHANNEL_LEFT)
         return MIC_LINE_R_GAIN(MIC_LINE_GAIN_DISABLED) | MIC_LINE_L_GAIN(0);
       else
         return MIC_LINE_R_GAIN(0) | MIC_LINE_L_GAIN(MIC_LINE_GAIN_DISABLED);
@@ -530,28 +560,28 @@ static uint8_t makeRegMicLine2ToAdcCtrl(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static void makeOutputVolTransfer(const struct TLV320AIC3x *codec,
-    uint8_t *buffer, enum Channel channel)
+    uint8_t *buffer, enum CodecChannel channel)
 {
   assert(codec->config.output.path != AIC3X_NONE);
 
-  const uint8_t gain = convertAnalogOutputGain(channel == CH_LEFT ?
+  const uint8_t gain = convertAnalogOutputGain(channel == CHANNEL_LEFT ?
       codec->config.output.gainL : codec->config.output.gainR);
 
   switch (codec->config.output.path)
   {
     case AIC3X_HP_COM:
-      buffer[0] = channel == CH_LEFT ?
+      buffer[0] = channel == CHANNEL_LEFT ?
           REG_DACL1_TO_HPLCOM_VOL : REG_DACR1_TO_HPRCOM_VOL;
       break;
 
     case AIC3X_HP_OUT:
     case AIC3X_HP_OUT_DIFF:
-      buffer[0] = channel == CH_LEFT ?
+      buffer[0] = channel == CHANNEL_LEFT ?
           REG_DACL1_TO_HPLOUT_VOL : REG_DACR1_TO_HPROUT_VOL;
       break;
 
     default:
-      buffer[0] = channel == CH_LEFT ?
+      buffer[0] = channel == CHANNEL_LEFT ?
           REG_DACL1_TO_LLOPM_VOL : REG_DACL1_TO_RLOPM_VOL;
       break;
   }
@@ -564,13 +594,12 @@ static void busInit(struct TLV320AIC3x *codec, bool read)
   /* Lock the interface */
   ifSetParam(codec->bus, IF_ACQUIRE, NULL);
 
+  ifSetParam(codec->bus, IF_ADDRESS, &codec->address);
   ifSetParam(codec->bus, IF_ZEROCOPY, NULL);
   ifSetCallback(codec->bus, onBusEvent, codec);
 
   if (codec->rate)
     ifSetParam(codec->bus, IF_RATE, &codec->rate);
-
-  ifSetParam(codec->bus, IF_ADDRESS, &codec->address);
 
   if (read)
     ifSetParam(codec->bus, IF_I2C_REPEATED_START, NULL);
@@ -584,6 +613,9 @@ static void busInit(struct TLV320AIC3x *codec, bool read)
 static void changeRateConfig(struct TLV320AIC3x *codec, unsigned int rate)
 {
   codec->config.rate = rate;
+
+  if (codec->config.pll.q != 0)
+    return;
 
   switch (codec->config.rate)
   {
@@ -757,8 +789,12 @@ static bool startConfigUpdate(struct TLV320AIC3x *codec)
 
     case CONFIG_PLLA:
       codec->transfer.buffer[0] = REG_PLL_A;
-      codec->transfer.buffer[1] =
-          PLLA_P(codec->config.pll.p) | PLLA_Q(2) | PLLA_ENABLE;
+      codec->transfer.buffer[1] = PLLA_P(codec->config.pll.p);
+
+      if (codec->config.pll.q != 0)
+        codec->transfer.buffer[1] |= PLLA_Q(codec->config.pll.q);
+      else
+        codec->transfer.buffer[1] |= PLLA_ENABLE;
       break;
 
     case CONFIG_CODEC_DATA_PATH_SETUP:
@@ -770,22 +806,26 @@ static bool startConfigUpdate(struct TLV320AIC3x *codec)
 
     case CONFIG_MIC2LR_LINE2LR_TO_LADC_CTRL:
       codec->transfer.buffer[0] = REG_MIC2LR_LINE2LR_TO_LADC_CTRL;
-      codec->transfer.buffer[1] = makeRegMicLine2ToAdcCtrl(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegMicLine2ToAdcCtrl(codec,
+          CHANNEL_LEFT);
       break;
 
     case CONFIG_MIC2LR_LINE2LR_TO_RADC_CTRL:
       codec->transfer.buffer[0] = REG_MIC2LR_LINE2LR_TO_RADC_CTRL;
-      codec->transfer.buffer[1] = makeRegMicLine2ToAdcCtrl(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegMicLine2ToAdcCtrl(codec,
+          CHANNEL_RIGHT);
       break;
 
     case CONFIG_MIC1LP_LINE1LP_TO_LADC_CTRL:
       codec->transfer.buffer[0] = REG_MIC1LP_LINE1LP_TO_LADC_CTRL;
-      codec->transfer.buffer[1] = makeRegMicLine1ToAdcCtrl(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegMicLine1ToAdcCtrl(codec,
+          CHANNEL_LEFT);
       break;
 
     case CONFIG_MIC1RP_LINE1RP_TO_RADC_CTRL:
       codec->transfer.buffer[0] = REG_MIC1RP_LINE1RP_TO_RADC_CTRL;
-      codec->transfer.buffer[1] = makeRegMicLine1ToAdcCtrl(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegMicLine1ToAdcCtrl(codec,
+          CHANNEL_RIGHT);
       break;
 
     // case CONFIG_LINE2L_TO_LADC_CTRL:
@@ -801,7 +841,7 @@ static bool startConfigUpdate(struct TLV320AIC3x *codec)
 
     case CONFIG_LAGC_CTRL_B:
       codec->transfer.buffer[0] = REG_LAGC_CTRL_B;
-      codec->transfer.buffer[1] = makeRegAgcCtrlB(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegAgcCtrlB(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_LAGC_CTRL_C:
@@ -811,7 +851,7 @@ static bool startConfigUpdate(struct TLV320AIC3x *codec)
 
     case CONFIG_RAGC_CTRL_B:
       codec->transfer.buffer[0] = REG_RAGC_CTRL_B;
-      codec->transfer.buffer[1] = makeRegAgcCtrlB(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegAgcCtrlB(codec, CHANNEL_RIGHT);
       break;
 
     case CONFIG_RAGC_CTRL_C:
@@ -823,22 +863,22 @@ static bool startConfigUpdate(struct TLV320AIC3x *codec)
 
     case CONFIG_LADC_GAIN_CTRL:
       codec->transfer.buffer[0] = REG_LADC_GAIN_CTRL;
-      codec->transfer.buffer[1] = makeRegAdcGainCtrl(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegAdcGainCtrl(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_RADC_GAIN_CTRL:
       codec->transfer.buffer[0] = REG_LADC_GAIN_CTRL;
-      codec->transfer.buffer[1] = makeRegAdcGainCtrl(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegAdcGainCtrl(codec, CHANNEL_RIGHT);
       break;
 
     case CONFIG_LAGC_CTRL_A:
       codec->transfer.buffer[0] = REG_LAGC_CTRL_A;
-      codec->transfer.buffer[1] = makeRegAgcCtrlA(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegAgcCtrlA(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_RAGC_CTRL_A:
       codec->transfer.buffer[0] = REG_RAGC_CTRL_A;
-      codec->transfer.buffer[1] = makeRegAgcCtrlA(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegAgcCtrlA(codec, CHANNEL_RIGHT);
       break;
 
     /* Output path setup */
@@ -865,82 +905,82 @@ static bool startConfigUpdate(struct TLV320AIC3x *codec)
 
     case CONFIG_LLOPM_CTRL:
       codec->transfer.buffer[0] = REG_LLOPM_CTRL;
-      codec->transfer.buffer[1] = makeRegLOPMCtrl(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegLOPMCtrl(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_RLOPM_CTRL:
       codec->transfer.buffer[0] = REG_RLOPM_CTRL;
-      codec->transfer.buffer[1] = makeRegLOPMCtrl(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegLOPMCtrl(codec, CHANNEL_RIGHT);
       break;
 
     case CONFIG_LDAC_VOL:
       codec->transfer.buffer[0] = REG_LDAC_VOL;
-      codec->transfer.buffer[1] = makeRegDacVol(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegDacVol(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_RDAC_VOL:
       codec->transfer.buffer[0] = REG_RDAC_VOL;
-      codec->transfer.buffer[1] = makeRegDacVol(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegDacVol(codec, CHANNEL_RIGHT);
       break;
 
     case CONFIG_DACL1_TO_HPLCOM_VOL:
       codec->transfer.buffer[0] = REG_DACL1_TO_HPLCOM_VOL;
-      codec->transfer.buffer[1] = makeRegDacToHpComVol(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegDacToHpComVol(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_DACR1_TO_HPRCOM_VOL:
       codec->transfer.buffer[0] = REG_DACR1_TO_HPRCOM_VOL;
-      codec->transfer.buffer[1] = makeRegDacToHpComVol(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegDacToHpComVol(codec, CHANNEL_RIGHT);
       break;
 
     case CONFIG_DACL1_TO_HPLOUT_VOL:
       codec->transfer.buffer[0] = REG_DACL1_TO_HPLOUT_VOL;
-      codec->transfer.buffer[1] = makeRegDacToHpOutVol(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegDacToHpOutVol(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_DACR1_TO_HPROUT_VOL:
       codec->transfer.buffer[0] = REG_DACR1_TO_HPROUT_VOL;
-      codec->transfer.buffer[1] = makeRegDacToHpOutVol(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegDacToHpOutVol(codec, CHANNEL_RIGHT);
       break;
 
     case CONFIG_DACL1_TO_LLOPM_VOL:
       codec->transfer.buffer[0] = REG_DACL1_TO_LLOPM_VOL;
-      codec->transfer.buffer[1] = makeRegDacToLOPMVol(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegDacToLOPMVol(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_DACR1_TO_RLOPM_VOL:
       codec->transfer.buffer[0] = REG_DACR1_TO_RLOPM_VOL;
-      codec->transfer.buffer[1] = makeRegDacToLOPMVol(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegDacToLOPMVol(codec, CHANNEL_RIGHT);
       break;
 
     case CONFIG_HPLCOM_CTRL:
       codec->transfer.buffer[0] = REG_HPLCOM_CTRL;
-      codec->transfer.buffer[1] = makeRegHpComCtrl(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegHpComCtrl(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_HPRCOM_CTRL:
       codec->transfer.buffer[0] = REG_HPRCOM_CTRL;
-      codec->transfer.buffer[1] = makeRegHpComCtrl(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegHpComCtrl(codec, CHANNEL_RIGHT);
       break;
 
     case CONFIG_HPLOUT_CTRL:
       codec->transfer.buffer[0] = REG_HPLOUT_CTRL;
-      codec->transfer.buffer[1] = makeRegHpOutCtrl(codec, CH_LEFT);
+      codec->transfer.buffer[1] = makeRegHpOutCtrl(codec, CHANNEL_LEFT);
       break;
 
     case CONFIG_HPROUT_CTRL:
       codec->transfer.buffer[0] = REG_HPROUT_CTRL;
-      codec->transfer.buffer[1] = makeRegHpOutCtrl(codec, CH_RIGHT);
+      codec->transfer.buffer[1] = makeRegHpOutCtrl(codec, CHANNEL_RIGHT);
       break;
 
     /* Output level setup */
 
     case CONFIG_LOUT_VOL:
-      makeOutputVolTransfer(codec, codec->transfer.buffer, CH_LEFT);
+      makeOutputVolTransfer(codec, codec->transfer.buffer, CHANNEL_LEFT);
       break;
 
     case CONFIG_ROUT_VOL:
-      makeOutputVolTransfer(codec, codec->transfer.buffer, CH_RIGHT);
+      makeOutputVolTransfer(codec, codec->transfer.buffer, CHANNEL_RIGHT);
       break;
 
     default:
@@ -978,13 +1018,19 @@ static void updateTask(void *argument)
   aic3xUpdate(codec);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result codecInit(void *object, const void *arguments)
+static enum Result aic3xInit(void *object, const void *arguments)
 {
   const struct TLV320AIC3xConfig * const config = arguments;
   assert(config != NULL);
   assert(config->bus != NULL && config->timer != NULL);
+  assert((config->prescaler >= 128 * 2 && config->prescaler <= 128 * 17
+      && !(config->prescaler & 0xFF)) || !config->prescaler);
 
   struct TLV320AIC3x * const codec = object;
+  uint8_t prescaler = config->prescaler >> 7;
+
+  if (prescaler >= 16)
+    prescaler -= 16;
 
   codec->reset = pinInit(config->reset);
   assert(pinValid(codec->reset));
@@ -999,9 +1045,23 @@ static enum Result codecInit(void *object, const void *arguments)
   codec->updateCallback = NULL;
   codec->updateCallbackArgument = NULL;
 
-  codec->address = config->address ? config->address : CODEC_ADDRESS;
-  codec->rate = config->rate ? config->rate : CODEC_RATE;
+  codec->address = config->address;
+  codec->rate = config->rate;
   codec->pending = false;
+
+  codec->config.input.path = AIC3X_NONE;
+  codec->config.input.gainL = 0;
+  codec->config.input.gainR = 0;
+  codec->config.input.agc = false;
+  codec->config.output.path = AIC3X_NONE;
+  codec->config.output.gainL = 0;
+  codec->config.output.gainR = 0;
+
+  codec->config.pll.d = 0;
+  codec->config.pll.j = 1; /* 0 is reserved value and should not be used */
+  codec->config.pll.p = 0;
+  codec->config.pll.r = 0;
+  codec->config.pll.q = prescaler;
 
   codec->transfer.groups = 0;
   codec->transfer.state = STATE_IDLE;
@@ -1015,7 +1075,7 @@ static enum Result codecInit(void *object, const void *arguments)
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static void codecDeinit(void *object)
+static void aic3xDeinit(void *object)
 {
   struct TLV320AIC3x * const codec = object;
 
@@ -1023,92 +1083,127 @@ static void codecDeinit(void *object)
   timerSetCallback(codec->timer, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
-int aic3xGetInputGain(const struct TLV320AIC3x *codec)
+uint8_t aic3xGetInputGain(const void *object, enum CodecChannel channel)
 {
-  return (codec->config.input.gainL + codec->config.input.gainR) >> 1;
+  const struct TLV320AIC3x * const codec = object;
+
+  switch (channel)
+  {
+    case CHANNEL_LEFT:
+      return codec->config.input.gainL;
+
+    case CHANNEL_RIGHT:
+      return codec->config.input.gainR;
+
+    default:
+      return (codec->config.input.gainL + codec->config.input.gainR) >> 1;
+  }
 }
 /*----------------------------------------------------------------------------*/
-int aic3xGetOutputGain(const struct TLV320AIC3x *codec)
+uint8_t aic3xGetOutputGain(const void *object, enum CodecChannel channel)
 {
-  return (codec->config.output.gainL + codec->config.output.gainR) >> 1;
+  const struct TLV320AIC3x * const codec = object;
+
+  switch (channel)
+  {
+    case CHANNEL_LEFT:
+      return codec->config.output.gainL;
+
+    case CHANNEL_RIGHT:
+      return codec->config.output.gainR;
+
+    default:
+      return (codec->config.output.gainL + codec->config.output.gainR) >> 1;
+  }
 }
 /*----------------------------------------------------------------------------*/
-void aic3xReset(struct TLV320AIC3x *codec, uint32_t rate,
-    enum AIC3xPath inputPath, uint8_t inputGain, bool inputAutoGain,
-    enum AIC3xPath outputPath, uint8_t outputGain)
+bool aic3xIsAGCEnabled(const void *object)
 {
-  changeRateConfig(codec, rate);
-
-  codec->config.input.path = inputPath;
-  codec->config.input.gainL = inputGain;
-  codec->config.input.gainR = inputGain;
-  codec->config.input.agc = inputAutoGain;
-  codec->config.output.path = outputPath;
-  codec->config.output.gainL = outputGain;
-  codec->config.output.gainR = outputGain;
-
-  invokeAction(codec, GROUP_RESET | GROUP_GENERIC | GROUP_RATE
-      | GROUP_INPUT | GROUP_INPUT_LEVEL | GROUP_OUTPUT);
+  const struct TLV320AIC3x * const codec = object;
+  return codec->config.input.agc;
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetInputGain(struct TLV320AIC3x *codec, uint8_t gain, bool agc)
+void aic3xSetAGCEnabled(void *object, bool state)
 {
-  codec->config.input.gainL = gain;
-  codec->config.input.gainR = gain;
-  codec->config.input.agc = agc;
+  struct TLV320AIC3x * const codec = object;
+  const bool update = codec->config.input.agc != state;
 
-  if (codec->config.input.path != AIC3X_NONE)
+  codec->config.input.agc = state;
+
+  if (update && codec->config.input.path != AIC3X_NONE)
+    invokeAction(codec, GROUP_INPUT | GROUP_INPUT_LEVEL);
+}
+/*----------------------------------------------------------------------------*/
+void aic3xSetInputGain(void *object, enum CodecChannel channel, uint8_t gain)
+{
+  struct TLV320AIC3x * const codec = object;
+  bool update = false;
+
+  if (channel != CHANNEL_RIGHT && codec->config.input.gainL != gain)
+  {
+    codec->config.input.gainL = gain;
+    update = true;
+  }
+  if (channel != CHANNEL_LEFT && codec->config.input.gainR != gain)
+  {
+    codec->config.input.gainR = gain;
+    update = true;
+  }
+
+  if (update && codec->config.input.path != AIC3X_NONE)
+  {
     invokeAction(codec, GROUP_INPUT_LEVEL);
+  }
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetInputGainLR(struct TLV320AIC3x *codec, uint8_t gainL,
-    uint8_t gainR, bool agc)
+void aic3xSetInputPath(void *object, int path)
 {
-  codec->config.input.gainL = gainL;
-  codec->config.input.gainR = gainR;
-  codec->config.input.agc = agc;
+  struct TLV320AIC3x * const codec = object;
+  const bool update = codec->config.input.path != path;
 
-  if (codec->config.input.path != AIC3X_NONE)
-    invokeAction(codec, GROUP_INPUT_LEVEL);
-}
-/*----------------------------------------------------------------------------*/
-void aic3xSetInputPath(struct TLV320AIC3x *codec, enum AIC3xPath path)
-{
   assert(path >= AIC3X_DEFAULT_INPUT && path < AIC3X_END);
   codec->config.input.path = path;
 
-  invokeAction(codec, GROUP_INPUT | GROUP_INPUT_LEVEL);
+  if (update)
+    invokeAction(codec, GROUP_INPUT | GROUP_INPUT_LEVEL);
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetOutputGain(struct TLV320AIC3x *codec, uint8_t gain)
+void aic3xSetOutputGain(void *object, enum CodecChannel channel, uint8_t gain)
 {
-  codec->config.output.gainL = gain;
-  codec->config.output.gainR = gain;
+  struct TLV320AIC3x * const codec = object;
+  bool update = false;
 
-  if (codec->config.output.path != AIC3X_NONE)
+  if (channel != CHANNEL_RIGHT && codec->config.output.gainL != gain)
+  {
+    codec->config.output.gainL = gain;
+    update = true;
+  }
+  if (channel != CHANNEL_LEFT && codec->config.output.gainR != gain)
+  {
+    codec->config.output.gainR = gain;
+    update = true;
+  }
+
+  if (update && codec->config.output.path != AIC3X_NONE)
     invokeAction(codec, GROUP_OUTPUT_LEVEL);
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetOutputGainLR(struct TLV320AIC3x *codec, uint8_t gainL,
-    uint8_t gainR)
+void aic3xSetOutputPath(void *object, int path)
 {
-  codec->config.output.gainL = gainL;
-  codec->config.output.gainR = gainR;
+  struct TLV320AIC3x * const codec = object;
+  const bool update = codec->config.output.path != path;
 
-  if (codec->config.output.path != AIC3X_NONE)
-    invokeAction(codec, GROUP_OUTPUT_LEVEL);
-}
-/*----------------------------------------------------------------------------*/
-void aic3xSetOutputPath(struct TLV320AIC3x *codec, enum AIC3xPath path)
-{
   assert(path >= AIC3X_DEFAULT_OUTPUT && path < AIC3X_DEFAULT_INPUT);
   codec->config.output.path = path;
 
-  invokeAction(codec, GROUP_OUTPUT);
+  if (update)
+    invokeAction(codec, GROUP_OUTPUT);
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetRate(struct TLV320AIC3x *codec, uint32_t rate)
+void aic3xSetSampleRate(void *object, uint32_t rate)
 {
+  struct TLV320AIC3x * const codec = object;
+
   if (codec->config.rate != rate)
   {
     changeRateConfig(codec, rate);
@@ -1116,18 +1211,22 @@ void aic3xSetRate(struct TLV320AIC3x *codec, uint32_t rate)
   }
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetErrorCallback(struct TLV320AIC3x *codec, void (*callback)(void *),
+void aic3xSetErrorCallback(void *object, void (*callback)(void *),
     void *argument)
 {
+  struct TLV320AIC3x * const codec = object;
+
   assert(callback != NULL);
 
   codec->errorCallbackArgument = argument;
   codec->errorCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetUpdateCallback(struct TLV320AIC3x *codec, void (*callback)(void *),
+void aic3xSetUpdateCallback(void *object, void (*callback)(void *),
     void *argument)
 {
+  struct TLV320AIC3x * const codec = object;
+
   assert(callback != NULL);
   assert(codec->wq == NULL);
 
@@ -1135,12 +1234,26 @@ void aic3xSetUpdateCallback(struct TLV320AIC3x *codec, void (*callback)(void *),
   codec->updateCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetUpdateWorkQueue(struct TLV320AIC3x *codec, struct WorkQueue *wq)
+void aic3xSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
+  struct TLV320AIC3x * const codec = object;
+
   assert(wq != NULL);
   assert(codec->updateCallback == NULL);
 
   codec->wq = wq;
+}
+/*----------------------------------------------------------------------------*/
+void aic3xReset(void *object, uint32_t rate, int inputPath, int outputPath)
+{
+  struct TLV320AIC3x * const codec = object;
+
+  codec->config.input.path = inputPath;
+  codec->config.output.path = outputPath;
+
+  changeRateConfig(codec, rate);
+  invokeAction(codec, GROUP_RESET | GROUP_GENERIC | GROUP_RATE
+      | GROUP_INPUT | GROUP_INPUT_LEVEL | GROUP_OUTPUT);
 }
 /*----------------------------------------------------------------------------*/
 bool aic3xUpdate(void *object)

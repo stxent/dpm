@@ -98,7 +98,13 @@ static void busInit(struct MPU60XX *sensor, bool read)
   if (sensor->rate)
     ifSetParam(sensor->bus, IF_RATE, &sensor->rate);
 
-  if (sensor->address)
+  if (pinValid(sensor->gpio))
+  {
+    /* SPI bus */
+    ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, NULL);
+    pinReset(sensor->gpio);
+  }
+  else
   {
     /* I2C bus */
     ifSetParam(sensor->bus, IF_ADDRESS, &sensor->address);
@@ -110,12 +116,6 @@ static void busInit(struct MPU60XX *sensor, bool read)
     timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
     timerSetValue(sensor->timer, 0);
     timerEnable(sensor->timer);
-  }
-  else
-  {
-    /* SPI bus */
-    ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, NULL);
-    pinReset(sensor->gpio);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -230,11 +230,12 @@ static void onBusEvent(void *object)
 
   timerDisable(sensor->timer);
 
-  if (sensor->address && ifGetParam(sensor->bus, IF_STATUS, NULL) != E_OK)
+  if (!pinValid(sensor->gpio)
+      && ifGetParam(sensor->bus, IF_STATUS, NULL) != E_OK)
   {
+    /* I2C bus */
     sensor->state = STATE_ERROR_WAIT;
 
-    // TODO Timeouts
     timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
     timerSetValue(sensor->timer, 0);
     timerEnable(sensor->timer);
@@ -258,7 +259,7 @@ static void onBusEvent(void *object)
       break;
   }
 
-  if (!sensor->address)
+  if (pinValid(sensor->gpio))
     pinSet(sensor->gpio);
 
   ifSetCallback(sensor->bus, NULL, NULL);
@@ -291,7 +292,7 @@ static void onTimerEvent(void *object)
       break;
 
     default:
-      if (!sensor->address)
+      if (pinValid(sensor->gpio))
         pinSet(sensor->gpio);
 
       ifSetCallback(sensor->bus, NULL, NULL);
@@ -368,7 +369,7 @@ static bool startConfigUpdate(struct MPU60XX *sensor, bool *busy)
     case CONFIG_USER_CTRL:
       sensor->buffer[0] = REG_USER_CTRL;
       sensor->buffer[1] = USER_CTRL_SIG_COND_RESET
-          | (sensor->address ? 0 : USER_CTRL_I2C_IF_DIS);
+          | (pinValid(sensor->gpio) ? USER_CTRL_I2C_IF_DIS : 0);
       break;
 
     case CONFIG_PWR_MGMT_WAKEUP:
@@ -436,7 +437,7 @@ static bool startConfigUpdate(struct MPU60XX *sensor, bool *busy)
     {
       busInit(sensor, read);
 
-      if (!sensor->address && read)
+      if (pinValid(sensor->gpio) && read)
       {
         /* Add read bit in case of SPI interface */
         sensor->buffer[0] |= 0x80;
@@ -485,7 +486,6 @@ static enum Result mpuInit(void *object, const void *configBase)
   sensor->event = config->event;
   sensor->timer = config->timer;
   sensor->rate = config->rate;
-  sensor->address = config->address;
 
   sensor->flags = 0;
   sensor->state = STATE_IDLE;
@@ -524,10 +524,8 @@ static enum Result mpuInit(void *object, const void *configBase)
   }
   else
   {
-    if (!config->address)
-      return E_VALUE;
-
     sensor->address = config->address;
+    sensor->gpio = pinStub();
   }
 
   interruptSetCallback(sensor->event, onPinEvent, sensor);

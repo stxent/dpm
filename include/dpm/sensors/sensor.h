@@ -112,6 +112,8 @@ static inline void sensorStop(void *sensor)
 /**
  * Update a sensor state.
  * @param sensor Pointer to a Sensor object.
+ * @return Bus status, @b true when the bus is busy and @b false when the bus
+ * is idle and may be used by another sensor.
  */
 static inline bool sensorUpdate(void *sensor)
 {
