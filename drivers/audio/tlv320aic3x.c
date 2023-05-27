@@ -6,7 +6,6 @@
 
 #include <dpm/audio/tlv320aic3x.h>
 #include <dpm/audio/tlv320aic3x_defs.h>
-#include <halm/delay.h>
 #include <halm/generic/i2c.h>
 #include <halm/generic/work_queue.h>
 #include <halm/timer.h>
@@ -14,9 +13,6 @@
 #include <xcore/atomic.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
-#define CODEC_ADDRESS 0x18
-#define CODEC_RATE    400000
-
 enum ConfigGroup
 {
   GROUP_RESET         = 0x01,
@@ -27,6 +23,9 @@ enum ConfigGroup
   GROUP_OUTPUT        = 0x20,
   GROUP_OUTPUT_LEVEL  = 0x40
 } __attribute__((packed));
+
+#define GROUP_READY_MASK (GROUP_RESET | GROUP_GENERIC | GROUP_RATE \
+    | GROUP_INPUT | GROUP_INPUT_LEVEL | GROUP_OUTPUT)
 
 enum ConfigStep
 {
@@ -162,6 +161,7 @@ static void invokeAction(struct TLV320AIC3x *, uint8_t);
 static void invokeUpdate(struct TLV320AIC3x *);
 static void onBusEvent(void *);
 static void onTimerEvent(void *);
+static void startBusTimeout(struct Timer *);
 static bool startConfigUpdate(struct TLV320AIC3x *);
 static void updateTask(void *);
 /*----------------------------------------------------------------------------*/
@@ -171,6 +171,7 @@ static void aic3xDeinit(void *);
 uint8_t aic3xGetInputGain(const void *, enum CodecChannel);
 uint8_t aic3xGetOutputGain(const void *, enum CodecChannel);
 bool aic3xIsAGCEnabled(const void *);
+bool aic3xIsReady(const void *);
 void aic3xSetAGCEnabled(void *, bool);
 void aic3xSetInputGain(void *, enum CodecChannel, uint8_t);
 void aic3xSetInputPath(void *, int);
@@ -191,6 +192,7 @@ const struct CodecClass * const TLV320AIC3x = &(const struct CodecClass){
     .getInputGain = aic3xGetInputGain,
     .getOutputGain = aic3xGetOutputGain,
     .isAGCEnabled = aic3xIsAGCEnabled,
+    .isReady = aic3xIsReady,
 
     .setAGCEnabled = aic3xSetAGCEnabled,
     .setInputGain = aic3xSetInputGain,
@@ -605,9 +607,7 @@ static void busInit(struct TLV320AIC3x *codec, bool read)
     ifSetParam(codec->bus, IF_I2C_REPEATED_START, NULL);
 
   /* Start bus watchdog */
-  timerSetOverflow(codec->timer, timerGetFrequency(codec->timer) / 10);
-  timerSetValue(codec->timer, 0);
-  timerEnable(codec->timer);
+  startBusTimeout(codec->timer);
 }
 /*----------------------------------------------------------------------------*/
 static void changeRateConfig(struct TLV320AIC3x *codec, unsigned int rate)
@@ -680,9 +680,7 @@ static void onBusEvent(void *object)
     codec->transfer.state = STATE_ERROR_WAIT;
 
     /* Start bus timeout sequence */
-    timerSetOverflow(codec->timer, timerGetFrequency(codec->timer) / 10);
-    timerSetValue(codec->timer, 0);
-    timerEnable(codec->timer);
+    startBusTimeout(codec->timer);
   }
 
   switch (codec->transfer.state)
@@ -691,6 +689,10 @@ static void onBusEvent(void *object)
       busy = true;
       codec->transfer.state = STATE_CONFIG_BUS_WAIT;
 
+      /* Start bus watchdog */
+      startBusTimeout(codec->timer);
+
+      /* Page 0 selected, start register write */
       ifWrite(codec->bus, codec->transfer.buffer, codec->transfer.length);
       break;
 
@@ -733,6 +735,13 @@ static void onTimerEvent(void *object)
   }
 
   invokeUpdate(codec);
+}
+/*----------------------------------------------------------------------------*/
+static void startBusTimeout(struct Timer *timer)
+{
+  timerSetOverflow(timer, timerGetFrequency(timer) / 10);
+  timerSetValue(timer, 0);
+  timerEnable(timer);
 }
 /*----------------------------------------------------------------------------*/
 static bool startConfigUpdate(struct TLV320AIC3x *codec)
@@ -1048,6 +1057,7 @@ static enum Result aic3xInit(void *object, const void *arguments)
   codec->address = config->address;
   codec->rate = config->rate;
   codec->pending = false;
+  codec->ready = false;
 
   codec->config.input.path = AIC3X_NONE;
   codec->config.input.gainL = 0;
@@ -1064,6 +1074,7 @@ static enum Result aic3xInit(void *object, const void *arguments)
   codec->config.pll.q = prescaler;
 
   codec->transfer.groups = 0;
+  codec->transfer.passed = 0;
   codec->transfer.state = STATE_IDLE;
   codec->transfer.step = CONFIG_END;
   codec->transfer.page[0] = REG_PAGE_SELECT;
@@ -1123,15 +1134,23 @@ bool aic3xIsAGCEnabled(const void *object)
   return codec->config.input.agc;
 }
 /*----------------------------------------------------------------------------*/
+bool aic3xIsReady(const void *object)
+{
+  const struct TLV320AIC3x * const codec = object;
+  return codec->ready;
+}
+/*----------------------------------------------------------------------------*/
 void aic3xSetAGCEnabled(void *object, bool state)
 {
   struct TLV320AIC3x * const codec = object;
-  const bool update = codec->config.input.agc != state;
 
-  codec->config.input.agc = state;
+  if (codec->config.input.agc != state)
+  {
+    codec->config.input.agc = state;
 
-  if (update && codec->config.input.path != AIC3X_NONE)
-    invokeAction(codec, GROUP_INPUT | GROUP_INPUT_LEVEL);
+    if (codec->ready && codec->config.input.path != AIC3X_NONE)
+      invokeAction(codec, GROUP_INPUT | GROUP_INPUT_LEVEL);
+  }
 }
 /*----------------------------------------------------------------------------*/
 void aic3xSetInputGain(void *object, enum CodecChannel channel, uint8_t gain)
@@ -1150,7 +1169,7 @@ void aic3xSetInputGain(void *object, enum CodecChannel channel, uint8_t gain)
     update = true;
   }
 
-  if (update && codec->config.input.path != AIC3X_NONE)
+  if (update && codec->ready && codec->config.input.path != AIC3X_NONE)
   {
     invokeAction(codec, GROUP_INPUT_LEVEL);
   }
@@ -1159,13 +1178,17 @@ void aic3xSetInputGain(void *object, enum CodecChannel channel, uint8_t gain)
 void aic3xSetInputPath(void *object, int path)
 {
   struct TLV320AIC3x * const codec = object;
-  const bool update = codec->config.input.path != path;
 
-  assert(path >= AIC3X_DEFAULT_INPUT && path < AIC3X_END);
-  codec->config.input.path = path;
+  if (path >= AIC3X_DEFAULT_INPUT && path < AIC3X_END)
+  {
+    if (codec->config.input.path != path)
+    {
+      codec->config.input.path = path;
 
-  if (update)
-    invokeAction(codec, GROUP_INPUT | GROUP_INPUT_LEVEL);
+      if (codec->ready)
+        invokeAction(codec, GROUP_INPUT | GROUP_INPUT_LEVEL);
+    }
+  }
 }
 /*----------------------------------------------------------------------------*/
 void aic3xSetOutputGain(void *object, enum CodecChannel channel, uint8_t gain)
@@ -1184,20 +1207,24 @@ void aic3xSetOutputGain(void *object, enum CodecChannel channel, uint8_t gain)
     update = true;
   }
 
-  if (update && codec->config.output.path != AIC3X_NONE)
+  if (update && codec->ready && codec->config.output.path != AIC3X_NONE)
     invokeAction(codec, GROUP_OUTPUT_LEVEL);
 }
 /*----------------------------------------------------------------------------*/
 void aic3xSetOutputPath(void *object, int path)
 {
   struct TLV320AIC3x * const codec = object;
-  const bool update = codec->config.output.path != path;
 
-  assert(path >= AIC3X_DEFAULT_OUTPUT && path < AIC3X_DEFAULT_INPUT);
-  codec->config.output.path = path;
+  if (path >= AIC3X_DEFAULT_OUTPUT && path < AIC3X_DEFAULT_INPUT)
+  {
+    if (codec->config.output.path != path)
+    {
+      codec->config.output.path = path;
 
-  if (update)
-    invokeAction(codec, GROUP_OUTPUT);
+      if (codec->ready)
+        invokeAction(codec, GROUP_OUTPUT);
+    }
+  }
 }
 /*----------------------------------------------------------------------------*/
 void aic3xSetSampleRate(void *object, uint32_t rate)
@@ -1207,7 +1234,9 @@ void aic3xSetSampleRate(void *object, uint32_t rate)
   if (codec->config.rate != rate)
   {
     changeRateConfig(codec, rate);
-    invokeAction(codec, GROUP_RATE);
+
+    if (codec->ready)
+      invokeAction(codec, GROUP_RATE);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -1248,6 +1277,9 @@ void aic3xReset(void *object, uint32_t rate, int inputPath, int outputPath)
 {
   struct TLV320AIC3x * const codec = object;
 
+  codec->ready = false;
+  codec->transfer.passed = 0;
+
   codec->config.input.path = inputPath;
   codec->config.output.path = outputPath;
 
@@ -1286,6 +1318,7 @@ bool aic3xUpdate(void *object)
           const unsigned int index = countLeadingZeros32(mask);
 
           atomicFetchAnd(&codec->transfer.groups, ~(1 << index));
+          codec->transfer.passed |= 1 << index;
           codec->transfer.step = groupIndexToConfigStep(index);
         }
         else
@@ -1306,7 +1339,11 @@ bool aic3xUpdate(void *object)
         ++codec->transfer.step;
 
         if (isLastConfigGroupStep(codec->transfer.step))
+        {
+          if (codec->transfer.passed == GROUP_READY_MASK)
+            codec->ready = true;
           codec->transfer.state = STATE_IDLE;
+        }
         else
           codec->transfer.state = STATE_CONFIG_UPDATE;
 
@@ -1315,11 +1352,13 @@ bool aic3xUpdate(void *object)
 
       case STATE_ERROR_INTERFACE:
       case STATE_ERROR_TIMEOUT:
+        codec->transfer.groups = 0;
+        codec->transfer.state = STATE_IDLE;
+
         if (codec->errorCallback != NULL)
           codec->errorCallback(codec->errorCallbackArgument);
 
-        codec->transfer.groups = 0;
-        codec->transfer.state = STATE_IDLE;
+        updated = true;
         break;
 
       default:

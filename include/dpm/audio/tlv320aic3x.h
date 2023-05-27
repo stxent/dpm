@@ -75,6 +75,7 @@ struct TLV320AIC3x
   uint32_t address;
   uint32_t rate;
   bool pending;
+  bool ready;
 
   struct
   {
@@ -82,6 +83,7 @@ struct TLV320AIC3x
     uint8_t buffer[3];
     uint8_t page[2];
     uint8_t groups;
+    uint8_t passed;
     uint8_t state;
     uint8_t step;
   } transfer;

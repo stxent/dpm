@@ -9,6 +9,7 @@ add_subdirectory("platform")
 add_subdirectory("sensors")
 add_subdirectory("usb")
 
+list(APPEND SOURCE_FILES "bus_handler.c")
 list(APPEND SOURCE_FILES "button.c")
 list(APPEND SOURCE_FILES "rgb_led.c")
 list(APPEND SOURCE_FILES "software_pwm.c")

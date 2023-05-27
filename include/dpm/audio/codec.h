@@ -29,6 +29,7 @@ struct CodecClass
   uint8_t (*getInputGain)(const void *, enum CodecChannel);
   uint8_t (*getOutputGain)(const void *, enum CodecChannel);
   bool (*isAGCEnabled)(const void *);
+  bool (*isReady)(const void *);
 
   /* Setters */
   void (*setAGCEnabled)(void *, bool);
@@ -89,6 +90,16 @@ static inline uint8_t codecGetOutputGain(const void *codec,
 static inline bool codecIsAGCEnabled(const void *codec)
 {
   return ((const struct CodecClass *)CLASS(codec))->isAGCEnabled(codec);
+}
+
+/**
+ * Get codec status.
+ * @param codec Pointer to a Codec object.
+ * @return Codec status, @b true when the codec is ready.
+ */
+static inline bool codecIsReady(const void *codec)
+{
+  return ((const struct CodecClass *)CLASS(codec))->isReady(codec);
 }
 
 /**
