@@ -13,6 +13,7 @@
 /*----------------------------------------------------------------------------*/
 static void bhOnDetach(void *);
 static void bhOnError(void *);
+static void bhOnIdle(void *);
 static void bhOnUpdate(void *);
 static void bhUpdate(void *);
 /*----------------------------------------------------------------------------*/
@@ -40,6 +41,15 @@ static void bhOnError(void *argument)
 
   if (handler->errorCallback != NULL)
     handler->errorCallback(handler->errorCallbackArgument, entry->device);
+}
+/*----------------------------------------------------------------------------*/
+static void bhOnIdle(void *argument)
+{
+  struct BHEntry * const entry = argument;
+  struct BusHandler * const handler = entry->handler;
+
+  if (handler->idleCallback != NULL)
+    handler->idleCallback(handler->idleCallbackArgument, entry->device);
 }
 /*----------------------------------------------------------------------------*/
 static void bhOnUpdate(void *argument)
@@ -111,6 +121,7 @@ bool bhInit(struct BusHandler *handler, size_t capacity, void *wq)
   handler->current = NULL;
   handler->wq = wq ? wq : WQ_DEFAULT;
   handler->errorCallback = NULL;
+  handler->idleCallback = NULL;
 
   return true;
 }
@@ -122,6 +133,7 @@ void bhDeinit(struct BusHandler *handler)
 /*----------------------------------------------------------------------------*/
 bool bhAttach(struct BusHandler *handler, void *device,
     BHDeviceCallbackSetter errorCallbackSetter,
+    BHDeviceCallbackSetter idleCallbackSetter,
     BHDeviceCallbackSetter updateCallbackSetter,
     BHDeviceCallback updateCallback)
 {
@@ -142,11 +154,14 @@ bool bhAttach(struct BusHandler *handler, void *device,
 
     entry->device = device;
     entry->errorCallbackSetter = errorCallbackSetter;
+    entry->idleCallbackSetter = idleCallbackSetter;
     entry->updateCallbackSetter = updateCallbackSetter;
     entry->updateCallback = updateCallback;
 
     if (entry->errorCallbackSetter != NULL)
       entry->errorCallbackSetter(device, bhOnError, entry);
+    if (entry->idleCallbackSetter != NULL)
+      entry->idleCallbackSetter(device, bhOnIdle, entry);
     entry->updateCallbackSetter(device, bhOnUpdate, entry);
 
     return true;
@@ -165,6 +180,8 @@ void bhDetach(struct BusHandler *handler, void *device)
     {
       if (entry->errorCallbackSetter != NULL)
         entry->errorCallbackSetter(device, NULL, NULL);
+      if (entry->idleCallbackSetter != NULL)
+        entry->idleCallbackSetter(device, NULL, NULL);
       entry->updateCallbackSetter(device, NULL, NULL);
 
       atomicFetchOr(&handler->detaching, entry->mask);
@@ -179,4 +196,11 @@ void bhSetErrorCallback(struct BusHandler *handler, BHCallback callback,
 {
   handler->errorCallbackArgument = argument;
   handler->errorCallback = callback;
+}
+/*----------------------------------------------------------------------------*/
+void bhSetIdleCallback(struct BusHandler *handler, BHCallback callback,
+    void *argument)
+{
+  handler->idleCallbackArgument = argument;
+  handler->idleCallback = callback;
 }

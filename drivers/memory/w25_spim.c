@@ -541,6 +541,8 @@ static enum Result memoryInit(void *object, const void *configBase)
   struct JedecInfo info;
   enum Result res = E_OK;
 
+  memory->callback = NULL;
+
   memory->spim = config->spim;
   memory->position = 0;
   memory->blocking = true;
@@ -722,6 +724,8 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           eraseBlock64KB(memory, position);
           waitMemoryBusy(memory);
           busRelease(memory);
+
+          return E_OK;
         }
         else
         {
@@ -731,8 +735,9 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
 
           busAcquire(memory);
           writeEnable(memory, true);
+
+          return E_BUSY;
         }
-        return E_OK;
       }
       else
         return E_ADDRESS;
@@ -753,6 +758,8 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           eraseSector4KB(memory, position);
           waitMemoryBusy(memory);
           busRelease(memory);
+
+          return E_OK;
         }
         else
         {
@@ -762,8 +769,9 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
 
           busAcquire(memory);
           writeEnable(memory, true);
+
+          return E_BUSY;
         }
-        return E_OK;
       }
       else
         return E_ADDRESS;

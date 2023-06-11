@@ -40,6 +40,7 @@ struct CodecClass
   void (*setSampleRate)(void *, uint32_t);
 
   void (*setErrorCallback)(void *, void (*)(void *), void *);
+  void (*setIdleCallback)(void *, void (*)(void *), void *);
   void (*setUpdateCallback)(void *, void (*)(void *), void *);
   void (*setUpdateWorkQueue)(void *, struct WorkQueue *);
 
@@ -203,6 +204,19 @@ static inline void codecSetErrorCallback(void *codec, void (*callback)(void *),
     void *argument)
 {
   ((const struct CodecClass *)CLASS(codec))->setErrorCallback(codec,
+      callback, argument);
+}
+
+/**
+ * Set a callback which is called when all operations are done successfully.
+ * @param codec Pointer to a Codec object.
+ * @param callback Callback function.
+ * @param argument Callback argument.
+ */
+static inline void codecSetIdleCallback(void *codec, void (*callback)(void *),
+    void *argument)
+{
+  ((const struct CodecClass *)CLASS(codec))->setIdleCallback(codec,
       callback, argument);
 }
 

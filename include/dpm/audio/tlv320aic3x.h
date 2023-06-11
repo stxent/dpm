@@ -64,6 +64,8 @@ struct TLV320AIC3x
 
   void (*errorCallback)(void *);
   void *errorCallbackArgument;
+  void (*idleCallback)(void *);
+  void *idleCallbackArgument;
   void (*updateCallback)(void *);
   void *updateCallbackArgument;
 

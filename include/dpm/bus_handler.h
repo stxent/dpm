@@ -22,6 +22,7 @@ struct BHEntry
   void *device;
   uint32_t mask;
   BHDeviceCallbackSetter errorCallbackSetter;
+  BHDeviceCallbackSetter idleCallbackSetter;
   BHDeviceCallbackSetter updateCallbackSetter;
   BHDeviceCallback updateCallback;
 };
@@ -34,6 +35,8 @@ struct BusHandler
 
   BHCallback errorCallback;
   void *errorCallbackArgument;
+  BHCallback idleCallback;
+  void *idleCallbackArgument;
 
   size_t capacity;
   uint32_t pool;
@@ -47,9 +50,10 @@ BEGIN_DECLS
 bool bhInit(struct BusHandler *, size_t, void *);
 void bhDeinit(struct BusHandler *);
 bool bhAttach(struct BusHandler *, void *, BHDeviceCallbackSetter,
-    BHDeviceCallbackSetter, BHDeviceCallback);
+    BHDeviceCallbackSetter, BHDeviceCallbackSetter, BHDeviceCallback);
 void bhDetach(struct BusHandler *, void *);
 void bhSetErrorCallback(struct BusHandler *, BHCallback, void *);
+void bhSetIdleCallback(struct BusHandler *, BHCallback, void *);
 
 END_DECLS
 /*----------------------------------------------------------------------------*/

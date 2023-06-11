@@ -179,6 +179,7 @@ void aic3xSetOutputGain(void *, enum CodecChannel, uint8_t);
 void aic3xSetOutputPath(void *, int);
 void aic3xSetSampleRate(void *, uint32_t);
 void aic3xSetErrorCallback(void *, void (*)(void *), void *);
+void aic3xSetIdleCallback(void *, void (*)(void *), void *);
 void aic3xSetUpdateCallback(void *, void (*)(void *), void *);
 void aic3xSetUpdateWorkQueue(void *, struct WorkQueue *);
 void aic3xReset(void *, uint32_t, int, int);
@@ -202,6 +203,7 @@ const struct CodecClass * const TLV320AIC3x = &(const struct CodecClass){
     .setSampleRate = aic3xSetSampleRate,
 
     .setErrorCallback = aic3xSetErrorCallback,
+    .setIdleCallback = aic3xSetIdleCallback,
     .setUpdateCallback = aic3xSetUpdateCallback,
     .setUpdateWorkQueue = aic3xSetUpdateWorkQueue,
 
@@ -1045,14 +1047,13 @@ static enum Result aic3xInit(void *object, const void *arguments)
   assert(pinValid(codec->reset));
   pinOutput(codec->reset, true);
 
+  codec->errorCallback = NULL;
+  codec->idleCallback = NULL;
+  codec->updateCallback = NULL;
+
   codec->bus = config->bus;
   codec->timer = config->timer;
   codec->wq = NULL;
-
-  codec->errorCallback = NULL;
-  codec->errorCallbackArgument = NULL;
-  codec->updateCallback = NULL;
-  codec->updateCallbackArgument = NULL;
 
   codec->address = config->address;
   codec->rate = config->rate;
@@ -1251,6 +1252,17 @@ void aic3xSetErrorCallback(void *object, void (*callback)(void *),
   codec->errorCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
+void aic3xSetIdleCallback(void *object, void (*callback)(void *),
+    void *argument)
+{
+  struct TLV320AIC3x * const codec = object;
+
+  assert(callback != NULL);
+
+  codec->idleCallbackArgument = argument;
+  codec->idleCallback = callback;
+}
+/*----------------------------------------------------------------------------*/
 void aic3xSetUpdateCallback(void *object, void (*callback)(void *),
     void *argument)
 {
@@ -1343,6 +1355,9 @@ bool aic3xUpdate(void *object)
           if (codec->transfer.passed == GROUP_READY_MASK)
             codec->ready = true;
           codec->transfer.state = STATE_IDLE;
+
+          if (!codec->transfer.groups && codec->idleCallback != NULL)
+            codec->idleCallback(codec->idleCallbackArgument);
         }
         else
           codec->transfer.state = STATE_CONFIG_UPDATE;
