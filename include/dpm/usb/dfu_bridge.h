@@ -11,28 +11,23 @@
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const DfuBridge;
 
-struct FlashGeometry
-{
-  /** Sector count in a flash region. */
-  size_t count;
-  /** Size of each sector in a region. */
-  size_t size;
-  /** Sector erase time in milliseconds. */
-  uint32_t time;
-};
-
 struct DfuBridgeConfig
 {
-  /** Mandatory: geometry of the flash memory. */
-  const struct FlashGeometry *geometry;
-  /** Mandatory: flash memory interface. */
-  void *flash;
   /** Mandatory: DFU instance. */
   struct Dfu *device;
-  /** Mandatory: offset from the beginning of the flash memory. */
-  size_t offset;
   /** Optional: software reset handler. */
   void (*reset)(void);
+
+  /** Mandatory: flash memory interface. */
+  void *flash;
+  /** Mandatory: offset from the beginning of the flash memory. */
+  size_t offset;
+
+  /** Mandatory: geometry of the flash memory regions. */
+  const struct FlashGeometry *geometry;
+  /** Mandatory: count of the flash memory regions. */
+  size_t regions;
+
   /** Optional: disable firmware reading. */
   bool writeonly;
 };
@@ -42,14 +37,16 @@ struct DfuBridge
   struct Entity base;
 
   struct Dfu *device;
-  struct Interface *flash;
   void (*reset)(void);
 
-  const struct FlashGeometry *geometry;
-  uint8_t *chunk;
-
+  struct Interface *flash;
   size_t flashOffset;
   size_t flashSize;
+
+  const struct FlashGeometry *geometry;
+  size_t regions;
+
+  uint8_t *chunkData;
   size_t chunkSize;
 
   size_t bufferSize;
