@@ -26,6 +26,7 @@ enum
 /*----------------------------------------------------------------------------*/
 static void busAcquire(struct W25SPIM *);
 static void busRelease(struct W25SPIM *);
+static bool changeDriverStrength(struct W25SPIM *, enum W25DriverStrength);
 static bool changeQuadMode(struct W25SPIM *, bool);
 static void enableQpiMode(struct W25SPIM *);
 static void eraseBlock64KB(struct W25SPIM *, uint32_t);
@@ -80,6 +81,24 @@ static void busRelease(struct W25SPIM *memory)
   if (!memory->blocking)
     ifSetCallback(memory->spim, 0, 0);
   ifSetParam(memory->spim, IF_RELEASE, 0);
+}
+/*----------------------------------------------------------------------------*/
+static bool changeDriverStrength(struct W25SPIM *memory,
+    enum W25DriverStrength strength)
+{
+  if (strength == W25_DRV_DEFAULT)
+    return true;
+
+  uint8_t current = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_3);
+  const uint8_t expected = (current & ~SR3_DRV_MASK) | SR3_DRV(strength - 1);
+
+  if (current != expected)
+  {
+    writeStatusRegister(memory, CMD_WRITE_STATUS_REGISTER_3, expected, false);
+    current = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_3);
+  }
+
+  return current == expected;
 }
 /*----------------------------------------------------------------------------*/
 static bool changeQuadMode(struct W25SPIM *memory, bool enabled)
@@ -536,6 +555,7 @@ static enum Result memoryInit(void *object, const void *configBase)
   const struct W25SPIMConfig * const config = configBase;
   assert(config != NULL);
   assert(config->spim != NULL);
+  assert(config->strength < W25_DRV_END);
 
   struct W25SPIM * const memory = object;
   struct JedecInfo info;
@@ -623,9 +643,12 @@ static enum Result memoryInit(void *object, const void *configBase)
   if (memory->capacity > (1UL << 24))
     memory->extended = true;
 
-  /* Configure memory bus mode */
   busAcquire(memory);
+  /* Configure memory bus mode */
   if (!changeQuadMode(memory, memory->quad))
+    res = E_INTERFACE;
+  /* Configure driver strength */
+  if (!changeDriverStrength(memory, config->strength))
     res = E_INTERFACE;
   busRelease(memory);
 

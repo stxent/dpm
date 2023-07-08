@@ -7,6 +7,7 @@
 #ifndef DPM_MEMORY_W25_SPIM_H_
 #define DPM_MEMORY_W25_SPIM_H_
 /*----------------------------------------------------------------------------*/
+#include <dpm/memory/w25.h>
 #include <xcore/interface.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -17,6 +18,8 @@ struct W25SPIMConfig
 {
   /** Mandatory: underlying SPIM interface. */
   void *spim;
+  /** Optional: output driver strength. */
+  enum W25DriverStrength strength;
   /** Optional: force 3-byte memory addresses in memory-mapped mode. */
   bool shrink;
   /** Optional: allow DTR mode. */

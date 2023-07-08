@@ -114,6 +114,10 @@
 #define SR3_WPS   BIT(2)
 #define SR3_DRV0  BIT(5)
 #define SR3_DRV1  BIT(6)
+
+#define SR3_DRV_MASK        BIT_FIELD(MASK(2), 5)
+#define SR3_DRV(value)      BIT_FIELD((value), 5)
+#define SR3_DRV_VALUE(reg)  FIELD_VALUE((reg), SR3_DRV_MASK, 5)
 /*----------------------------------------------------------------------------*/
 struct JedecInfo
 {
