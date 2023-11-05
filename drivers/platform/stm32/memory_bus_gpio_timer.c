@@ -48,11 +48,6 @@ const struct TimerClass * const MemoryBusGpioTimer = &(const struct TimerClass){
     .setValue = tmrSetValue
 };
 /*----------------------------------------------------------------------------*/
-static inline uint32_t getMaxValue(const struct MemoryBusGpioTimer *timer)
-{
-  return MASK(timer->base.resolution);
-}
-/*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
 {
   struct MemoryBusGpioTimer * const timer = object;
@@ -70,40 +65,19 @@ static void powerStateHandler(void *object, enum PmState state)
   if (state == PM_ACTIVE)
   {
     struct MemoryBusGpioTimer * const timer = object;
-    setTimerFrequency(timer, timer->frequency);
+    gpTimerSetTimerFrequency(&timer->base, timer->frequency);
   }
 }
 #endif
 /*----------------------------------------------------------------------------*/
-static void setTimerFrequency(struct MemoryBusGpioTimer *timer,
-    uint32_t frequency)
-{
-  STM_TIM_Type * const reg = timer->base.reg;
-  uint32_t divisor;
-
-  if (frequency)
-  {
-    const uint32_t apbFrequency = gpTimerGetClock(&timer->base);
-    assert(frequency <= apbFrequency);
-
-    divisor = apbFrequency / frequency - 1;
-    assert(divisor <= MASK(timer->base.resolution));
-  }
-  else
-    divisor = 0;
-
-  reg->PSC = divisor;
-  reg->EGR = EGR_UG;
-}
-/*----------------------------------------------------------------------------*/
 static enum Result setupChannels(struct MemoryBusGpioTimer *timer,
     const struct MemoryBusGpioTimerConfig *config)
 {
-  const int channel = gpTimerConfigComparePin(config->channel, config->pin);
+  const int channel = gpTimerConfigOutputPin(config->channel, config->pin);
 
   if (channel != -1)
   {
-    timer->channel = channel;
+    timer->channel = channel >> 1;
     return E_OK;
   }
   else
@@ -139,7 +113,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
     ccer |= CCER_CCP(timer->channel);
 
   reg->CR1 = CR1_CKD(CKD_CK_INT) | CR1_CMS(CMS_EDGE_ALIGNED_MODE);
-  reg->ARR = getMaxValue(timer);
+  reg->ARR = getMaxValue(timer->base.flags);
   reg->CNT = 0;
   reg->DIER = 0;
 
@@ -148,7 +122,8 @@ static enum Result tmrInit(void *object, const void *configPtr)
       | CCMR_CCS(timer->channel & 1, CCS_OUTPUT);
   reg->CCER = ccer;
 
-  //  reg->CR2 &= ~CR2_CCPC; // TODO Advanced timers
+  if (timer->base.flags & TIMER_FLAG_INVERSE)
+    reg->BDTR |= BDTR_MOE;
 
   tmrSetFrequency(timer, config->frequency);
   tmrSetOverflow(timer, config->cycle);
@@ -231,7 +206,7 @@ static void tmrSetFrequency(void *object, uint32_t frequency)
   struct MemoryBusGpioTimer * const timer = object;
 
   timer->frequency = frequency;
-  setTimerFrequency(timer, timer->frequency);
+  gpTimerSetFrequency(&timer->base, timer->frequency);
 }
 /*----------------------------------------------------------------------------*/
 static void tmrSetOverflow(void *object, uint32_t overflow)

@@ -8,7 +8,6 @@
 #include <halm/platform/lpc/gptimer_defs.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
-static inline uint32_t getMaxValue(const struct SgpioBusTimer *);
 static void setupChannels(struct SgpioBusTimer *, uint8_t);
 /*----------------------------------------------------------------------------*/
 static enum Result tmrInit(void *, const void *);
@@ -34,11 +33,6 @@ const struct TimerClass * const SgpioBusTimer =
     .getValue = NULL,
     .setValue = NULL
 };
-/*----------------------------------------------------------------------------*/
-static inline uint32_t getMaxValue(const struct SgpioBusTimer *timer)
-{
-  return MASK(timer->base.resolution);
-}
 /*----------------------------------------------------------------------------*/
 static void setupChannels(struct SgpioBusTimer *timer, uint8_t match)
 {
@@ -79,7 +73,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
 
   /* Configure match channels */
   reg->EMR = EMR_CONTROL(timer->match, CONTROL_TOGGLE);
-  reg->MR[timer->reset] = getMaxValue(timer);
+  reg->MR[timer->reset] = gpTimerGetMaxValue(&timer->base);
 
   return E_OK;
 }

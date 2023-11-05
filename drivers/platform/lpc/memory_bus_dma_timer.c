@@ -8,7 +8,6 @@
 #include <halm/platform/lpc/gptimer_defs.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
-static inline uint32_t getMaxValue(const struct MemoryBusDmaTimer *);
 static void interruptHandler(void *);
 static void setupChannels(struct MemoryBusDmaTimer *, uint8_t, PinNumber,
     PinNumber);
@@ -56,11 +55,6 @@ const struct TimerClass * const MemoryBusDmaControl =
     .getValue = NULL,
     .setValue = NULL
 };
-/*----------------------------------------------------------------------------*/
-static inline uint32_t getMaxValue(const struct MemoryBusDmaTimer *timer)
-{
-  return MASK(timer->base.resolution);
-}
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
 {
@@ -180,7 +174,7 @@ static enum Result tmrControlInit(void *object, const void *configPtr)
   /* Configure match channels */
   reg->EMR = EMR_CONTROL(timer->leading, CONTROL_TOGGLE)
       | EMR_CONTROL(timer->trailing, CONTROL_TOGGLE);
-  reg->MR[timer->reset] = getMaxValue(timer);
+  reg->MR[timer->reset] = gpTimerGetMaxValue(&timer->base);
 
   if (config->inversion)
     reg->EMR |= EMR_EXTERNAL_MATCH(timer->leading);
