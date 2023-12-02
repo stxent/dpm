@@ -63,6 +63,7 @@ static void dsReset(void *);
 static void dsSample(void *);
 static void dsStart(void *);
 static void dsStop(void *);
+static void dsSuspend(void *);
 static bool dsUpdate(void *);
 /*----------------------------------------------------------------------------*/
 const struct SensorClass * const DS18B20 = &(const struct SensorClass){
@@ -80,6 +81,7 @@ const struct SensorClass * const DS18B20 = &(const struct SensorClass){
     .sample = dsSample,
     .start = dsStart,
     .stop = dsStop,
+    .suspend = dsSuspend,
     .update = dsUpdate
 };
 /*----------------------------------------------------------------------------*/
@@ -369,6 +371,15 @@ static void dsStop(void *object)
   struct DS18B20 * const sensor = object;
 
   atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_LOOP | FLAG_SAMPLE));
+  sensor->onUpdateCallback(sensor->callbackArgument);
+}
+/*----------------------------------------------------------------------------*/
+static void dsSuspend(void *object)
+{
+  struct DS18B20 * const sensor = object;
+
+  /* Clear all flags except for reset flag */
+  atomicFetchAnd(&sensor->flags, FLAG_RESET);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/

@@ -15,7 +15,8 @@
 /*----------------------------------------------------------------------------*/
 enum ConfigState
 {
-  CONFIG_PWR_MGMT_RESET,
+  CONFIG_BEGIN,
+  CONFIG_PWR_MGMT_RESET = CONFIG_BEGIN,
   CONFIG_RESET_WAIT,
   CONFIG_WHO_AM_I_REQUEST,
   CONFIG_WHO_AM_I_READ,
@@ -43,8 +44,13 @@ enum State
   STATE_CONFIG_START,
   STATE_CONFIG_UPDATE,
   STATE_CONFIG_TIMER_WAIT,
+  STATE_CONFIG_REQUEST_WAIT,
   STATE_CONFIG_BUS_WAIT,
   STATE_CONFIG_END,
+
+  STATE_SUSPEND_START,
+  STATE_SUSPEND_BUS_WAIT,
+  STATE_SUSPEND_END,
 
   STATE_EVENT_WAIT,
   STATE_REQUEST,
@@ -62,7 +68,6 @@ enum State
 /*----------------------------------------------------------------------------*/
 static void busInit(struct MPU60XX *, bool);
 static void calcValues(struct MPU60XX *);
-static void configReset(struct MPU60XX *);
 static void fetchAccelSample(const struct MPU60XX *, int16_t *);
 static void fetchGyroSample(const struct MPU60XX *, int16_t *);
 static int16_t fetchThermoSample(const struct MPU60XX *);
@@ -77,6 +82,7 @@ static void onTimerEvent(void *);
 static bool startConfigUpdate(struct MPU60XX *, bool *);
 static void startSampleRead(struct MPU60XX *);
 static void startSampleRequest(struct MPU60XX *);
+static void startSuspendSequence(struct MPU60XX *);
 
 static enum Result mpuInit(void *, const void *);
 static void mpuDeinit(void *);
@@ -166,12 +172,6 @@ static void calcValues(struct MPU60XX *sensor)
   }
 }
 /*----------------------------------------------------------------------------*/
-static void configReset(struct MPU60XX *sensor)
-{
-  sensor->step = CONFIG_PWR_MGMT_RESET;
-  atomicFetchAnd(&sensor->flags, ~FLAG_READY);
-}
-/*----------------------------------------------------------------------------*/
 static void fetchAccelSample(const struct MPU60XX *sensor, int16_t *result)
 {
   const uint8_t * const buffer = sensor->buffer;
@@ -227,6 +227,7 @@ static void onBusEvent(void *object)
 {
   struct MPU60XX * const sensor = object;
   struct MPU60XXProxy * const proxy = sensor->active;
+  bool release = true;
 
   timerDisable(sensor->timer);
 
@@ -243,12 +244,20 @@ static void onBusEvent(void *object)
 
   switch (sensor->state)
   {
+    case STATE_CONFIG_REQUEST_WAIT:
+      release = false;
+      /* Falls through */
     case STATE_CONFIG_BUS_WAIT:
       sensor->state = STATE_CONFIG_END;
       break;
 
+    case STATE_SUSPEND_BUS_WAIT:
+      sensor->state = STATE_SUSPEND_END;
+      break;
+
     case STATE_REQUEST_WAIT:
       sensor->state = STATE_READ;
+      release = false;
       break;
 
     case STATE_READ_WAIT:
@@ -259,11 +268,15 @@ static void onBusEvent(void *object)
       break;
   }
 
-  if (pinValid(sensor->gpio))
-    pinSet(sensor->gpio);
+  if (release)
+  {
+    if (pinValid(sensor->gpio))
+      pinSet(sensor->gpio);
 
-  ifSetCallback(sensor->bus, NULL, NULL);
-  ifSetParam(sensor->bus, IF_RELEASE, NULL);
+    ifSetCallback(sensor->bus, NULL, NULL);
+    ifSetParam(sensor->bus, IF_RELEASE, NULL);
+  }
+
   proxy->onUpdateCallback(proxy->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -316,7 +329,6 @@ static bool startConfigUpdate(struct MPU60XX *sensor, bool *busy)
     case CONFIG_RESET_WAIT:
     case CONFIG_STARTUP_WAIT:
     case CONFIG_READY_WAIT:
-      sensor->state = STATE_CONFIG_TIMER_WAIT;
       timeout = timerGetFrequency(sensor->timer) / 10;
       break;
 
@@ -427,14 +439,15 @@ static bool startConfigUpdate(struct MPU60XX *sensor, bool *busy)
   }
   else
   {
-    sensor->state = STATE_CONFIG_BUS_WAIT;
 
     if (response)
     {
+      sensor->state = STATE_CONFIG_BUS_WAIT;
       ifRead(sensor->bus, sensor->buffer, 1);
     }
     else
     {
+      sensor->state = read ? STATE_CONFIG_REQUEST_WAIT : STATE_CONFIG_BUS_WAIT;
       busInit(sensor, read);
 
       if (pinValid(sensor->gpio) && read)
@@ -467,6 +480,15 @@ static void startSampleRequest(struct MPU60XX *sensor)
   ifWrite(sensor->bus, sensor->buffer, 1);
 }
 /*----------------------------------------------------------------------------*/
+static void startSuspendSequence(struct MPU60XX *sensor)
+{
+  sensor->buffer[0] = REG_PWR_MGMT_1;
+  sensor->buffer[1] = PWR_MGMT_1_CLKSEL(CLKSEL_STOP) | PWR_MGMT_1_SLEEP;
+
+  busInit(sensor, false);
+  ifWrite(sensor->bus, sensor->buffer, 2);
+}
+/*----------------------------------------------------------------------------*/
 static enum Result mpuInit(void *object, const void *configBase)
 {
   const struct MPU60XXConfig * const config = configBase;
@@ -489,8 +511,7 @@ static enum Result mpuInit(void *object, const void *configBase)
 
   sensor->flags = 0;
   sensor->state = STATE_IDLE;
-
-  configReset(sensor);
+  sensor->step = CONFIG_BEGIN;
 
   // TODO Bandwidth setup, DLPF settings
 
@@ -601,6 +622,15 @@ void mpu60xxStop(struct MPU60XX *sensor)
   proxy->onUpdateCallback(proxy->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
+void mpu60xxSuspend(struct MPU60XX *sensor)
+{
+  struct MPU60XXProxy * const proxy = sensor->active;
+  assert(proxy != NULL);
+
+  atomicFetchOr(&sensor->flags, FLAG_SUSPEND);
+  proxy->onUpdateCallback(proxy->callbackArgument);
+}
+/*----------------------------------------------------------------------------*/
 bool mpu60xxUpdate(struct MPU60XX *sensor)
 {
   bool busy;
@@ -619,8 +649,12 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
 
         if (flags & FLAG_RESET)
         {
-          interruptDisable(sensor->event);
           sensor->state = STATE_CONFIG_START;
+          updated = true;
+        }
+        else if (flags & FLAG_SUSPEND)
+        {
+          sensor->state = STATE_SUSPEND_START;
           updated = true;
         }
         else if (flags & (FLAG_LOOP | FLAG_SAMPLE))
@@ -648,8 +682,12 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
       }
 
       case STATE_CONFIG_START:
+        interruptDisable(sensor->event);
+
         sensor->state = STATE_CONFIG_UPDATE;
-        configReset(sensor);
+        sensor->step = CONFIG_BEGIN;
+        atomicFetchAnd(&sensor->flags, ~FLAG_READY);
+
         updated = true;
         break;
 
@@ -660,6 +698,7 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
       case STATE_CONFIG_TIMER_WAIT:
         break;
 
+      case STATE_CONFIG_REQUEST_WAIT:
       case STATE_CONFIG_BUS_WAIT:
         busy = true;
         break;
@@ -680,6 +719,26 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
         updated = true;
         break;
 
+      case STATE_SUSPEND_START:
+        interruptDisable(sensor->event);
+
+        sensor->state = STATE_SUSPEND_BUS_WAIT;
+        startSuspendSequence(sensor);
+        busy = true;
+        break;
+
+      case STATE_SUSPEND_BUS_WAIT:
+        busy = true;
+        break;
+
+      case STATE_SUSPEND_END:
+        sensor->state = STATE_IDLE;
+
+        /* Clear all flags except reset flag */
+        atomicFetchAnd(&sensor->flags, FLAG_RESET);
+        updated = true;
+        break;
+
       case STATE_EVENT_WAIT:
       {
         const uint16_t flags = atomicLoad(&sensor->flags);
@@ -688,8 +747,11 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
         {
           if (flags & FLAG_RESET)
           {
-            interruptDisable(sensor->event);
             sensor->state = STATE_CONFIG_START;
+          }
+          else if (flags & FLAG_SUSPEND)
+          {
+            sensor->state = STATE_SUSPEND_START;
           }
           else
           {

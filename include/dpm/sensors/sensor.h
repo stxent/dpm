@@ -43,6 +43,7 @@ struct SensorClass
   void (*sample)(void *);
   void (*start)(void *);
   void (*stop)(void *);
+  void (*suspend)(void *);
   bool (*update)(void *);
 };
 
@@ -71,53 +72,6 @@ static inline const char *sensorGetFormat(const void *sensor)
 static inline enum SensorStatus sensorGetStatus(const void *sensor)
 {
   return ((const struct SensorClass *)CLASS(sensor))->getStatus(sensor);
-}
-
-/**
- * Resets the sensor.
- * @param sensor Pointer to a Sensor object.
- */
-static inline void sensorReset(void *sensor)
-{
-  ((const struct SensorClass *)CLASS(sensor))->reset(sensor);
-}
-
-/**
- * Make a single measurement.
- * @param sensor Pointer to a Sensor object.
- */
-static inline void sensorSample(void *sensor)
-{
-  ((const struct SensorClass *)CLASS(sensor))->sample(sensor);
-}
-
-/**
- * Starts an automatic measurements.
- * @param sensor Pointer to a Sensor object.
- */
-static inline void sensorStart(void *sensor)
-{
-  ((const struct SensorClass *)CLASS(sensor))->start(sensor);
-}
-
-/**
- * Stops an automatic measurements.
- * @param sensor Pointer to a Sensor object.
- */
-static inline void sensorStop(void *sensor)
-{
-  ((const struct SensorClass *)CLASS(sensor))->stop(sensor);
-}
-
-/**
- * Update a sensor state.
- * @param sensor Pointer to a Sensor object.
- * @return Bus status, @b true when the bus is busy and @b false when the bus
- * is idle and may be used by another sensor.
- */
-static inline bool sensorUpdate(void *sensor)
-{
-  return ((const struct SensorClass *)CLASS(sensor))->update(sensor);
 }
 
 /**
@@ -165,6 +119,62 @@ static inline void sensorSetUpdateCallback(void *sensor,
 {
   ((const struct SensorClass *)CLASS(sensor))->setUpdateCallback(sensor,
       callback);
+}
+
+/**
+ * Resets the sensor.
+ * @param sensor Pointer to a Sensor object.
+ */
+static inline void sensorReset(void *sensor)
+{
+  ((const struct SensorClass *)CLASS(sensor))->reset(sensor);
+}
+
+/**
+ * Make a single measurement.
+ * @param sensor Pointer to a Sensor object.
+ */
+static inline void sensorSample(void *sensor)
+{
+  ((const struct SensorClass *)CLASS(sensor))->sample(sensor);
+}
+
+/**
+ * Starts an automatic measurements.
+ * @param sensor Pointer to a Sensor object.
+ */
+static inline void sensorStart(void *sensor)
+{
+  ((const struct SensorClass *)CLASS(sensor))->start(sensor);
+}
+
+/**
+ * Stops an automatic measurements.
+ * @param sensor Pointer to a Sensor object.
+ */
+static inline void sensorStop(void *sensor)
+{
+  ((const struct SensorClass *)CLASS(sensor))->stop(sensor);
+}
+
+/**
+ * Puts the sensor in a power saving mode.
+ * @param sensor Pointer to a Sensor object.
+ */
+static inline void sensorSuspend(void *sensor)
+{
+  ((const struct SensorClass *)CLASS(sensor))->suspend(sensor);
+}
+
+/**
+ * Update a sensor state.
+ * @param sensor Pointer to a Sensor object.
+ * @return Bus status, @b true when the bus is busy and @b false when the bus
+ * is idle and may be used by another sensor.
+ */
+static inline bool sensorUpdate(void *sensor)
+{
+  return ((const struct SensorClass *)CLASS(sensor))->update(sensor);
 }
 
 END_DECLS

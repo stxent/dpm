@@ -129,7 +129,8 @@ static void thermoStart(void *object)
 static void thermoStop(void *object)
 {
   struct SHT2XThermometer * const sensor = object;
-  atomicFetchAnd(&sensor->parent->flags, ~FLAG_THERMO_LOOP);
+  atomicFetchAnd(&sensor->parent->flags,
+      ~(FLAG_THERMO_LOOP | FLAG_THERMO_SAMPLE));
 }
 /*----------------------------------------------------------------------------*/
 static bool thermoUpdate(void *object __attribute__((unused)))

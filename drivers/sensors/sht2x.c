@@ -68,6 +68,7 @@ static void shtReset(void *);
 static void shtSample(void *);
 static void shtStart(void *);
 static void shtStop(void *);
+static void shtSuspend(void *);
 static bool shtUpdate(void *);
 /*----------------------------------------------------------------------------*/
 const struct SensorClass * const SHT2X = &(const struct SensorClass){
@@ -85,6 +86,7 @@ const struct SensorClass * const SHT2X = &(const struct SensorClass){
     .sample = shtSample,
     .start = shtStart,
     .stop = shtStop,
+    .suspend = shtSuspend,
     .update = shtUpdate
 };
 /*----------------------------------------------------------------------------*/
@@ -464,6 +466,15 @@ static void shtStop(void *object)
   struct SHT2X * const sensor = object;
 
   atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_LOOP | FLAG_SAMPLE));
+  sensor->onUpdateCallback(sensor->callbackArgument);
+}
+/*----------------------------------------------------------------------------*/
+static void shtSuspend(void *object)
+{
+  struct SHT2X * const sensor = object;
+
+  /* Clear all flags except for reset flag */
+  atomicFetchAnd(&sensor->flags, FLAG_RESET);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/

@@ -51,6 +51,7 @@ static void tsReset(void *);
 static void tsSample(void *);
 static void tsStart(void *);
 static void tsStop(void *);
+static void tsSuspend(void *);
 static bool tsUpdate(void *);
 /*----------------------------------------------------------------------------*/
 const struct SensorClass * const XPT2046 = &(const struct SensorClass){
@@ -68,6 +69,7 @@ const struct SensorClass * const XPT2046 = &(const struct SensorClass){
     .sample = tsSample,
     .start = tsStart,
     .stop = tsStop,
+    .suspend = tsSuspend,
     .update = tsUpdate
 };
 /*----------------------------------------------------------------------------*/
@@ -297,6 +299,15 @@ static void tsStop(void *object)
   struct XPT2046 * const sensor = object;
 
   atomicFetchAnd(&sensor->flags, ~(FLAG_LOOP | FLAG_SAMPLE));
+  sensor->onUpdateCallback(sensor->callbackArgument);
+}
+/*----------------------------------------------------------------------------*/
+static void tsSuspend(void *object)
+{
+  struct XPT2046 * const sensor = object;
+
+  /* Clear all flags */
+  sensor->flags = 0;
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/

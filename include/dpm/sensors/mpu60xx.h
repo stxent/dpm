@@ -26,7 +26,7 @@ enum MPU60XXAccelScale
   MPU60XX_ACCEL_4,
   MPU60XX_ACCEL_8,
   MPU60XX_ACCEL_16
-};
+} __attribute__((packed));
 
 enum MPU60XXGyroScale
 {
@@ -35,7 +35,7 @@ enum MPU60XXGyroScale
   MPU60XX_GYRO_500,
   MPU60XX_GYRO_1000,
   MPU60XX_GYRO_2000
-};
+} __attribute__((packed));
 
 struct MPU60XXConfig
 {
@@ -45,15 +45,16 @@ struct MPU60XXConfig
   void *event;
   /** Mandatory: event timer. */
   void *timer;
-  /** Optional: pin used as Chip Select output. */
-  PinNumber cs;
+
   /** Optional: sensor address. */
   uint32_t address;
   /** Optional: baud rate of the serial interface. */
   uint32_t rate;
+  /** Optional: pin used as Chip Select output. */
+  PinNumber cs;
 
   /** Mandatory: sample rate for both accelerometer and gyroscope. */
-  uint32_t sampleRate;
+  uint16_t sampleRate;
   /** Optional: accelerometer scale configuration. */
   enum MPU60XXAccelScale accelScale;
   /** Optional: gyroscope scale configuration. */

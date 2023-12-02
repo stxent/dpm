@@ -1048,8 +1048,11 @@ static enum Result aic3xInit(void *object, const void *arguments)
   pinOutput(codec->reset, true);
 
   codec->errorCallback = NULL;
+  codec->errorCallbackArgument = NULL;
   codec->idleCallback = NULL;
+  codec->idleCallbackArgument = NULL;
   codec->updateCallback = NULL;
+  codec->updateCallbackArgument = NULL;
 
   codec->bus = config->bus;
   codec->timer = config->timer;

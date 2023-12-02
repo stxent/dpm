@@ -22,6 +22,7 @@ static void thermoReset(void *);
 static void thermoSample(void *);
 static void thermoStart(void *);
 static void thermoStop(void *);
+static void thermoSuspend(void *);
 static bool thermoUpdate(void *);
 /*----------------------------------------------------------------------------*/
 const struct SensorClass * const MS56XXThermometer =
@@ -40,6 +41,7 @@ const struct SensorClass * const MS56XXThermometer =
     .sample = thermoSample,
     .start = thermoStart,
     .stop = thermoStop,
+    .suspend = thermoSuspend,
     .update = thermoUpdate
 };
 /*----------------------------------------------------------------------------*/
@@ -129,7 +131,12 @@ static void thermoStart(void *object)
 static void thermoStop(void *object)
 {
   struct MS56XXThermometer * const sensor = object;
-  atomicFetchAnd(&sensor->parent->flags, ~FLAG_THERMO_LOOP);
+  atomicFetchAnd(&sensor->parent->flags,
+      ~(FLAG_THERMO_LOOP | FLAG_THERMO_SAMPLE));
+}
+/*----------------------------------------------------------------------------*/
+static void thermoSuspend(void *object __attribute__((unused)))
+{
 }
 /*----------------------------------------------------------------------------*/
 static bool thermoUpdate(void *object __attribute__((unused)))

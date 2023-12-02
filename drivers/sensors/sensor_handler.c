@@ -8,28 +8,30 @@
 #include <halm/wq.h>
 #include <xcore/accel.h>
 #include <xcore/atomic.h>
+#include <assert.h>
 #include <stdlib.h>
 /*----------------------------------------------------------------------------*/
-static void shOnUpdate(void *);
-static void shOnDetach(void *);
+static void invokeUpdate(struct SensorHandler *);
 static void shOnError(void *, enum SensorResult);
 static void shOnResult(void *, const void *, size_t);
+static void shOnUpdate(void *);
 static void shUpdate(void *);
+static void updateTask(void *);
 /*----------------------------------------------------------------------------*/
-static void shOnDetach(void *argument)
+static void invokeUpdate(struct SensorHandler *handler)
 {
-  struct SensorHandler * const handler = argument;
+  assert(handler->updateCallback != NULL || handler->wq != NULL);
 
-  while (!handler->busy && handler->detaching)
+  if (handler->updateCallback != NULL)
   {
-    const uint32_t index = 31 - countLeadingZeros32(handler->updating);
-    struct SHEntry * const entry = &handler->sensors[index];
+    handler->updateCallback(handler->updateCallbackArgument);
+  }
+  else if (!handler->pending)
+  {
+    handler->pending = true;
 
-    atomicFetchAnd(&handler->detaching, ~entry->mask);
-    atomicFetchAnd(&handler->updating, ~entry->mask);
-    atomicFetchOr(&handler->pool, entry->mask);
-
-    entry->sensor = NULL;
+    if (wqAdd(handler->wq, updateTask, handler) != E_OK)
+      handler->pending = false;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -40,7 +42,12 @@ static void shOnError(void *argument, enum SensorResult error)
 
   if (handler->errorCallback != NULL)
   {
-    handler->errorCallback(handler->errorCallbackArgument,
+    handler->errorCallback(handler->errorCallbackArgument);
+  }
+
+  if (handler->failureCallback != NULL)
+  {
+    handler->failureCallback(handler->failureCallbackArgument,
         entry->tag, error);
   }
 }
@@ -63,17 +70,21 @@ static void shOnUpdate(void *argument)
   struct SensorHandler * const handler = entry->handler;
 
   const uint32_t updating = atomicFetchOr(&handler->updating, entry->mask);
+  bool invoke = false;
 
   if (handler->busy)
   {
     if (handler->current == entry)
-      wqAdd(handler->wq, shUpdate, handler);
+      invoke = true;
   }
   else
   {
     if (updating == 0)
-      wqAdd(handler->wq, shUpdate, handler);
+      invoke = true;
   }
+
+  if (invoke)
+    invokeUpdate(handler);
 }
 /*----------------------------------------------------------------------------*/
 static void shUpdate(void *argument)
@@ -89,7 +100,26 @@ static void shUpdate(void *argument)
       handler->current = NULL;
   }
 
-  while (!handler->busy && handler->updating)
+  if (!handler->busy)
+  {
+    while (handler->detaching)
+    {
+      const uint32_t index = 31 - countLeadingZeros32(handler->detaching);
+      struct SHEntry * const entry = &handler->sensors[index];
+
+      sensorSetErrorCallback(entry->sensor, NULL);
+      sensorSetResultCallback(entry->sensor, NULL);
+      sensorSetUpdateCallback(entry->sensor, NULL);
+      sensorSetCallbackArgument(entry->sensor, NULL);
+      entry->sensor = NULL;
+
+      atomicFetchAnd(&handler->detaching, ~entry->mask);
+      atomicFetchAnd(&handler->updating, ~entry->mask);
+      atomicFetchOr(&handler->pool, entry->mask);
+    }
+  }
+
+  while (!handler->busy && handler->updating != 0)
   {
     const uint32_t index = 31 - countLeadingZeros32(handler->updating);
     struct SHEntry * const entry = &handler->sensors[index];
@@ -102,9 +132,20 @@ static void shUpdate(void *argument)
     else
       handler->current = NULL;
   }
+
+  if (!handler->busy && handler->idleCallback != NULL)
+    handler->idleCallback(handler->idleCallbackArgument);
 }
 /*----------------------------------------------------------------------------*/
-bool shInit(struct SensorHandler *handler, size_t capacity, void *wq)
+static void updateTask(void *argument)
+{
+  struct SensorHandler * const handler = argument;
+
+  handler->pending = false;
+  shUpdate(handler);
+}
+/*----------------------------------------------------------------------------*/
+bool shInit(struct SensorHandler *handler, size_t capacity)
 {
   handler->sensors = malloc(sizeof(struct SHEntry) * capacity);
   if (handler->sensors == NULL)
@@ -122,11 +163,22 @@ bool shInit(struct SensorHandler *handler, size_t capacity, void *wq)
   handler->detaching = 0;
   handler->updating = 0;
   handler->busy = false;
+  handler->pending = false;
 
   handler->current = NULL;
-  handler->wq = wq ? wq : WQ_DEFAULT;
+  handler->wq = NULL;
+
   handler->dataCallback = NULL;
+  handler->dataCallbackArgument = NULL;
+  handler->failureCallback = NULL;
+  handler->failureCallbackArgument = NULL;
+
   handler->errorCallback = NULL;
+  handler->errorCallbackArgument = NULL;
+  handler->idleCallback = NULL;
+  handler->idleCallbackArgument = NULL;
+  handler->updateCallback = NULL;
+  handler->updateCallbackArgument = NULL;
 
   return true;
 }
@@ -164,19 +216,20 @@ bool shAttach(struct SensorHandler *handler, void *sensor, int tag)
 /*----------------------------------------------------------------------------*/
 void shDetach(struct SensorHandler *handler, void *sensor)
 {
+  /*
+   * Sensor should be stopped before detaching to avoid timer callbacks. Sensor
+   * will be removed from the sensor list in the event loop, all bus transfers
+   * will be completed at that point in time.
+   */
+
   for (size_t index = 0; index < handler->capacity; ++index)
   {
     struct SHEntry * const entry = &handler->sensors[index];
 
     if (entry->sensor == sensor)
     {
-      sensorSetCallbackArgument(sensor, NULL);
-      sensorSetErrorCallback(sensor, NULL);
-      sensorSetResultCallback(sensor, NULL);
-      sensorSetUpdateCallback(sensor, NULL);
-
       atomicFetchOr(&handler->detaching, entry->mask);
-      wqAdd(handler->wq, shOnDetach, handler);
+      invokeUpdate(handler);
       break;
     }
   }
@@ -189,9 +242,52 @@ void shSetDataCallback(struct SensorHandler *handler,
   handler->dataCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
-void shSetErrorCallback(struct SensorHandler *handler,
+void shSetFailureCallback(struct SensorHandler *handler,
     void (*callback)(void *, int, enum SensorResult), void *argument)
 {
+  handler->failureCallbackArgument = argument;
+  handler->failureCallback = callback;
+}
+/*----------------------------------------------------------------------------*/
+void shSetErrorCallback(void *object, void (*callback)(void *), void *argument)
+{
+  struct SensorHandler * const handler = object;
+
+  assert(callback != NULL);
+  assert(handler->wq == NULL);
+
   handler->errorCallbackArgument = argument;
   handler->errorCallback = callback;
+}
+/*----------------------------------------------------------------------------*/
+void shSetIdleCallback(void *object, void (*callback)(void *), void *argument)
+{
+  struct SensorHandler * const handler = object;
+
+  assert(callback != NULL);
+  assert(handler->wq == NULL);
+
+  handler->idleCallbackArgument = argument;
+  handler->idleCallback = callback;
+}
+/*----------------------------------------------------------------------------*/
+void shSetUpdateCallback(void *object, void (*callback)(void *), void *argument)
+{
+  struct SensorHandler * const handler = object;
+
+  assert(callback != NULL);
+  assert(handler->wq == NULL);
+
+  handler->updateCallbackArgument = argument;
+  handler->updateCallback = callback;
+}
+/*----------------------------------------------------------------------------*/
+void shSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
+{
+  struct SensorHandler * const handler = object;
+
+  assert(wq != NULL);
+  assert(handler->updateCallback == NULL);
+
+  handler->wq = wq;
 }

@@ -89,6 +89,7 @@ static void msReset(void *);
 static void msSample(void *);
 static void msStart(void *);
 static void msStop(void *);
+static void msSuspend(void *);
 static bool msUpdate(void *);
 /*----------------------------------------------------------------------------*/
 const struct SensorClass * const MS56XX = &(const struct SensorClass){
@@ -106,6 +107,7 @@ const struct SensorClass * const MS56XX = &(const struct SensorClass){
     .sample = msSample,
     .start = msStart,
     .stop = msStop,
+    .suspend = msSuspend,
     .update = msUpdate
 };
 /*----------------------------------------------------------------------------*/
@@ -680,6 +682,15 @@ static void msStop(void *object)
   struct MS56XX * const sensor = object;
 
   atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_LOOP | FLAG_SAMPLE));
+  sensor->onUpdateCallback(sensor->callbackArgument);
+}
+/*----------------------------------------------------------------------------*/
+static void msSuspend(void *object)
+{
+  struct MS56XX * const sensor = object;
+
+  /* Clear all flags except for reset flag */
+  atomicFetchAnd(&sensor->flags, FLAG_RESET);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/

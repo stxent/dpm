@@ -10,6 +10,8 @@
 #include <dpm/sensors/sensor.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
+struct WorkQueue;
+
 struct SHEntry
 {
   void *handler;
@@ -22,30 +24,50 @@ struct SensorHandler
 {
   struct SHEntry *current;
   struct SHEntry *sensors;
-  void *wq;
 
+  /* Sensor interface */
   void (*dataCallback)(void *, int, const void *, size_t);
   void *dataCallbackArgument;
-  void (*errorCallback)(void *, int, enum SensorResult);
+  void (*failureCallback)(void *, int, enum SensorResult);
+  void *failureCallbackArgument;
+
+  /* Optional Bus Handler executor interface */
+  void (*errorCallback)(void *);
   void *errorCallbackArgument;
+  void (*idleCallback)(void *);
+  void *idleCallbackArgument;
+  void (*updateCallback)(void *);
+  void *updateCallbackArgument;
+
+  /* Optional Work Queue executor interface */
+  void *wq;
 
   size_t capacity;
   uint32_t pool;
   uint32_t detaching;
   uint32_t updating;
   bool busy;
+  bool pending;
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS
 
-bool shInit(struct SensorHandler *, size_t, void *);
+bool shInit(struct SensorHandler *, size_t);
 void shDeinit(struct SensorHandler *);
 bool shAttach(struct SensorHandler *, void *, int);
 void shDetach(struct SensorHandler *, void *);
+
+/* Sensor data interface */
 void shSetDataCallback(struct SensorHandler *,
     void (*)(void *, int, const void *, size_t), void *);
-void shSetErrorCallback(struct SensorHandler *,
+void shSetFailureCallback(struct SensorHandler *,
     void (*)(void *, int, enum SensorResult), void *);
+
+/* Executor interface */
+void shSetErrorCallback(void *, void (*)(void *), void *);
+void shSetIdleCallback(void *, void (*)(void *), void *);
+void shSetUpdateCallback(void *, void (*)(void *), void *);
+void shSetUpdateWorkQueue(void *, struct WorkQueue *);
 
 END_DECLS
 /*----------------------------------------------------------------------------*/

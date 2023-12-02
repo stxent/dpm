@@ -27,7 +27,7 @@ enum SHT2XResolution
   SHT2X_RESOLUTION_11BIT,
   /** 12 bit of Relative Humidity and 14 bit of Temperature */
   SHT2X_RESOLUTION_12BIT
-};
+} __attribute__((packed));
 
 struct SHT2XConfig
 {
@@ -36,12 +36,13 @@ struct SHT2XConfig
   /** Mandatory: event timer. */
   void *timer;
 
-  /** Optional: resolution configuration. */
-  enum SHT2XResolution resolution;
   /** Optional: sensor address. */
   uint32_t address;
   /** Optional: baud rate of the serial interface. */
   uint32_t rate;
+
+  /** Optional: resolution configuration. */
+  enum SHT2XResolution resolution;
 };
 
 struct SHT2XThermometer;

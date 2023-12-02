@@ -26,10 +26,12 @@ struct XPT2046Config
   void *event;
   /** Mandatory: event timer. */
   void *timer;
-  /** Mandatory: Chip Select output. */
-  PinNumber cs;
+
   /** Optional: interface baud rate */
   uint32_t rate;
+  /** Mandatory: Chip Select output. */
+  PinNumber cs;
+
   /** Optional: touch threshold */
   uint16_t threshold;
   /** Mandatory: X resolution. */

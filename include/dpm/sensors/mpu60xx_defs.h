@@ -21,6 +21,7 @@ enum
   FLAG_GYRO_SAMPLE   = 0x0040,
   FLAG_THERMO_LOOP   = 0x0080,
   FLAG_THERMO_SAMPLE = 0x0100,
+  FLAG_SUSPEND       = 0x0200,
 
   FLAG_LOOP          = FLAG_ACCEL_LOOP | FLAG_GYRO_LOOP | FLAG_THERMO_LOOP,
   FLAG_SAMPLE        = FLAG_ACCEL_SAMPLE | FLAG_GYRO_SAMPLE | FLAG_THERMO_SAMPLE
@@ -172,13 +173,13 @@ enum
 /*------------------Power Management 1 register-------------------------------*/
 enum
 {
-  CLKSEL_INT,
-  CLKSEL_XG,
-  CLKSEL_YG,
-  CLKSEL_ZG,
-  CLKSEL_EXT_32K768,
-  CLKSEL_EXT_19M2,
-  CLKSEL_STOP
+  CLKSEL_INT        = 0,
+  CLKSEL_XG         = 1,
+  CLKSEL_YG         = 2,
+  CLKSEL_ZG         = 3,
+  CLKSEL_EXT_32K768 = 4,
+  CLKSEL_EXT_19M2   = 5,
+  CLKSEL_STOP       = 7
 };
 
 #define PWR_MGMT_1_CLKSEL(value)        BIT_FIELD((value), 0)
@@ -210,6 +211,7 @@ void mpu60xxReset(struct MPU60XX *);
 void mpu60xxSample(struct MPU60XX *);
 void mpu60xxStart(struct MPU60XX *);
 void mpu60xxStop(struct MPU60XX *);
+void mpu60xxSuspend(struct MPU60XX *);
 bool mpu60xxUpdate(struct MPU60XX *);
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_SENSORS_MPU60XX_DEFS_H_ */

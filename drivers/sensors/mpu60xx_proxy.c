@@ -36,6 +36,7 @@ static void proxyReset(void *);
 static void proxySample(void *);
 static void proxyStart(void *);
 static void proxyStop(void *);
+static void proxySuspend(void *);
 static bool proxyUpdate(void *);
 /*----------------------------------------------------------------------------*/
 const struct SensorClass * const MPU60XXAccelerometer =
@@ -54,6 +55,7 @@ const struct SensorClass * const MPU60XXAccelerometer =
     .sample = proxySample,
     .start = proxyStart,
     .stop = proxyStop,
+    .suspend = proxySuspend,
     .update = proxyUpdate
 };
 
@@ -73,6 +75,7 @@ const struct SensorClass * const MPU60XXGyroscope =
     .sample = proxySample,
     .start = proxyStart,
     .stop = proxyStop,
+    .suspend = proxySuspend,
     .update = proxyUpdate
 };
 
@@ -92,6 +95,7 @@ const struct SensorClass * const MPU60XXThermometer =
     .sample = proxySample,
     .start = proxyStart,
     .stop = proxyStop,
+    .suspend = proxySuspend,
     .update = proxyUpdate
 };
 /*----------------------------------------------------------------------------*/
@@ -246,11 +250,18 @@ static void proxyStop(void *object)
   struct MPU60XXProxy * const proxy = object;
 
   atomicFetchAnd(&proxy->parent->flags,
-      ~(typeToLoopConstant(proxy) | typeToSampleConstant(proxy) | FLAG_RESET));
+      ~(typeToLoopConstant(proxy) | typeToSampleConstant(proxy)
+          | (FLAG_RESET | FLAG_SUSPEND)));
   mpu60xxStop(proxy->parent);
 }
 /*----------------------------------------------------------------------------*/
-static bool proxyUpdate(void *object __attribute__((unused)))
+static void proxySuspend(void *object)
+{
+  struct MPU60XXProxy * const proxy = object;
+  mpu60xxSuspend(proxy->parent);
+}
+/*----------------------------------------------------------------------------*/
+static bool proxyUpdate(void *object)
 {
   struct MPU60XXProxy * const proxy = object;
   return mpu60xxUpdate(proxy->parent);

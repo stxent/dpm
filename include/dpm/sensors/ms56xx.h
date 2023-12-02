@@ -24,13 +24,13 @@ enum MS56XXOversampling
   MS56XX_OVERSAMPLING_1024,
   MS56XX_OVERSAMPLING_2048,
   MS56XX_OVERSAMPLING_4096
-};
+} __attribute__((packed));
 
 enum MS56XXSubtype
 {
   MS56XX_TYPE_5607,
   MS56XX_TYPE_5611
-};
+} __attribute__((packed));
 
 struct MS56XXConfig
 {
@@ -39,16 +39,17 @@ struct MS56XXConfig
   /** Mandatory: event timer. */
   void *timer;
 
-  /** Optional: oversampling configuration. */
-  enum MS56XXOversampling oversampling;
-  /** Mandatory: sensor subtype. */
-  enum MS56XXSubtype subtype;
-  /** Optional: pin used as Chip Select output. */
-  PinNumber cs;
   /** Optional: sensor address. */
   uint32_t address;
   /** Optional: baud rate of the serial interface. */
   uint32_t rate;
+  /** Optional: pin used as Chip Select output. */
+  PinNumber cs;
+
+  /** Optional: oversampling configuration. */
+  enum MS56XXOversampling oversampling;
+  /** Mandatory: sensor subtype. */
+  enum MS56XXSubtype subtype;
 };
 
 struct MS56XXThermometer;
