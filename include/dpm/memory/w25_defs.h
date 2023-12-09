@@ -21,7 +21,8 @@
 #define JEDEC_CAPACITY_W25Q128            0x18  /* 128 Mbit */
 #define JEDEC_CAPACITY_W25Q256            0x19  /* 256 Mbit */
 #define JEDEC_CAPACITY_W25Q512            0x20  /* 512 Mbit */
-#define JEDEC_CAPACITY_W25Q00             0x21  /* 1 Gbit */
+#define JEDEC_CAPACITY_W25Q01             0x21  /* 1 Gbit */
+#define JEDEC_CAPACITY_W25Q02             0x22  /* 2 Gbit */
 /*----------------------------------------------------------------------------*/
 #define CMD_WRITE_STATUS_REGISTER_1       0x01
 #define CMD_WRITE_DISABLE                 0x04
@@ -39,6 +40,8 @@
 #define CMD_READ_DATA                     0x03
 #define CMD_FAST_READ                     0x0B
 #define CMD_FAST_READ_4BYTE               0x0C
+#define CMD_FAST_READ_DTR                 0x0D
+#define CMD_BURST_READ_WITH_WRAP_DTR      0x0E
 #define CMD_READ_DATA_4BYTE               0x13
 #define CMD_FAST_READ_DUAL_OUTPUT         0x3B
 #define CMD_FAST_READ_DUAL_OUTPUT_4BYTE   0x3C
@@ -47,8 +50,10 @@
 #define CMD_SET_BURST_WITH_WRAP           0x77
 #define CMD_FAST_READ_DUAL_IO             0xBB
 #define CMD_FAST_READ_DUAL_IO_4BYTE       0xBC
+#define CMD_FAST_READ_DUAL_IO_DTR         0xBD
 #define CMD_FAST_READ_QUAD_IO             0xEB
 #define CMD_FAST_READ_QUAD_IO_4BYTE       0xEC
+#define CMD_FAST_READ_QUAD_IO_DTR         0xED
 
 #define CMD_PAGE_PROGRAM                  0x02
 #define CMD_PAGE_PROGRAM_4BYTE            0x12
@@ -80,12 +85,15 @@
 #define CMD_GLOBAL_BLOCK_SECTOR_LOCK      0x7E
 #define CMD_GLOBAL_BLOCK_SECTOR_UNLOCK    0x98
 
+#define CMD_ADDRESS_4BYTE_ENTER           0xB7
+#define CMD_ADDRESS_4BYTE_EXIT            0xE9
 #define CMD_ENTER_QPI                     0x38
+#define CMD_EXIT_QPI                      0xFF
 #define CMD_POWER_DOWN                    0xB9
 #define CMD_POWER_DOWN_RELEASE            0xAB
-#define CMD_RESET_ENABLE                  0x66
 #define CMD_RESET_DEVICE                  0x99
-#define CMD_EXIT_QPI                      0xFF
+#define CMD_RESET_ENABLE                  0x66
+#define CMD_SET_READ_PARAMETERS           0xC0
 /*----------------------------------------------------------------------------*/
 #define MEMORY_PAGE_SIZE                  256
 #define MEMORY_SECTOR_4KB_SIZE            4096
@@ -118,6 +126,11 @@
 #define SR3_DRV_MASK        BIT_FIELD(MASK(2), 5)
 #define SR3_DRV(value)      BIT_FIELD((value), 5)
 #define SR3_DRV_VALUE(reg)  FIELD_VALUE((reg), SR3_DRV_MASK, 5)
+/*------------------XIP mode--------------------------------------------------*/
+/* Bits M5-4 must be set to 0b10 */
+#define XIP_MODE_ENTER      0xEF
+/* Bits M5-4 must not be equal to 0b10 */
+#define XIP_MODE_EXIT       0xFF
 /*----------------------------------------------------------------------------*/
 struct JedecInfo
 {

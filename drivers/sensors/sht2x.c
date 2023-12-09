@@ -355,8 +355,8 @@ static enum Result shtInit(void *object, const void *configBase)
   sensor->thermometer = NULL;
   sensor->bus = config->bus;
   sensor->timer = config->timer;
-  sensor->rate = config->rate;
   sensor->address = config->address;
+  sensor->rate = config->rate;
 
   sensor->humidity = 0;
   sensor->temperature = 0;

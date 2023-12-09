@@ -24,8 +24,8 @@ struct W25SPIMConfig
   bool shrink;
   /** Optional: allow DTR mode. */
   bool dtr;
-  /** Optional: allow QPI mode. */
-  bool qpi;
+  /** Optional: allow XIP mode. */
+  bool xip;
 };
 
 struct W25SPIM
@@ -62,12 +62,12 @@ struct W25SPIM
   bool dtr;
   /* Memory capacity exceeds 16 MiB */
   bool extended;
-  /* Enable QPI in memory-mapped mode */
-  bool qpi;
   /* Enable QUAD IO mode */
   bool quad;
   /* Force 3-byte memory addresses in memory-mapped mode. */
   bool shrink;
+  /* Enable XIP or Continuous Read mode */
+  bool xip;
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS

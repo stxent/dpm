@@ -28,11 +28,11 @@ static void busAcquire(struct W25SPIM *);
 static void busRelease(struct W25SPIM *);
 static bool changeDriverStrength(struct W25SPIM *, enum W25DriverStrength);
 static bool changeQuadMode(struct W25SPIM *, bool);
-static void enableQpiMode(struct W25SPIM *);
 static void eraseBlock64KB(struct W25SPIM *, uint32_t);
 static void eraseSector4KB(struct W25SPIM *, uint32_t);
-static void exitQpiMode(struct W25SPIM *);
+static void exitQpiXipMode(struct W25SPIM *);
 static void interruptHandler(void *);
+static void makeReadCommandValues(const struct W25SPIM *, uint8_t *, uint8_t *);
 static void pageProgram(struct W25SPIM *, uint32_t, const void *, size_t);
 static void pageRead(struct W25SPIM *, uint32_t, void *, size_t);
 static void pollStatusRegister(struct W25SPIM *, uint8_t, uint8_t);
@@ -64,23 +64,23 @@ const struct InterfaceClass * const W25SPIM = &(const struct InterfaceClass){
 /*----------------------------------------------------------------------------*/
 static void busAcquire(struct W25SPIM *memory)
 {
-  ifSetParam(memory->spim, IF_ACQUIRE, 0);
-  ifSetParam(memory->spim, memory->quad ? IF_SPIM_QUAD : IF_SPIM_DUAL, 0);
+  ifSetParam(memory->spim, IF_ACQUIRE, NULL);
+  ifSetParam(memory->spim, memory->quad ? IF_SPIM_QUAD : IF_SPIM_DUAL, NULL);
 
   if (!memory->blocking)
   {
-    ifSetParam(memory->spim, IF_ZEROCOPY, 0);
+    ifSetParam(memory->spim, IF_ZEROCOPY, NULL);
     ifSetCallback(memory->spim, interruptHandler, memory);
   }
   else
-    ifSetParam(memory->spim, IF_BLOCKING, 0);
+    ifSetParam(memory->spim, IF_BLOCKING, NULL);
 }
 /*----------------------------------------------------------------------------*/
 static void busRelease(struct W25SPIM *memory)
 {
   if (!memory->blocking)
-    ifSetCallback(memory->spim, 0, 0);
-  ifSetParam(memory->spim, IF_RELEASE, 0);
+    ifSetCallback(memory->spim, NULL, NULL);
+  ifSetParam(memory->spim, IF_RELEASE, NULL);
 }
 /*----------------------------------------------------------------------------*/
 static bool changeDriverStrength(struct W25SPIM *memory,
@@ -115,21 +115,6 @@ static bool changeQuadMode(struct W25SPIM *memory, bool enabled)
   return (status & SR2_QE) == mask;
 }
 /*----------------------------------------------------------------------------*/
-static void enableQpiMode(struct W25SPIM *memory)
-{
-  const uint8_t command = CMD_ENTER_QPI;
-
-  ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
-
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, 0);
-
-  ifWrite(memory->spim, 0, 0);
-}
-/*----------------------------------------------------------------------------*/
 static void eraseBlock64KB(struct W25SPIM *memory, uint32_t position)
 {
   const uint32_t address = toLittleEndian32(position);
@@ -148,13 +133,13 @@ static void eraseBlock64KB(struct W25SPIM *memory, uint32_t position)
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
 
-  ifWrite(memory->spim, 0, 0);
+  ifWrite(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
 static void eraseSector4KB(struct W25SPIM *memory, uint32_t position)
@@ -175,34 +160,36 @@ static void eraseSector4KB(struct W25SPIM *memory, uint32_t position)
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
 
-  ifWrite(memory->spim, 0, 0);
+  ifWrite(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
-static void exitQpiMode(struct W25SPIM *memory)
+static void exitQpiXipMode(struct W25SPIM *memory)
 {
-  const uint8_t command = CMD_EXIT_QPI;
+  static const uint8_t pattern[] = {
+      XIP_MODE_EXIT, XIP_MODE_EXIT, XIP_MODE_EXIT, XIP_MODE_EXIT
+  };
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND, &(uint8_t){XIP_MODE_EXIT});
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_PARALLEL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_PARALLEL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, NULL);
 
-  ifWrite(memory->spim, 0, 0);
+  ifWrite(memory->spim, pattern, sizeof(pattern));
 }
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *argument)
 {
   struct W25SPIM * const memory = argument;
-  const enum Result status = ifGetParam(memory->spim, IF_STATUS, 0);
+  const enum Result status = ifGetParam(memory->spim, IF_STATUS, NULL);
   bool event = false;
 
   assert(memory->context.state != STATE_IDLE
@@ -213,7 +200,7 @@ static void interruptHandler(void *argument)
     memory->context.state = STATE_ERROR;
     event = true;
 
-    memory->context.buffer = 0;
+    memory->context.buffer = NULL;
     memory->context.length = 0;
     memory->context.position = 0;
     busRelease(memory);
@@ -228,6 +215,9 @@ static void interruptHandler(void *argument)
       memory->position += memory->context.length;
       if (memory->position >= memory->capacity)
         memory->position = 0;
+
+      if (memory->dtr)
+        ifSetParam(memory->spim, IF_SPIM_SDR, NULL);
 
       memory->context.length = 0;
       busRelease(memory);
@@ -271,7 +261,7 @@ static void interruptHandler(void *argument)
         if (memory->position >= memory->capacity)
           memory->position = 0;
 
-        memory->context.buffer = 0;
+        memory->context.buffer = NULL;
         memory->context.left = 0;
         memory->context.length = 0;
         memory->context.position = 0;
@@ -309,8 +299,55 @@ static void interruptHandler(void *argument)
       break;
   }
 
-  if (event && memory->callback)
+  if (event && memory->callback != NULL)
     memory->callback(memory->callbackArgument);
+}
+/*----------------------------------------------------------------------------*/
+static void makeReadCommandValues(const struct W25SPIM *memory,
+    uint8_t *command, uint8_t *delay)
+{
+  if (memory->extended && !memory->shrink)
+  {
+    if (memory->quad)
+    {
+      *command = CMD_FAST_READ_QUAD_IO_4BYTE;
+      *delay = 2; /* 4 clocks, 2 clocks per byte */
+    }
+    else
+    {
+      *command = CMD_FAST_READ_DUAL_IO_4BYTE;
+      *delay = 0;
+    }
+  }
+  else
+  {
+    if (memory->quad)
+    {
+      if (memory->dtr)
+      {
+        *command = CMD_FAST_READ_QUAD_IO_DTR;
+        *delay = 7; /* 7 clocks, 1 clock per byte */
+      }
+      else
+      {
+        *command = CMD_FAST_READ_QUAD_IO;
+        *delay = 2; /* 4 clocks when not in QPI mode, 2 clocks per byte */
+      }
+    }
+    else
+    {
+      if (memory->dtr)
+      {
+        *command = CMD_FAST_READ_DUAL_IO_DTR;
+        *delay = 2; /* 4 clocks, 2 clocks per byte */
+      }
+      else
+      {
+        *command = CMD_FAST_READ_DUAL_IO;
+        *delay = 0;
+      }
+    }
+  }
 }
 /*----------------------------------------------------------------------------*/
 static void pageProgram(struct W25SPIM *memory, uint32_t position,
@@ -334,17 +371,17 @@ static void pageProgram(struct W25SPIM *memory, uint32_t position,
   }
 
   if (memory->quad)
-    ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, 0);
+    ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, NULL);
   else
-    ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, 0);
+    ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
   ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH, &count);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
 
   ifWrite(memory->spim, buffer, length);
 }
@@ -352,40 +389,42 @@ static void pageProgram(struct W25SPIM *memory, uint32_t position,
 static void pageRead(struct W25SPIM *memory, uint32_t position,
     void *buffer, size_t length)
 {
-  static const uint32_t post = 0xFF; /* Continuous read mode */
-  static const uint8_t delay = 2; /* 4 clock cycles on QUAD IO */
   const uint32_t address = toLittleEndian32(position);
   const uint32_t count = toLittleEndian32(length);
   uint8_t command;
+  uint8_t delay;
+
+  makeReadCommandValues(memory, &command, &delay);
 
   if (memory->extended)
-  {
     ifSetParam(memory->spim, IF_SPIM_ADDRESS_32, &address);
-    command = memory->quad ?
-        CMD_FAST_READ_QUAD_IO_4BYTE : CMD_FAST_READ_DUAL_IO_4BYTE;
-  }
   else
-  {
     ifSetParam(memory->spim, IF_SPIM_ADDRESS_24, &address);
-    command = memory->quad ? CMD_FAST_READ_QUAD_IO : CMD_FAST_READ_DUAL_IO;
-  }
-
-  if (memory->quad)
-    ifSetParam(memory->spim, IF_SPIM_DELAY_LENGTH, &delay);
-  else
-    ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_8, &post);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_8, &((uint8_t){0xFF}));
+  ifSetParam(memory->spim, IF_SPIM_DELAY_LENGTH, &delay);
   ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH, &count);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_PARALLEL, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_PARALLEL, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_PARALLEL, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_PARALLEL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_PARALLEL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_PARALLEL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, NULL);
+
+  if (memory->dtr)
+  {
+    /* Enable DDR mode */
+    ifSetParam(memory->spim, IF_SPIM_DDR, NULL);
+  }
 
   ifRead(memory->spim, buffer, length);
+
+  if (memory->dtr && memory->blocking)
+  {
+    /* Disable DDR mode */
+    ifSetParam(memory->spim, IF_SPIM_SDR, NULL);
+  }
 }
 /*----------------------------------------------------------------------------*/
 static void pollStatusRegister(struct W25SPIM *memory, uint8_t command,
@@ -394,29 +433,28 @@ static void pollStatusRegister(struct W25SPIM *memory, uint8_t command,
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
   ifSetParam(memory->spim, IF_SPIM_DATA_POLL_BIT, &bit);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
 
-  ifRead(memory->spim, 0, 0);
+  ifRead(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
 static struct JedecInfo readJedecInfo(struct W25SPIM *memory)
 {
-  static const uint8_t command = CMD_READ_JEDEC_ID;
-  static const uint32_t length = TO_LITTLE_ENDIAN_32(sizeof(struct JedecInfo));
   struct JedecInfo info;
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
-  ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH, &length);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND, &((uint8_t){CMD_READ_JEDEC_ID}));
+  ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH,
+      &((uint32_t){TO_LITTLE_ENDIAN_32(sizeof(struct JedecInfo))}));
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
 
   ifRead(memory->spim, &info, sizeof(info));
   return info;
@@ -424,17 +462,17 @@ static struct JedecInfo readJedecInfo(struct W25SPIM *memory)
 /*----------------------------------------------------------------------------*/
 static uint8_t readStatusRegister(struct W25SPIM *memory, uint8_t command)
 {
-  static const uint32_t length = TO_LITTLE_ENDIAN_32(1);
   uint8_t data;
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
-  ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH, &length);
+  ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH,
+      &((uint32_t){TO_LITTLE_ENDIAN_32(1)}));
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
 
   ifRead(memory->spim, &data, 1);
   return data;
@@ -458,31 +496,30 @@ static void writeEnable(struct W25SPIM *memory, bool nonvolatile)
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
 
-  ifWrite(memory->spim, 0, 0);
+  ifWrite(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
 static void writeStatusRegister(struct W25SPIM *memory, uint8_t command,
     uint8_t value, bool nonvolatile)
 {
-  static const uint32_t length = TO_LITTLE_ENDIAN_32(1);
-
   /* Enable write mode */
   writeEnable(memory, nonvolatile);
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
-  ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH, &length);
+  ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH,
+      &((uint32_t){TO_LITTLE_ENDIAN_32(1)}));
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
 
   ifWrite(memory->spim, &value, 1);
 
@@ -492,62 +529,68 @@ static void writeStatusRegister(struct W25SPIM *memory, uint8_t command,
 /*----------------------------------------------------------------------------*/
 void w25MemoryMappingDisable(struct W25SPIM *memory)
 {
-  ifSetParam(memory->spim, IF_SPIM_INDIRECT, 0);
+  ifSetParam(memory->spim, IF_SPIM_INDIRECT, NULL);
 
-  if (memory->qpi)
-    exitQpiMode(memory);
+  if (memory->xip)
+  {
+    /* Change control byte */
+    ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_8,
+        &((uint8_t){XIP_MODE_EXIT}));
+
+    /* Issue mock read command to exit no-opcode mode */
+    ifRead(memory->spim, NULL, 0);
+  }
+
+  if (memory->dtr)
+  {
+    /* Disable DDR mode */
+    ifSetParam(memory->spim, IF_SPIM_SDR, NULL);
+  }
 
   busRelease(memory);
 }
 /*----------------------------------------------------------------------------*/
 void w25MemoryMappingEnable(struct W25SPIM *memory)
 {
-  static const uint32_t address = 0;
-  static const uint32_t post = 0xFF; /* Continuous read mode */
-  static const uint8_t delay = 2; /* 4 clock cycles on QUAD IO */
+  const uint8_t post = memory->xip ? XIP_MODE_ENTER : XIP_MODE_EXIT;
   uint8_t command;
+  uint8_t delay;
 
+  assert(memory->blocking);
   busAcquire(memory);
 
-  if (memory->qpi)
-  {
-    /* QPI mode must be enabled before command setup */
-    enableQpiMode(memory);
-
-    ifSetParam(memory->spim, IF_SPIM_COMMAND_PARALLEL, 0);
-  }
-  else
-  {
-    ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, 0);
-  }
+  makeReadCommandValues(memory, &command, &delay);
 
   if (memory->extended && !memory->shrink)
-  {
-    ifSetParam(memory->spim, IF_SPIM_ADDRESS_32, &address);
-    command = memory->quad ?
-        CMD_FAST_READ_QUAD_IO_4BYTE : CMD_FAST_READ_DUAL_IO_4BYTE;
-  }
+    ifSetParam(memory->spim, IF_SPIM_ADDRESS_32, &((uint32_t){0}));
   else
-  {
-    ifSetParam(memory->spim, IF_SPIM_ADDRESS_24, &address);
-    command = memory->quad ? CMD_FAST_READ_QUAD_IO : CMD_FAST_READ_DUAL_IO;
-  }
-
-  if (memory->quad)
-    ifSetParam(memory->spim, IF_SPIM_DELAY_LENGTH, &delay);
-  else
-    ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, 0);
+    ifSetParam(memory->spim, IF_SPIM_ADDRESS_24, &((uint32_t){0}));
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
   ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_8, &post);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, 0);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_LENGTH, &delay);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
 
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_PARALLEL, 0);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_PARALLEL, 0);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_PARALLEL, 0);
-  ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, 0);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_PARALLEL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_PARALLEL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_PARALLEL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, NULL);
 
-  ifSetParam(memory->spim, IF_SPIM_MEMORY_MAPPED, 0);
+  if (memory->dtr)
+  {
+    /* Enable DDR mode before mock read command */
+    ifSetParam(memory->spim, IF_SPIM_DDR, NULL);
+  }
+  if (memory->xip)
+  {
+    /* Issue mock read command to enter Continuous Read mode */
+    ifRead(memory->spim, NULL, 0);
+    /* Switch to no-opcode mode */
+    ifSetParam(memory->spim, IF_SPIM_COMMAND_NONE, NULL);
+  }
+
+  ifSetParam(memory->spim, IF_SPIM_MEMORY_MAPPED, NULL);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInit(void *object, const void *configBase)
@@ -562,47 +605,69 @@ static enum Result memoryInit(void *object, const void *configBase)
   enum Result res = E_OK;
 
   memory->callback = NULL;
-
   memory->spim = config->spim;
+
   memory->position = 0;
   memory->blocking = true;
-  memory->extended = false;
   memory->dtr = false;
-  memory->qpi = false;
+  memory->extended = false;
   memory->shrink = config->shrink;
+  memory->xip = false;
 
-  memory->context.buffer = 0;
+  memory->context.buffer = NULL;
   memory->context.left = 0;
   memory->context.length = 0;
   memory->context.position = 0;
   memory->context.state = STATE_IDLE;
 
   /* Lock the interface */
-  ifSetParam(memory->spim, IF_ACQUIRE, 0);
+  ifSetParam(memory->spim, IF_ACQUIRE, NULL);
   /* Detect interface capabilities */
-  memory->quad = ifSetParam(memory->spim, IF_SPIM_QUAD, 0) == E_OK;
+  memory->quad = ifSetParam(memory->spim, IF_SPIM_QUAD, NULL) == E_OK;
+  /* Reset interface mode on the memory side */
+  exitQpiXipMode(memory);
   /* Read device information */
   info = readJedecInfo(memory);
   /* Unlock the interface */
-  ifSetParam(memory->spim, IF_RELEASE, 0);
+  ifSetParam(memory->spim, IF_RELEASE, NULL);
 
   if (info.manufacturer != JEDEC_MANUFACTURER_WINBOND)
     return E_DEVICE;
 
   if (info.type == JEDEC_DEVICE_IM_JM)
   {
-    /* QPI and DTR modes are supported on IM and JM parts */
-    if (memory->quad)
-    {
-      if (config->qpi)
-        memory->qpi = true;
+    /* DTR, QPI and XIP modes are supported only on IM and JM parts */
 
-      if (config->dtr)
-        memory->dtr = ifSetParam(memory->spim, IF_SPIM_DDR, 0) == E_OK;
+    if (config->dtr)
+    {
+      if (ifSetParam(memory->spim, IF_SPIM_DDR, NULL) == E_OK)
+      {
+        /* Restore SDR mode */
+        ifSetParam(memory->spim, IF_SPIM_SDR, NULL);
+
+        memory->dtr = true;
+      }
+      else
+      {
+        /* Peripheral interface does not support DDR mode */
+        return E_INTERFACE;
+      }
+    }
+
+    if (config->xip)
+      memory->xip = true;
+  }
+  else if (info.type == JEDEC_DEVICE_IN_IQ_JQ)
+  {
+    if (config->dtr || config->xip)
+    {
+      /* Memory chip does not support DTR and XIP modes */
+      return E_DEVICE;
     }
   }
-  else if (info.type != JEDEC_DEVICE_IN_IQ_JQ)
+  else
   {
+    /* Unsupported memory chip */
     return E_DEVICE;
   }
 
@@ -632,11 +697,16 @@ static enum Result memoryInit(void *object, const void *configBase)
       memory->capacity = 64 * 1024 * 1024;
       break;
 
-    case JEDEC_CAPACITY_W25Q00:
+    case JEDEC_CAPACITY_W25Q01:
       memory->capacity = 128 * 1024 * 1024;
       break;
 
+    case JEDEC_CAPACITY_W25Q02:
+      memory->capacity = 256 * 1024 * 1024;
+      break;
+
     default:
+      /* Unsupported capacity code */
       return E_DEVICE;
   }
 
