@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
+extern const struct InterfaceClass * const FM24;
 extern const struct InterfaceClass * const M24;
 
 struct Timer;
@@ -24,9 +25,9 @@ struct M24Config
   struct Timer *timer;
   /** Mandatory: bus address. */
   uint32_t address;
-  /** Mandatory: address space size. */
+  /** Mandatory: capacity of the memory chip in bytes. */
   uint32_t chipSize;
-  /** Mandatory: page size. */
+  /** Mandatory: page size in bytes. */
   uint32_t pageSize;
   /** Optional: baud rate of the interface. */
   uint32_t rate;
@@ -54,12 +55,20 @@ struct M24
   struct Timer *timer;
   struct WorkQueue *wq;
 
+  /* Bus interface address */
   uint32_t address;
+  /* Write delay in timer ticks */
+  uint32_t delay;
+  /* Bus interface bit rate */
   uint32_t rate;
 
+  /* Memory capacity size in bytes */
   uint32_t chipSize;
+  /* Page size in bytes */
   uint16_t pageSize;
+  /* Bit shift for block number calculation */
   uint8_t shift;
+  /* Byte count in the address phase */
   uint8_t width;
 
   struct

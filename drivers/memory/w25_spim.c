@@ -176,6 +176,7 @@ static void exitQpiXipMode(struct W25SPIM *memory)
   };
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &(uint8_t){XIP_MODE_EXIT});
+  ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH, &(uint32_t){sizeof(pattern)});
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND_PARALLEL, NULL);
   ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);

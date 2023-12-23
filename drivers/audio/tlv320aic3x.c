@@ -34,7 +34,7 @@ enum ConfigStep
   CONFIG_RESET_WAIT,
   CONFIG_END_RESET,
 
-  /* Generic config */
+  /* Generic configuration */
   CONFIG_GROUP_GENERIC,
   CONFIG_ASD_IF_CTRL_A = CONFIG_GROUP_GENERIC,
   CONFIG_ASD_IF_CTRL_B,
@@ -767,7 +767,7 @@ static bool startConfigUpdate(struct TLV320AIC3x *codec)
       timeout = timerGetFrequency(codec->timer) / 100;
       break;
 
-    /* Generic config */
+    /* Generic configuration */
 
     case CONFIG_ASD_IF_CTRL_A:
       codec->transfer.buffer[0] = REG_ASD_IF_CTRL_A;

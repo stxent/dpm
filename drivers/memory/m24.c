@@ -51,10 +51,12 @@ static void invokeUpdate(struct M24 *);
 static void onBusEvent(void *);
 static void onTimerEvent(void *);
 static void startBusTimeout(struct Timer *);
-static void startProgramTimeout(struct Timer *);
+static void startProgramTimeout(struct Timer *, uint32_t);
 static void updateTask(void *);
 /*----------------------------------------------------------------------------*/
-static enum Result memoryInit(void *, const void *);
+static enum Result memoryInitEeprom(void *, const void *);
+static enum Result memoryInitFram(void *, const void *);
+static enum Result memoryInitGeneric(void *, const void *, uint32_t);
 static void memoryDeinit(void *);
 static void memorySetCallback(void *, void (*)(void *), void *);
 static enum Result memoryGetParam(void *, int, void *);
@@ -62,9 +64,21 @@ static enum Result memorySetParam(void *, int, const void *);
 static size_t memoryRead(void *, void *, size_t);
 static size_t memoryWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
+const struct InterfaceClass * const FM24 = &(const struct InterfaceClass){
+    .size = sizeof(struct M24),
+    .init = memoryInitFram,
+    .deinit = memoryDeinit,
+
+    .setCallback = memorySetCallback,
+    .getParam = memoryGetParam,
+    .setParam = memorySetParam,
+    .read = memoryRead,
+    .write = memoryWrite
+};
+
 const struct InterfaceClass * const M24 = &(const struct InterfaceClass){
     .size = sizeof(struct M24),
-    .init = memoryInit,
+    .init = memoryInitEeprom,
     .deinit = memoryDeinit,
 
     .setCallback = memorySetCallback,
@@ -162,7 +176,11 @@ static void onBusEvent(void *object)
       memory->transfer.count -= memory->transfer.chunk;
       memory->transfer.position += memory->transfer.chunk;
       memory->transfer.txBuffer += memory->transfer.chunk;
-      memory->transfer.state = STATE_WRITE_PROGRAM;
+
+      if (memory->delay)
+        memory->transfer.state = STATE_WRITE_PROGRAM;
+      else
+        memory->transfer.state = STATE_WRITE_DATA;
       break;
 
     default:
@@ -209,9 +227,9 @@ static void startBusTimeout(struct Timer *timer)
   timerEnable(timer);
 }
 /*----------------------------------------------------------------------------*/
-static void startProgramTimeout(struct Timer *timer)
+static void startProgramTimeout(struct Timer *timer, uint32_t delay)
 {
-  timerSetOverflow(timer, timerGetFrequency(timer) / (1000 / WRITE_CYCLE_TIME));
+  timerSetOverflow(timer, delay);
   timerSetValue(timer, 0);
   timerEnable(timer);
 }
@@ -224,7 +242,18 @@ static void updateTask(void *argument)
   m24Update(memory);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result memoryInit(void *object, const void *configBase)
+static enum Result memoryInitEeprom(void *object, const void *configBase)
+{
+  return memoryInitGeneric(object, configBase, WRITE_CYCLE_TIME);
+}
+/*----------------------------------------------------------------------------*/
+static enum Result memoryInitFram(void *object, const void *configBase)
+{
+  return memoryInitGeneric(object, configBase, 0);
+}
+/*----------------------------------------------------------------------------*/
+static enum Result memoryInitGeneric(void *object, const void *configBase,
+    uint32_t delay)
 {
   const struct M24Config * const config = configBase;
   assert(config != NULL);
@@ -251,6 +280,17 @@ static enum Result memoryInit(void *object, const void *configBase)
 
   memory->chipSize = config->chipSize;
   memory->pageSize = config->pageSize;
+
+  if (delay)
+  {
+    const uint32_t frequency = timerGetFrequency(config->timer);
+    const uint64_t timeout = (delay * (1ULL << 32)) / 1000;
+    const uint32_t overflow = (frequency * timeout + ((1ULL << 32) - 1)) >> 32;
+
+    memory->delay = overflow;
+  }
+  else
+    memory->delay = 0;
 
   const uint32_t width =
       31 - countLeadingZeros32(config->chipSize / config->blocks);
@@ -568,7 +608,7 @@ bool m24Update(void *object)
 
       case STATE_WRITE_PROGRAM:
         memory->transfer.state = STATE_WRITE_PROGRAM_WAIT;
-        startProgramTimeout(memory->timer);
+        startProgramTimeout(memory->timer, memory->delay);
         break;
 
       case STATE_ERROR_INTERFACE:

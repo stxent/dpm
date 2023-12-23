@@ -20,10 +20,10 @@ struct W25SPIMConfig
   void *spim;
   /** Optional: output driver strength. */
   enum W25DriverStrength strength;
-  /** Optional: force 3-byte memory addresses in memory-mapped mode. */
-  bool shrink;
   /** Optional: allow DTR mode. */
   bool dtr;
+  /** Optional: force 3-byte memory addresses in memory-mapped mode. */
+  bool shrink;
   /** Optional: allow XIP mode. */
   bool xip;
 };

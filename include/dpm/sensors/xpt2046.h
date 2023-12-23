@@ -76,9 +76,13 @@ struct XPT2046
   uint8_t state;
 };
 /*----------------------------------------------------------------------------*/
+BEGIN_DECLS
+
 void xpt2046ResetCalibration(struct XPT2046 *);
 void xpt2046SetCalibration(struct XPT2046 *,
     uint16_t, uint16_t, uint16_t, uint16_t);
 void xpt2046SetSensitivity(struct XPT2046 *, uint16_t);
+
+END_DECLS
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_SENSORS_XPT2046_H_ */
