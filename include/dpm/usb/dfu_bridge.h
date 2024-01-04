@@ -40,19 +40,25 @@ struct DfuBridge
   void (*reset)(void);
 
   struct Interface *flash;
-  size_t flashOffset;
-  size_t flashSize;
+  uint32_t flashOffset;
+  uint32_t flashSize;
 
   const struct FlashGeometry *geometry;
   size_t regions;
 
-  uint8_t *chunkData;
-  size_t chunkSize;
-
-  size_t bufferSize;
-  size_t currentPosition;
-
-  size_t erasingPosition;
+  /* Temporary buffer for received data */
+  uint8_t *buffer;
+  /* Buffer fill level, buffer should be filled to the writeChunkSize value */
+  size_t bufferLevel;
+  /* Minimal memory block size that can be used for write operations */
+  size_t writeChunkSize;
+  /* Current position for block erase operation */
+  uint32_t erasePosition;
+  /* Current position for buffer write operation */
+  uint32_t writePosition;
+  /* Erase type, memory can be erased in pages, sectors or blocks */
+  uint8_t eraseType;
+  /* Erase operation is pending */
   bool eraseQueued;
 };
 /*----------------------------------------------------------------------------*/
