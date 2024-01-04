@@ -2,6 +2,7 @@
 # Project is distributed under the terms of the MIT License
 
 list(APPEND SOURCE_FILES "ds18b20.c")
+list(APPEND SOURCE_FILES "hmc5883.c")
 list(APPEND SOURCE_FILES "mpu60xx.c")
 list(APPEND SOURCE_FILES "mpu60xx_proxy.c")
 list(APPEND SOURCE_FILES "ms56xx.c")
