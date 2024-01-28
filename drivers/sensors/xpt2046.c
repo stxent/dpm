@@ -15,8 +15,7 @@
 #include <assert.h>
 #include <limits.h>
 /*----------------------------------------------------------------------------*/
-#define ADC_MAX     MASK(12)
-#define UPDATE_FREQ 100
+#define ADC_MAX MASK(12)
 
 enum
 {
@@ -174,6 +173,8 @@ static void startReading(struct XPT2046 *sensor)
 /*----------------------------------------------------------------------------*/
 static enum Result tsInit(void *object, const void *configBase)
 {
+  static const uint32_t UPDATE_FREQ = 100;
+
   const struct XPT2046Config * const config = configBase;
   assert(config != NULL);
   assert(config->bus != NULL);

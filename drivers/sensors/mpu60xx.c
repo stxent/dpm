@@ -67,6 +67,7 @@ enum State
 };
 /*----------------------------------------------------------------------------*/
 static void busInit(struct MPU60XX *, bool);
+static inline uint32_t calcResetTimeout(const struct Timer *);
 static void calcValues(struct MPU60XX *);
 static void fetchAccelSample(const struct MPU60XX *, int16_t *);
 static void fetchGyroSample(const struct MPU60XX *, int16_t *);
@@ -119,10 +120,16 @@ static void busInit(struct MPU60XX *sensor, bool read)
       ifSetParam(sensor->bus, IF_I2C_REPEATED_START, NULL);
 
     /* Start bus watchdog */
-    timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
+    timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
     timerSetValue(sensor->timer, 0);
     timerEnable(sensor->timer);
   }
+}
+/*----------------------------------------------------------------------------*/
+static inline uint32_t calcResetTimeout(const struct Timer *timer)
+{
+  static const uint32_t RESET_FREQ = 10;
+  return (timerGetFrequency(timer) + RESET_FREQ - 1) / RESET_FREQ;
 }
 /*----------------------------------------------------------------------------*/
 static void calcValues(struct MPU60XX *sensor)
@@ -237,7 +244,7 @@ static void onBusEvent(void *object)
     /* I2C bus */
     sensor->state = STATE_ERROR_WAIT;
 
-    timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
+    timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
     timerSetValue(sensor->timer, 0);
     timerEnable(sensor->timer);
   }
@@ -329,7 +336,7 @@ static bool startConfigUpdate(struct MPU60XX *sensor, bool *busy)
     case CONFIG_RESET_WAIT:
     case CONFIG_STARTUP_WAIT:
     case CONFIG_READY_WAIT:
-      timeout = timerGetFrequency(sensor->timer) / 10;
+      timeout = calcResetTimeout(sensor->timer);
       break;
 
     case CONFIG_WHO_AM_I_READ:

@@ -44,6 +44,7 @@ enum State
 /*----------------------------------------------------------------------------*/
 static void busInit(struct SHT2X *);
 static void calcHumidity(struct SHT2X *);
+static inline uint32_t calcResetTimeout(const struct Timer *);
 static uint16_t fetchSample(const struct SHT2X *);
 static void onBusEvent(void *);
 static void onTimerEvent(void *);
@@ -103,7 +104,7 @@ static void busInit(struct SHT2X *sensor)
     ifSetParam(sensor->bus, IF_RATE, &sensor->rate);
 
   /* Start bus watchdog */
-  timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
+  timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
   timerSetValue(sensor->timer, 0);
   timerEnable(sensor->timer);
 }
@@ -125,6 +126,12 @@ static void calcHumidity(struct SHT2X *sensor)
   }
 }
 /*----------------------------------------------------------------------------*/
+static inline uint32_t calcResetTimeout(const struct Timer *timer)
+{
+  static const uint32_t RESET_FREQ = 10;
+  return (timerGetFrequency(timer) + RESET_FREQ - 1) / RESET_FREQ;
+}
+/*----------------------------------------------------------------------------*/
 static uint16_t fetchSample(const struct SHT2X *sensor)
 {
   const uint8_t * const buffer = sensor->buffer;
@@ -143,7 +150,7 @@ static void onBusEvent(void *object)
   if (ifGetParam(sensor->bus, IF_STATUS, NULL) != E_OK)
   {
     sensor->state = STATE_ERROR_WAIT;
-    timerSetOverflow(sensor->timer, resolutionToTemperatureTime(sensor));
+    timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
     waitForTimeout = true;
   }
 

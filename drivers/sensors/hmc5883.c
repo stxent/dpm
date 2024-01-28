@@ -44,6 +44,7 @@ enum State
 };
 /*----------------------------------------------------------------------------*/
 static void busInit(struct HMC5883 *, bool);
+static inline uint32_t calcResetTimeout(const struct Timer *);
 static void calcValues(struct HMC5883 *);
 static int32_t gainToScale(const struct HMC5883 *);
 static void makeConfig(const struct HMC5883 *, uint8_t *);
@@ -108,9 +109,15 @@ static void busInit(struct HMC5883 *sensor, bool read)
     ifSetParam(sensor->bus, IF_I2C_REPEATED_START, NULL);
 
   /* Start bus watchdog */
-  timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
+  timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
   timerSetValue(sensor->timer, 0);
   timerEnable(sensor->timer);
+}
+/*----------------------------------------------------------------------------*/
+static inline uint32_t calcResetTimeout(const struct Timer *timer)
+{
+  static const uint32_t RESET_FREQ = 10;
+  return (timerGetFrequency(timer) + RESET_FREQ - 1) / RESET_FREQ;
 }
 /*----------------------------------------------------------------------------*/
 static void calcValues(struct HMC5883 *sensor)
@@ -177,7 +184,7 @@ static void onBusEvent(void *object)
     /* I2C bus */
     sensor->state = STATE_ERROR_WAIT;
 
-    timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
+    timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
     timerSetValue(sensor->timer, 0);
     timerEnable(sensor->timer);
   }

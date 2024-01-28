@@ -36,7 +36,7 @@ static size_t serialWrite(void *, const void *, size_t);
 #ifndef CONFIG_PLATFORM_LPC_UART_NO_DEINIT
 static void serialDeinit(void *);
 #else
-#define serialDeinit deletedDestructorTrap
+#  define serialDeinit deletedDestructorTrap
 #endif
 /*----------------------------------------------------------------------------*/
 const struct InterfaceClass * const Irda = &(const struct InterfaceClass){

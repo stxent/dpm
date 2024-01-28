@@ -53,6 +53,7 @@ enum State
 /*----------------------------------------------------------------------------*/
 static void calcOffSens5607(const uint16_t *, int32_t, int64_t *, int64_t *);
 static void calcOffSens5611(const uint16_t *, int32_t, int64_t *, int64_t *);
+static inline uint32_t calcResetTimeout(const struct Timer *);
 static bool checkCrc4(const uint16_t *);
 static void getCompensatedResults(const struct MS56XX *, int32_t *, int32_t *);
 static void makeTemperatureCompensation5607(int32_t, int32_t, int64_t *,
@@ -129,6 +130,12 @@ static void calcOffSens5611(const uint16_t *prom, int32_t dt, int64_t *off,
 
   *sens = ((int64_t)prom[PROM_SENS] << 15)
       + (((int64_t)prom[PROM_TCS] * dt) >> 8);
+}
+/*----------------------------------------------------------------------------*/
+static inline uint32_t calcResetTimeout(const struct Timer *timer)
+{
+  static const uint32_t RESET_FREQ = 10;
+  return (timerGetFrequency(timer) + RESET_FREQ - 1) / RESET_FREQ;
 }
 /*----------------------------------------------------------------------------*/
 static bool checkCrc4(const uint16_t *prom)
@@ -275,7 +282,7 @@ static void busInit(struct MS56XX *sensor, bool read)
       ifSetParam(sensor->bus, IF_I2C_REPEATED_START, NULL);
 
     /* Start bus watchdog */
-    timerSetOverflow(sensor->timer, timerGetFrequency(sensor->timer) / 10);
+    timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
     timerSetValue(sensor->timer, 0);
     timerEnable(sensor->timer);
   }
@@ -348,7 +355,7 @@ static void onBusEvent(void *object)
   {
     /* I2C bus */
     sensor->state = STATE_ERROR_WAIT;
-    timerSetOverflow(sensor->timer, oversamplingToTime(sensor));
+    timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
 
     waitForTimeout = true;
     release = true;
