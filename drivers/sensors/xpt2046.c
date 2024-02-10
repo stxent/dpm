@@ -24,7 +24,7 @@ enum
   FLAG_SAMPLE   = 0x04
 };
 
-enum
+enum State
 {
   STATE_IDLE,
   STATE_EVENT_WAIT,
@@ -323,7 +323,7 @@ static bool tsUpdate(void *object)
     busy = false;
     updated = false;
 
-    switch (sensor->state)
+    switch ((enum State)sensor->state)
     {
       case STATE_IDLE:
       {

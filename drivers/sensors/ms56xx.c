@@ -712,7 +712,7 @@ static bool msUpdate(void *object)
     busy = false;
     updated = false;
 
-    switch (sensor->state)
+    switch ((enum State)sensor->state)
     {
       case STATE_IDLE:
       {

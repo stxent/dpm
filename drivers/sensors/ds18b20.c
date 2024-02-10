@@ -22,7 +22,7 @@ enum
   FLAG_SAMPLE = 0x08
 };
 
-enum
+enum State
 {
   STATE_IDLE,
   STATE_CONFIG_WRITE,
@@ -394,7 +394,7 @@ static bool dsUpdate(void *object)
     busy = false;
     updated = false;
 
-    switch (sensor->state)
+    switch ((enum State)sensor->state)
     {
       case STATE_IDLE:
       {
@@ -440,6 +440,9 @@ static bool dsUpdate(void *object)
       case STATE_TEMP_WAIT_START:
         sensor->state = STATE_TEMP_WAIT;
         timerEnable(sensor->timer);
+        break;
+
+      case STATE_TEMP_WAIT:
         break;
 
       case STATE_TEMP_REQUEST:

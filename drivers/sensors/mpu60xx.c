@@ -648,7 +648,7 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
     busy = false;
     updated = false;
 
-    switch (sensor->state)
+    switch ((enum State)sensor->state)
     {
       case STATE_IDLE:
       {
