@@ -194,15 +194,15 @@ static enum Result serialInit(void *object, const void *configBase)
   if ((res = UartBase->init(object, &baseConfig)) != E_OK)
     return res;
 
-  if ((res = uartCalcRate(object, config->rate, &rateConfig)) != E_OK)
-    return res;
+  if (!uartCalcRate(&interface->base, config->rate, &rateConfig))
+    return E_VALUE;
 
   if (!byteQueueInit(&interface->rxQueue, config->rxLength))
     return E_MEMORY;
   if (!byteQueueInit(&interface->txQueue, config->txLength))
     return E_MEMORY;
 
-  uartSetRate(object, rateConfig);
+  uartSetRate(&interface->base, rateConfig);
 
   const struct IrdaTimerConfig timerConfig = {
       .frequency = config->rate,

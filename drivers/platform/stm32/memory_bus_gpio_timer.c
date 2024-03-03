@@ -122,7 +122,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
       | CCMR_CCS(timer->channel & 1, CCS_OUTPUT);
   reg->CCER = ccer;
 
-  if (timer->base.flags & TIMER_FLAG_INVERSE)
+  if (timer->base.flags & TIMER_FLAG_CONTROL)
     reg->BDTR |= BDTR_MOE;
 
   tmrSetFrequency(timer, config->frequency);

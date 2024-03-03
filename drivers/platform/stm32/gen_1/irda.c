@@ -212,7 +212,8 @@ static enum Result serialInit(void *object, const void *configBase)
   /* Disable the peripheral */
   reg->CR1 = 0;
 
-  uartSetRate(object, config->rate);
+  if (!uartSetRate(&interface->base, config->rate))
+    return E_VALUE;
 
   /* Enable Break interrupt */
   reg->CR2 |= CR2_LBDIE;
