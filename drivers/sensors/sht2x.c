@@ -392,7 +392,7 @@ static void shtDeinit(void *object)
     deinit(sensor->thermometer);
 }
 /*----------------------------------------------------------------------------*/
-static const char *shtGetFormat([[maybe_unused]] const void *object)
+static const char *shtGetFormat(const void *)
 {
   return "i8q8";
 }

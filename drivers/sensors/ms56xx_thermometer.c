@@ -62,16 +62,16 @@ static enum Result thermoInit(void *object, const void *configBase)
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static void thermoDeinit([[maybe_unused]] void *object)
+static void thermoDeinit(void *)
 {
 }
 /*----------------------------------------------------------------------------*/
-static const char *thermoGetFormat([[maybe_unused]] const void *object)
+static const char *thermoGetFormat(const void *)
 {
   return "i24q8";
 }
 /*----------------------------------------------------------------------------*/
-static enum SensorStatus thermoGetStatus([[maybe_unused]] const void *object)
+static enum SensorStatus thermoGetStatus(const void *)
 {
   return SENSOR_IDLE;
 }
@@ -102,7 +102,7 @@ static void thermoSetUpdateCallback(void *object, void (*callback)(void *))
   sensor->onUpdateCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static void thermoReset([[maybe_unused]] void *object)
+static void thermoReset(void *)
 {
 }
 /*----------------------------------------------------------------------------*/
@@ -133,11 +133,11 @@ static void thermoStop(void *object)
       ~(FLAG_THERMO_LOOP | FLAG_THERMO_SAMPLE));
 }
 /*----------------------------------------------------------------------------*/
-static void thermoSuspend([[maybe_unused]] void *object)
+static void thermoSuspend(void *)
 {
 }
 /*----------------------------------------------------------------------------*/
-static bool thermoUpdate([[maybe_unused]] void *object)
+static bool thermoUpdate(void *)
 {
   return false;
 }

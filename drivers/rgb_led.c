@@ -28,7 +28,7 @@ static enum Result ledInit(void *object, const void *configBase)
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static void ledDeinit([[maybe_unused]] void *object)
+static void ledDeinit(void *)
 {
 }
 /*----------------------------------------------------------------------------*/

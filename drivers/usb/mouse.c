@@ -95,7 +95,7 @@ static const uint8_t mouseReportDescriptor[] = {
 };
 /*----------------------------------------------------------------------------*/
 static void deviceDataSent(void *argument, struct UsbRequest *request,
-    [[maybe_unused]] enum UsbRequestStatus status)
+    enum UsbRequestStatus)
 {
   struct Mouse * const device = argument;
   pointerQueuePushBack(&device->txQueue, request);
@@ -197,9 +197,8 @@ static void mouseEvent(void *object, unsigned int event)
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result mouseGetReport([[maybe_unused]] void *object,
-    uint8_t reportType, [[maybe_unused]] uint8_t reportId, uint8_t *report,
-    uint16_t *reportLength, uint16_t maxReportLength)
+static enum Result mouseGetReport(void *, uint8_t reportType, uint8_t,
+    uint8_t *report, uint16_t *reportLength, uint16_t maxReportLength)
 {
   switch (reportType)
   {
@@ -220,10 +219,8 @@ static enum Result mouseGetReport([[maybe_unused]] void *object,
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result mouseSetReport([[maybe_unused]] void *object,
-    uint8_t reportType, [[maybe_unused]] uint8_t reportId,
-    [[maybe_unused]] const uint8_t *report,
-    [[maybe_unused]] uint16_t reportLength)
+static enum Result mouseSetReport(void *, uint8_t reportType, uint8_t,
+    const uint8_t *, uint16_t)
 {
   switch (reportType)
   {

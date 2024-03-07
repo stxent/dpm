@@ -336,7 +336,7 @@ static void hmcDeinit(void *object)
   interruptSetCallback(sensor->event, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
-static const char *hmcGetFormat([[maybe_unused]] const void *object)
+static const char *hmcGetFormat(const void *)
 {
   return "i16q16i16q16i16q16";
 }

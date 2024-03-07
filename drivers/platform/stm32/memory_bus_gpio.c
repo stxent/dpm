@@ -98,8 +98,7 @@ static void busSetCallback(void *object, void (*callback)(void *),
   interface->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static enum Result busGetParam(void *object, int parameter,
-    [[maybe_unused]] void *data)
+static enum Result busGetParam(void *object, int parameter, void *)
 {
   struct MemoryBusGpio * const interface = object;
 
@@ -113,8 +112,7 @@ static enum Result busGetParam(void *object, int parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result busSetParam(void *object, int parameter,
-    [[maybe_unused]] const void *data)
+static enum Result busSetParam(void *object, int parameter, const void *)
 {
   struct MemoryBusGpio * const interface = object;
 
@@ -133,8 +131,7 @@ static enum Result busSetParam(void *object, int parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static size_t busRead([[maybe_unused]] void *object,
-    [[maybe_unused]] void *buffer, [[maybe_unused]] size_t length)
+static size_t busRead(void *, void *, size_t)
 {
   /* Currently unsupported */
   return 0;

@@ -175,7 +175,7 @@ static inline uint16_t typeToSampleConstant(const struct MPU60XXProxy *proxy)
   }
 }
 /*----------------------------------------------------------------------------*/
-static void proxyDeinit([[maybe_unused]] void *object)
+static void proxyDeinit(void *)
 {
 }
 /*----------------------------------------------------------------------------*/

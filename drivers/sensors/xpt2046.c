@@ -232,7 +232,7 @@ static void tsDeinit(void *object)
   interruptSetCallback(sensor->event, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
-static const char *tsGetFormat([[maybe_unused]] const void *object)
+static const char *tsGetFormat(const void *)
 {
   return "i16i16i16";
 }
@@ -269,7 +269,7 @@ static void tsSetUpdateCallback(void *object, void (*callback)(void *))
   sensor->onUpdateCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static void tsReset([[maybe_unused]] void *object)
+static void tsReset(void *)
 {
 }
 /*----------------------------------------------------------------------------*/

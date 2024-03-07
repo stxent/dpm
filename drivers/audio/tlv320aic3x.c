@@ -250,7 +250,7 @@ static inline bool isLastConfigGroupStep(enum ConfigStep step)
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegAdcGainCtrl(const struct TLV320AIC3x *codec,
-    [[maybe_unused]] enum CodecChannel channel)
+    enum CodecChannel channel)
 {
   if (codec->config.input.path != AIC3X_NONE)
   {
@@ -264,7 +264,7 @@ static uint8_t makeRegAdcGainCtrl(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegAgcCtrlA(const struct TLV320AIC3x *codec,
-    [[maybe_unused]] enum CodecChannel channel)
+    enum CodecChannel)
 {
   if (codec->config.input.path != AIC3X_NONE)
   {
@@ -275,20 +275,17 @@ static uint8_t makeRegAgcCtrlA(const struct TLV320AIC3x *codec,
   return 0;
 }
 /*----------------------------------------------------------------------------*/
-static uint8_t makeRegAgcCtrlB([[maybe_unused]] const struct TLV320AIC3x *codec,
-    [[maybe_unused]] enum CodecChannel channel)
+static uint8_t makeRegAgcCtrlB(const struct TLV320AIC3x *, enum CodecChannel)
 {
   return AGC_CTRL_B_MAX_GAIN(AGC_CTRL_B_MAX_GAIN_MAX);
 }
 /*----------------------------------------------------------------------------*/
-static uint8_t makeRegASDIfCtrlA(
-    [[maybe_unused]] const struct TLV320AIC3x *codec)
+static uint8_t makeRegASDIfCtrlA(const struct TLV320AIC3x *)
 {
   return ASDA_DOUT_3_STATE_CONTROL;
 }
 /*----------------------------------------------------------------------------*/
-static uint8_t makeRegASDIfCtrlB(
-    [[maybe_unused]] const struct TLV320AIC3x *codec)
+static uint8_t makeRegASDIfCtrlB(const struct TLV320AIC3x *)
 {
   return ASDB_INTERFACE_MODE(INTERFACE_MODE_I2S)
       | ASDB_WORD_LENGTH(WORD_LENGTH_16);
@@ -381,8 +378,7 @@ static uint8_t makeRegDacToLOPMVol(const struct TLV320AIC3x *codec,
   }
 }
 /*----------------------------------------------------------------------------*/
-static uint8_t makeRegDacVol(const struct TLV320AIC3x *codec,
-    [[maybe_unused]] enum CodecChannel channel)
+static uint8_t makeRegDacVol(const struct TLV320AIC3x *codec, enum CodecChannel)
 {
   if (codec->config.output.path != AIC3X_NONE)
     return DAC_DIGITAL_VOL_GAIN(0);
@@ -445,7 +441,7 @@ static uint8_t makeRegHpRCom(const struct TLV320AIC3x *codec)
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegLOPMCtrl(const struct TLV320AIC3x *codec,
-    [[maybe_unused]] enum CodecChannel channel)
+    enum CodecChannel)
 {
   switch (codec->config.output.path)
   {
@@ -460,7 +456,7 @@ static uint8_t makeRegLOPMCtrl(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegHpComCtrl(const struct TLV320AIC3x *codec,
-    [[maybe_unused]] enum CodecChannel channel)
+    enum CodecChannel)
 {
   switch (codec->config.output.path)
   {
@@ -474,7 +470,7 @@ static uint8_t makeRegHpComCtrl(const struct TLV320AIC3x *codec,
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegHpOutCtrl(const struct TLV320AIC3x *codec,
-    [[maybe_unused]] enum CodecChannel channel)
+    enum CodecChannel)
 {
   switch (codec->config.output.path)
   {
@@ -518,7 +514,7 @@ static uint8_t makeRegMicBiasCtrl(const struct TLV320AIC3x *codec)
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegMicLine1ToAdcCtrl(const struct TLV320AIC3x *codec,
-    [[maybe_unused]] enum CodecChannel channel)
+    enum CodecChannel)
 {
   uint8_t value = MIC_LINE_LP_RP_SOFT_STEPPING(MIC_LINE_SOFT_STEPPING_DISABLED);
 
