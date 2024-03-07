@@ -299,7 +299,7 @@ static void dsDeinit(void *object)
   timerSetCallback(sensor->timer, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
-static const char *dsGetFormat(const void *object __attribute__((unused)))
+static const char *dsGetFormat([[maybe_unused]] const void *object)
 {
   return "i24q8";
 }

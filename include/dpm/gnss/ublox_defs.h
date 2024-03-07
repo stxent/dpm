@@ -74,7 +74,7 @@ enum UbloxSystemId
   UBX_SYSTEM_GLONASS = 6
 };
 /*----------------------------------------------------------------------------*/
-struct UbxNavSatData {
+struct [[gnu::packed]] UbxNavSatData {
   uint8_t gnssId;
   uint8_t svId;
   uint8_t cno;
@@ -82,17 +82,17 @@ struct UbxNavSatData {
   int16_t azim;
   int16_t prRes;
   uint32_t flags;
-} __attribute__((packed));
+};
 
-struct UbxNavSatPacket {
+struct [[gnu::packed]] UbxNavSatPacket {
   uint32_t iTOW;
   uint8_t version;
   uint8_t numSvs;
   uint8_t reserved1[2];
   struct UbxNavSatData data[];
-} __attribute__((packed));
+};
 
-struct UbxNavStatusPacket {
+struct [[gnu::packed]] UbxNavStatusPacket {
   uint32_t iTOW;
   uint8_t gpsFix;
   uint8_t flags;
@@ -100,15 +100,15 @@ struct UbxNavStatusPacket {
   uint8_t flags2;
   uint32_t ttff;
   uint32_t msss;
-} __attribute__((packed));
+};
 
-struct UbxTimTpPacket {
+struct [[gnu::packed]] UbxTimTpPacket {
   uint32_t towMS;
   uint32_t towSubMS;
   int32_t qErr;
   uint16_t week;
   uint8_t flags;
   uint8_t refInfo;
-} __attribute__((packed));
+};
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_GNSS_UBLOX_DEFS_H_ */

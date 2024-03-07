@@ -294,9 +294,8 @@ static enum Result serialGetParam(void *object, int parameter, void *data)
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result serialSetParam(void *object __attribute__((unused)),
-    int parameter __attribute__((unused)),
-    const void *data __attribute__((unused)))
+static enum Result serialSetParam([[maybe_unused]] void *object,
+    [[maybe_unused]] int parameter, [[maybe_unused]] const void *data)
 {
   return E_INVALID;
 }

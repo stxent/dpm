@@ -10,7 +10,7 @@
 #include <xcore/interface.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
-enum DisplayOrientation
+enum [[gnu::packed]] DisplayOrientation
 {
   DISPLAY_ORIENTATION_NORMAL,
   DISPLAY_ORIENTATION_MIRROR_X,
@@ -18,10 +18,10 @@ enum DisplayOrientation
   DISPLAY_ORIENTATION_MIRROR_XY,
 
   DISPLAY_ORIENTATION_END
-} __attribute__((packed));
+};
 
 /** Display options extending common interface options. */
-enum DisplayParameter
+enum [[gnu::packed]] DisplayParameter
 {
   /** Update information on the display immediately. */
   IF_DISPLAY_UPDATE = IF_PARAMETER_END,
@@ -32,7 +32,7 @@ enum DisplayParameter
   IF_DISPLAY_RESOLUTION,
   /** Set first and last addresses of the current display window. */
   IF_DISPLAY_WINDOW
-} __attribute__((packed));
+};
 /*----------------------------------------------------------------------------*/
 struct DisplayPoint
 {

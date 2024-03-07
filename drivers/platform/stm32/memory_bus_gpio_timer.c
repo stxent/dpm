@@ -229,7 +229,7 @@ static uint32_t tmrGetValue(const void *object)
   return reg->CNT;
 }
 /*----------------------------------------------------------------------------*/
-static void tmrSetValue(void *object __attribute__((unused)),
-    uint32_t value __attribute__((unused)))
+static void tmrSetValue([[maybe_unused]] void *object,
+    [[maybe_unused]] uint32_t value)
 {
 }

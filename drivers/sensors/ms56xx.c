@@ -608,7 +608,7 @@ static void msDeinit(void *object)
     deinit(sensor->thermometer);
 }
 /*----------------------------------------------------------------------------*/
-static const char *msGetFormat(const void *object __attribute__((unused)))
+static const char *msGetFormat([[maybe_unused]] const void *object)
 {
   return "i24q8";
 }

@@ -16,7 +16,7 @@ extern const struct SensorClass * const MS56XXThermometer;
 struct Interface;
 struct Timer;
 
-enum MS56XXOversampling
+enum [[gnu::packed]] MS56XXOversampling
 {
   MS56XX_OVERSAMPLING_DEFAULT,
   MS56XX_OVERSAMPLING_256,
@@ -24,13 +24,13 @@ enum MS56XXOversampling
   MS56XX_OVERSAMPLING_1024,
   MS56XX_OVERSAMPLING_2048,
   MS56XX_OVERSAMPLING_4096
-} __attribute__((packed));
+};
 
-enum MS56XXSubtype
+enum [[gnu::packed]] MS56XXSubtype
 {
   MS56XX_TYPE_5607,
   MS56XX_TYPE_5611
-} __attribute__((packed));
+};
 
 struct MS56XXConfig
 {

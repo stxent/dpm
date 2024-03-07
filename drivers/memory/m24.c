@@ -41,7 +41,7 @@ enum
   STATUS_BUSY,
   STATUS_ERROR_INTERFACE,
   STATUS_ERROR_TIMEOUT
-} __attribute__((packed));
+};
 /*----------------------------------------------------------------------------*/
 static void fillDataAddress(uint8_t *, const struct M24 *, uint32_t);
 static uint32_t makeSlaveAddress(const struct M24 *, uint32_t);

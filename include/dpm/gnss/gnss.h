@@ -9,14 +9,14 @@
 /*----------------------------------------------------------------------------*/
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
-enum FixType
+enum [[gnu::packed]] FixType
 {
   FIX_NONE,
   FIX_DEAD_RECKONING,
   FIX_2D,
   FIX_3D,
   FIX_3D_CORRECTED
-} __attribute__((packed));
+};
 
 struct SatelliteInfo
 {

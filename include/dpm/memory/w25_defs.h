@@ -132,11 +132,11 @@
 /* Bits M5-4 must not be equal to 0b10 */
 #define XIP_MODE_EXIT       0xFF
 /*----------------------------------------------------------------------------*/
-struct JedecInfo
+struct [[gnu::packed]] JedecInfo
 {
   uint8_t manufacturer;
   uint8_t type;
   uint8_t capacity;
-} __attribute__((packed));
+};
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_MEMORY_W25_DEFS_H_ */

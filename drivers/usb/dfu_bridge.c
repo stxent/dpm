@@ -89,8 +89,7 @@ static bool isSectorAddress(const struct DfuBridge *loader, size_t address)
   return region != NULL && (address & (region->size - 1)) == 0;
 }
 /*----------------------------------------------------------------------------*/
-static void onDetachRequest(void *object,
-    uint16_t timeout __attribute__((unused)))
+static void onDetachRequest(void *object, [[maybe_unused]] uint16_t timeout)
 {
   struct DfuBridge * const loader = object;
   loader->reset();

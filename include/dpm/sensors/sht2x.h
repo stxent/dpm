@@ -16,7 +16,7 @@ extern const struct SensorClass * const SHT2XThermometer;
 struct Interface;
 struct Timer;
 
-enum SHT2XResolution
+enum [[gnu::packed]] SHT2XResolution
 {
   SHT2X_RESOLUTION_DEFAULT,
   /** 8 bit of Relative Humidity and 12 bit of Temperature */
@@ -27,7 +27,7 @@ enum SHT2XResolution
   SHT2X_RESOLUTION_11BIT,
   /** 12 bit of Relative Humidity and 14 bit of Temperature */
   SHT2X_RESOLUTION_12BIT
-} __attribute__((packed));
+};
 
 struct SHT2XConfig
 {

@@ -7,7 +7,7 @@
 #ifndef DPM_MEMORY_W25_H_
 #define DPM_MEMORY_W25_H_
 /*----------------------------------------------------------------------------*/
-enum W25DriverStrength
+enum [[gnu::packed]] W25DriverStrength
 {
   W25_DRV_DEFAULT,
   W25_DRV_100PCT,
@@ -16,6 +16,6 @@ enum W25DriverStrength
   W25_DRV_25PCT,
 
   W25_DRV_END
-} __attribute__((packed));
+};
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_MEMORY_W25_H_ */

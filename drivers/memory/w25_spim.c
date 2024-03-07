@@ -726,7 +726,7 @@ static enum Result memoryInit(void *object, const void *configBase)
   return res;
 }
 /*----------------------------------------------------------------------------*/
-static void memoryDeinit(void *object __attribute__((unused)))
+static void memoryDeinit([[maybe_unused]] void *object)
 {
 }
 /*----------------------------------------------------------------------------*/

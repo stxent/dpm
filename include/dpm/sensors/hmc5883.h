@@ -15,7 +15,7 @@ extern const struct SensorClass * const HMC5883;
 struct Interface;
 struct Timer;
 
-enum HMC5883Frequency
+enum [[gnu::packed]] HMC5883Frequency
 {
   HMC5883_FREQUENCY_DEFAULT,
   HMC5883_FREQUENCY_0_75HZ,
@@ -25,9 +25,9 @@ enum HMC5883Frequency
   HMC5883_FREQUENCY_15HZ,
   HMC5883_FREQUENCY_30HZ,
   HMC5883_FREQUENCY_75HZ
-} __attribute__((packed));
+};
 
-enum HMC5883Gain
+enum [[gnu::packed]] HMC5883Gain
 {
   HMC5883_GAIN_DEFAULT,
   HMC5883_GAIN_880MGA,
@@ -38,16 +38,16 @@ enum HMC5883Gain
   HMC5883_GAIN_4700MGA,
   HMC5883_GAIN_5600MGA,
   HMC5883_GAIN_8100MGA
-} __attribute__((packed));
+};
 
-enum HMC5883Oversampling
+enum [[gnu::packed]] HMC5883Oversampling
 {
   HMC5883_OVERSAMPLING_DEFAULT,
   HMC5883_OVERSAMPLING_NONE,
   HMC5883_OVERSAMPLING_2,
   HMC5883_OVERSAMPLING_4,
   HMC5883_OVERSAMPLING_8
-} __attribute__((packed));
+};
 
 struct HMC5883Config
 {

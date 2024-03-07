@@ -16,14 +16,14 @@ extern const struct SensorClass * const DS18B20;
 struct Interface;
 struct Timer;
 
-enum DS18B20Resolution
+enum [[gnu::packed]] DS18B20Resolution
 {
   DS18B20_RESOLUTION_DEFAULT,
   DS18B20_RESOLUTION_9BIT,
   DS18B20_RESOLUTION_10BIT,
   DS18B20_RESOLUTION_11BIT,
   DS18B20_RESOLUTION_12BIT
-} __attribute__((packed));
+};
 
 struct DS18B20Config
 {

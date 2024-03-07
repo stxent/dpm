@@ -101,7 +101,7 @@ static void busSetCallback(void *object, void (*callback)(void *),
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busGetParam(void *object, int parameter,
-    void *data __attribute__((unused)))
+    [[maybe_unused]] void *data)
 {
   struct MemoryBusGpio * const interface = object;
 
@@ -116,7 +116,7 @@ static enum Result busGetParam(void *object, int parameter,
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busSetParam(void *object, int parameter,
-    const void *data __attribute__((unused)))
+    [[maybe_unused]] const void *data)
 {
   struct MemoryBusGpio * const interface = object;
 
@@ -135,9 +135,8 @@ static enum Result busSetParam(void *object, int parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static size_t busRead(void *object __attribute__((unused)),
-    void *buffer __attribute__((unused)),
-    size_t length __attribute__((unused)))
+static size_t busRead([[maybe_unused]] void *object,
+    [[maybe_unused]] void *buffer, [[maybe_unused]] size_t length)
 {
   /* Currently unsupported */
   return 0;

@@ -346,7 +346,7 @@ static enum Result displayInit(void *object, const void *configPtr)
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-static void displayDeinit(void *object __attribute__((unused)))
+static void displayDeinit([[maybe_unused]] void *object)
 {
 }
 /*----------------------------------------------------------------------------*/

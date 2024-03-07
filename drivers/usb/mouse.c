@@ -32,12 +32,12 @@ struct Mouse
   struct UsbEndpoint *txDataEp;
 };
 
-struct MouseReport
+struct [[gnu::packed]] MouseReport
 {
   uint8_t buttons;
   int8_t dx;
   int8_t dy;
-} __attribute__((packed));
+};
 /*----------------------------------------------------------------------------*/
 static void deviceDataSent(void *, struct UsbRequest *, enum UsbRequestStatus);
 static void sendReport(struct Mouse *, uint8_t, int8_t, int8_t);
@@ -95,7 +95,7 @@ static const uint8_t mouseReportDescriptor[] = {
 };
 /*----------------------------------------------------------------------------*/
 static void deviceDataSent(void *argument, struct UsbRequest *request,
-    enum UsbRequestStatus status __attribute__((unused)))
+    [[maybe_unused]] enum UsbRequestStatus status)
 {
   struct Mouse * const device = argument;
   pointerQueuePushBack(&device->txQueue, request);
@@ -197,9 +197,9 @@ static void mouseEvent(void *object, unsigned int event)
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result mouseGetReport(void *object __attribute__((unused)),
-    uint8_t reportType, uint8_t reportId __attribute__((unused)),
-    uint8_t *report, uint16_t *reportLength, uint16_t maxReportLength)
+static enum Result mouseGetReport([[maybe_unused]] void *object,
+    uint8_t reportType, [[maybe_unused]] uint8_t reportId, uint8_t *report,
+    uint16_t *reportLength, uint16_t maxReportLength)
 {
   switch (reportType)
   {
@@ -220,10 +220,10 @@ static enum Result mouseGetReport(void *object __attribute__((unused)),
   }
 }
 /*----------------------------------------------------------------------------*/
-static enum Result mouseSetReport(void *object __attribute__((unused)),
-    uint8_t reportType, uint8_t reportId __attribute__((unused)),
-    const uint8_t *report __attribute__((unused)),
-    uint16_t reportLength __attribute__((unused)))
+static enum Result mouseSetReport([[maybe_unused]] void *object,
+    uint8_t reportType, [[maybe_unused]] uint8_t reportId,
+    [[maybe_unused]] const uint8_t *report,
+    [[maybe_unused]] uint16_t reportLength)
 {
   switch (reportType)
   {

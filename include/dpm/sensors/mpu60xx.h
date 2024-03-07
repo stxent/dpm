@@ -19,23 +19,23 @@ struct Interface;
 struct Interrupt;
 struct Timer;
 
-enum MPU60XXAccelScale
+enum [[gnu::packed]] MPU60XXAccelScale
 {
   MPU60XX_ACCEL_DEFAULT,
   MPU60XX_ACCEL_2,
   MPU60XX_ACCEL_4,
   MPU60XX_ACCEL_8,
   MPU60XX_ACCEL_16
-} __attribute__((packed));
+};
 
-enum MPU60XXGyroScale
+enum [[gnu::packed]] MPU60XXGyroScale
 {
   MPU60XX_GYRO_DEFAULT,
   MPU60XX_GYRO_250,
   MPU60XX_GYRO_500,
   MPU60XX_GYRO_1000,
   MPU60XX_GYRO_2000
-} __attribute__((packed));
+};
 
 struct MPU60XXConfig
 {

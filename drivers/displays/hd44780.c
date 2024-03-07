@@ -269,8 +269,8 @@ static enum Result displaySetParam(void *object, int parameter,
   }
 }
 /*----------------------------------------------------------------------------*/
-static size_t displayRead(void *object __attribute__((unused)),
-    void *buffer __attribute__((unused)), size_t length __attribute__((unused)))
+static size_t displayRead([[maybe_unused]] void *object,
+    [[maybe_unused]] void *buffer, [[maybe_unused]] size_t length)
 {
   return 0;
 }

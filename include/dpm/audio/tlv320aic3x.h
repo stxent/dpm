@@ -14,7 +14,7 @@ extern const struct CodecClass * const TLV320AIC3x;
 
 struct Timer;
 
-enum AIC3xPath
+enum [[gnu::packed]] AIC3xPath
 {
   AIC3X_NONE,
 
@@ -40,7 +40,7 @@ enum AIC3xPath
   AIC3X_MIC_3_IN,
 
   AIC3X_END
-} __attribute__((packed));
+};
 
 struct TLV320AIC3xConfig
 {

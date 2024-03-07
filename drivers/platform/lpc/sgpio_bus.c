@@ -412,7 +412,7 @@ static void busSetCallback(void *object, void (*callback)(void *),
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busGetParam(void *object, int parameter,
-    void *data __attribute__((unused)))
+    [[maybe_unused]] void *data)
 {
   struct SgpioBus * const interface = object;
 
@@ -427,7 +427,7 @@ static enum Result busGetParam(void *object, int parameter,
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busSetParam(void *object, int parameter,
-    const void *data __attribute__((unused)))
+    [[maybe_unused]] const void *data)
 {
   struct SgpioBus * const interface = object;
 

@@ -317,7 +317,7 @@ static enum Result serialGetParam(void *object, int parameter, void *data)
 }
 /*----------------------------------------------------------------------------*/
 static enum Result serialSetParam(void *object, int parameter,
-    const void *data __attribute__((unused)))
+    [[maybe_unused]] const void *data)
 {
   struct Irda * const interface = object;
 
