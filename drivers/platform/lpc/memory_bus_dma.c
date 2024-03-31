@@ -291,7 +291,7 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
     const size_t chunk = MIN(samples, GPDMA_MAX_TRANSFER_SIZE);
 
     dmaAppend(interface->dma, interface->address, (const void *)position,
-        chunk);
+        chunk << interface->width);
 
     samples -= chunk;
     position += chunk << interface->width;

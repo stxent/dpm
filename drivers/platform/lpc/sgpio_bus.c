@@ -88,7 +88,7 @@ static bool enqueueNextTransfer(struct SgpioBus *interface)
     /* Remaining data will be transmitted over DMA */
     dmaAppend(interface->dma, (void *)&reg->REG_SS[interface->slices.chain],
         (const void *)(interface->buffer + sizeof(uint32_t)),
-        chunk / sizeof(uint32_t) - 1);
+        chunk - sizeof(uint32_t));
     if (dmaEnable(interface->dma) != E_OK)
       return false;
   }

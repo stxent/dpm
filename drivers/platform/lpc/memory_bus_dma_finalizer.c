@@ -25,7 +25,8 @@ enum Result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *finalizer)
 {
   LPC_TIMER_Type * const reg = finalizer->sender->base.reg;
 
-  dmaAppend(finalizer->dma, (void *)&reg->MCR, &finalizer->value, 1);
+  dmaAppend(finalizer->dma, (void *)&reg->MCR, &finalizer->value,
+      sizeof(finalizer->value));
   return dmaEnable(finalizer->dma);
 }
 /*----------------------------------------------------------------------------*/
