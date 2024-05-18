@@ -53,8 +53,8 @@ struct DS18B20
   /* Device address */
   uint64_t address;
 
-  /* Scratchpad buffer */
-  uint8_t scratchpad[9];
+  /* Command and scratchpad buffer */
+  uint8_t buffer[9];
   /* Command and status flags */
   uint8_t flags;
   /* Temperature resolution configuration */

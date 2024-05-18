@@ -395,11 +395,12 @@ static void busDeinit(void *object)
   LPC_SGPIO_Type * const reg = interface->base.reg;
 
   irqDisable(interface->base.irq);
+  reg->CTRL_ENABLE = 0;
+
   deinit(interface->dma);
   deinit(interface->timer);
 
   SgpioBase->deinit(interface);
-  reg->CTRL_ENABLE = 0;
 }
 /*----------------------------------------------------------------------------*/
 static void busSetCallback(void *object, void (*callback)(void *),

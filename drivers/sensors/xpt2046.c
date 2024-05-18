@@ -14,6 +14,7 @@
 #include <xcore/interface.h>
 #include <assert.h>
 #include <limits.h>
+#include <string.h>
 /*----------------------------------------------------------------------------*/
 #define ADC_MAX MASK(12)
 
@@ -139,21 +140,10 @@ static void onTimerEvent(void *object)
 /*----------------------------------------------------------------------------*/
 static void startReading(struct XPT2046 *sensor)
 {
-  static const uint8_t txBuffer[11] = {
-      CTRL_Z1_POS | CTRL_ADC_ON,
-      0x00,
-      CTRL_Z2_POS | CTRL_ADC_ON,
-      0x00,
-      CTRL_HI_X | CTRL_ADC_ON,
-      0x00,
-      CTRL_HI_Y | CTRL_ADC_ON,
-      0x00,
-      CTRL_HI_Y | CTRL_SER,
-      0x00,
-      0x00
-  };
-  static_assert(sizeof(sensor->rxBuffer) == sizeof(txBuffer),
+  static_assert(sizeof(sensor->rxBuffer) == sizeof(sensor->txBuffer),
       "Incorrect buffer configuration");
+  static_assert(sizeof(sensor->txBuffer) == 11,
+      "Incorrect buffer configuartion");
 
   /* Lock the interface */
   ifSetParam(sensor->bus, IF_ACQUIRE, NULL);
@@ -168,7 +158,7 @@ static void startReading(struct XPT2046 *sensor)
   pinReset(sensor->cs);
 
   ifRead(sensor->bus, sensor->rxBuffer, sizeof(sensor->rxBuffer));
-  ifWrite(sensor->bus, txBuffer, sizeof(txBuffer));
+  ifWrite(sensor->bus, sensor->txBuffer, sizeof(sensor->txBuffer));
 }
 /*----------------------------------------------------------------------------*/
 static enum Result tsInit(void *object, const void *configBase)
@@ -209,6 +199,14 @@ static enum Result tsInit(void *object, const void *configBase)
   sensor->yRes = config->y;
   sensor->yMax = sensor->yRes;
   sensor->yMin = 0;
+
+  /* Initialize command buffer with conversion commands for all axes */
+  memset(sensor->txBuffer, 0, sizeof(sensor->txBuffer));
+  sensor->txBuffer[0] = CTRL_Z1_POS | CTRL_ADC_ON;
+  sensor->txBuffer[2] = CTRL_Z2_POS | CTRL_ADC_ON;
+  sensor->txBuffer[4] = CTRL_HI_X | CTRL_ADC_ON;
+  sensor->txBuffer[6] = CTRL_HI_Y | CTRL_ADC_ON;
+  sensor->txBuffer[8] = CTRL_HI_Y | CTRL_SER;
 
   const uint32_t overflow =
       (timerGetFrequency(sensor->timer) + (dataUpdateFreq - 1))

@@ -8,13 +8,11 @@
 #define DPM_GNSS_UBLOX_H_
 /*----------------------------------------------------------------------------*/
 #include <dpm/gnss/gnss.h>
-#include <dpm/gnss/ublox_parser.h>
-#include <halm/interrupt.h>
-#include <halm/timer.h>
-#include <halm/wq.h>
-#include <xcore/interface.h>
+#include <xcore/entity.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const Ublox;
+
+struct Ublox;
 
 struct UbloxConfig
 {
@@ -26,27 +24,6 @@ struct UbloxConfig
   void *timer;
   /** Optional: work queue for packet processing tasks. */
   void *wq;
-};
-
-struct Ublox
-{
-  struct Entity base;
-
-  struct Interface *serial;
-  struct Interrupt *pps;
-  struct Timer64 *timer;
-  struct WorkQueue *wq;
-
-  struct UbloxParser parser;
-  uint64_t timestamp;
-  uint64_t timedelta;
-  bool queued;
-
-  void *callbackArgument;
-  void (*onDataReceived)(void *, const uint8_t *, size_t);
-  void (*onSatelliteCountReceived)(void *, const struct SatelliteInfo *);
-  void (*onStatusReceived)(void *, enum FixType);
-  void (*onTimeReceived)(void *, uint64_t);
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS

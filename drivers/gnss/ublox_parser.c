@@ -80,7 +80,7 @@ size_t ubloxParserPrepare(uint8_t *buffer, size_t length,
   *position++ = (uint8_t)message->length;
   *position++ = (uint8_t)(message->length >> 8);
 
-  memcpy(position, message->data, message->length);
+  memcpy(position, message->data.raw, message->length);
   position += message->length;
 
   updateChecksumWithBuffer(checksum, buffer + 2, position - buffer - 2);
@@ -160,7 +160,7 @@ size_t ubloxParserProcess(struct UbloxParser *parser, const uint8_t *buffer,
 
       case STATE_PAYLOAD:
         if (parser->message.length <= UBLOX_MESSAGE_LENGTH)
-          parser->message.data[parser->position] = c;
+          parser->message.data.raw[parser->position] = c;
 
         if (++parser->position == parser->message.length)
         {

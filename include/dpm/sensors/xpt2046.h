@@ -60,6 +60,15 @@ struct XPT2046
   /* Baud rate of the serial interface */
   uint32_t rate;
 
+  /* Response buffer */
+  uint8_t rxBuffer[11];
+  /* Command and status flags */
+  uint8_t flags;
+  /* Command buffer */
+  uint8_t txBuffer[11];
+  /* Current state */
+  uint8_t state;
+
   uint16_t threshold;
   uint16_t xMax;
   uint16_t xMin;
@@ -67,13 +76,6 @@ struct XPT2046
   uint16_t yMax;
   uint16_t yMin;
   uint16_t yRes;
-
-  /* Response buffer */
-  uint8_t rxBuffer[11];
-  /* Command and status flags */
-  uint8_t flags;
-  /* Current state */
-  uint8_t state;
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS

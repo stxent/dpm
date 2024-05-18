@@ -10,6 +10,7 @@
 #include <halm/generic/spim.h>
 #include <xcore/memory.h>
 #include <assert.h>
+#include <string.h>
 /*----------------------------------------------------------------------------*/
 enum
 {
@@ -171,9 +172,7 @@ static void eraseSector4KB(struct W25SPIM *memory, uint32_t position)
 /*----------------------------------------------------------------------------*/
 static void exitQpiXipMode(struct W25SPIM *memory)
 {
-  static const uint8_t pattern[] = {
-      XIP_MODE_EXIT, XIP_MODE_EXIT, XIP_MODE_EXIT, XIP_MODE_EXIT
-  };
+  uint8_t pattern[9];
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &(uint8_t){XIP_MODE_EXIT});
   ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH, &(uint32_t){sizeof(pattern)});
@@ -184,6 +183,7 @@ static void exitQpiXipMode(struct W25SPIM *memory)
   ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
   ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, NULL);
 
+  memset(pattern, XIP_MODE_EXIT, sizeof(pattern));
   ifWrite(memory->spim, pattern, sizeof(pattern));
 }
 /*----------------------------------------------------------------------------*/
@@ -658,15 +658,7 @@ static enum Result memoryInit(void *object, const void *configBase)
     if (config->xip)
       memory->xip = true;
   }
-  else if (info.type == JEDEC_DEVICE_IN_IQ_JQ)
-  {
-    if (config->dtr || config->xip)
-    {
-      /* Memory chip does not support DTR and XIP modes */
-      return E_DEVICE;
-    }
-  }
-  else
+  else if (info.type != JEDEC_DEVICE_IN_IQ_JQ)
   {
     /* Unsupported memory chip */
     return E_DEVICE;

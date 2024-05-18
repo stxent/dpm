@@ -7,18 +7,24 @@
 #ifndef DPM_GNSS_UBLOX_PARSER_H_
 #define DPM_GNSS_UBLOX_PARSER_H_
 /*----------------------------------------------------------------------------*/
+#include <dpm/gnss/ublox_defs.h>
 #include <xcore/helpers.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
-/*----------------------------------------------------------------------------*/
-#define UBLOX_MESSAGE_LENGTH 1024
 /*----------------------------------------------------------------------------*/
 struct UbloxMessage
 {
   uint16_t length;
   uint16_t type;
-  uint8_t data[UBLOX_MESSAGE_LENGTH];
+
+  union
+  {
+    uint8_t raw[UBLOX_MESSAGE_LENGTH];
+
+    struct UbxNavSatPacket ubxNavSat;
+    struct UbxNavStatusPacket ubxNavStatus;
+    struct UbxTimTpPacket ubxTimTp;
+  } data;
 };
 
 struct UbloxParser

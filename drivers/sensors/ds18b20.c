@@ -12,7 +12,17 @@
 #include <assert.h>
 #include <stdbool.h>
 /*----------------------------------------------------------------------------*/
-#define LENGTH_CONFIG 4
+#define LENGTH_READ_SCRATCHPAD  1
+#define LENGTH_SCRATCHPAD       9
+#define LENGTH_START_CONVERSION 1
+#define LENGTH_WRITE_SCRATCHPAD 4
+
+enum
+{
+  CMD_READ_SCRATCHPAD   = 0xBE,
+  CMD_START_CONVERSION  = 0x44,
+  CMD_WRITE_SCRATCHPAD  = 0x4E
+};
 
 enum
 {
@@ -85,10 +95,6 @@ const struct SensorClass * const DS18B20 = &(const struct SensorClass){
     .update = dsUpdate
 };
 /*----------------------------------------------------------------------------*/
-static const uint8_t readScratchpadCommand[]  = {0xBE};
-static const uint8_t startConversionCommand[] = {0x44};
-static const uint8_t writeScratchpadCommand[] = {0x4E};
-/*----------------------------------------------------------------------------*/
 static void busInit(struct DS18B20 *sensor)
 {
   /* Lock the interface */
@@ -104,9 +110,9 @@ static void calcTemperature(void *object)
   struct DS18B20 * const sensor = object;
 
   const uint8_t checksum = crc8DallasUpdate(0x00,
-      sensor->scratchpad, sizeof(sensor->scratchpad) - 1);
+      sensor->buffer, sizeof(sensor->buffer) - 1);
 
-  if (checksum == sensor->scratchpad[8])
+  if (checksum == sensor->buffer[8])
   {
     const int32_t result = makeSampleValue(sensor);
     sensor->onResultCallback(sensor->callbackArgument, &result, sizeof(result));
@@ -121,7 +127,7 @@ static void calcTemperature(void *object)
 static int32_t makeSampleValue(struct DS18B20 *sensor)
 {
   /* Process received buffer */
-  const uint8_t * const buffer = sensor->scratchpad;
+  const uint8_t * const buffer = sensor->buffer;
   const uint16_t value = (buffer[1] << 8) | buffer[0];
 
   return (int32_t)((int16_t)value * 16);
@@ -232,31 +238,35 @@ static inline uint32_t resolutionToTime(const struct DS18B20 *sensor)
 /*----------------------------------------------------------------------------*/
 static void startConfigWrite(struct DS18B20 *sensor)
 {
-  sensor->scratchpad[0] = writeScratchpadCommand[0];
-  sensor->scratchpad[1] = -55;
-  sensor->scratchpad[2] = 125;
-  sensor->scratchpad[3] = resolutionToConfig(sensor);
+  sensor->buffer[0] = CMD_WRITE_SCRATCHPAD;
+  sensor->buffer[1] = -55;
+  sensor->buffer[2] = 125;
+  sensor->buffer[3] = resolutionToConfig(sensor);
 
   busInit(sensor);
-  ifWrite(sensor->bus, sensor->scratchpad, LENGTH_CONFIG);
+  ifWrite(sensor->bus, sensor->buffer, LENGTH_WRITE_SCRATCHPAD);
 }
 /*----------------------------------------------------------------------------*/
 static void startTemperatureConversion(struct DS18B20 *sensor)
 {
+  sensor->buffer[0] = CMD_START_CONVERSION;
+
   busInit(sensor);
-  ifWrite(sensor->bus, startConversionCommand, sizeof(startConversionCommand));
+  ifWrite(sensor->bus, sensor->buffer, LENGTH_START_CONVERSION);
 }
 /*----------------------------------------------------------------------------*/
 static void startTemperatureRead(struct DS18B20 *sensor)
 {
   /* Continue interface read */
-  ifRead(sensor->bus, sensor->scratchpad, sizeof(sensor->scratchpad));
+  ifRead(sensor->bus, sensor->buffer, LENGTH_SCRATCHPAD);
 }
 /*----------------------------------------------------------------------------*/
 static void startTemperatureRequest(struct DS18B20 *sensor)
 {
+  sensor->buffer[0] = CMD_READ_SCRATCHPAD;
+
   busInit(sensor);
-  ifWrite(sensor->bus, readScratchpadCommand, sizeof(readScratchpadCommand));
+  ifWrite(sensor->bus, sensor->buffer, LENGTH_READ_SCRATCHPAD);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result dsInit(void *object, const void *configBase)

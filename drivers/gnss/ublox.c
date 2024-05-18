@@ -5,16 +5,40 @@
  */
 
 #include <dpm/gnss/ublox.h>
-#include <dpm/gnss/ublox_defs.h>
+#include <dpm/gnss/ublox_parser.h>
+#include <halm/interrupt.h>
+#include <halm/timer.h>
 #include <halm/wq.h>
+#include <xcore/interface.h>
 #include <xcore/memory.h>
 /*----------------------------------------------------------------------------*/
 #define BUFFER_LENGTH 256
-/*----------------------------------------------------------------------------*/
+
 struct HandlerEntry
 {
   void (*callback)(struct Ublox *, const struct UbloxMessage *);
   uint16_t type;
+};
+
+struct Ublox
+{
+  struct Entity base;
+
+  struct Interface *serial;
+  struct Interrupt *pps;
+  struct Timer64 *timer;
+  struct WorkQueue *wq;
+
+  struct UbloxParser parser;
+  uint64_t timestamp;
+  uint64_t timedelta;
+  bool queued;
+
+  void *callbackArgument;
+  void (*onDataReceived)(void *, const uint8_t *, size_t);
+  void (*onSatelliteCountReceived)(void *, const struct SatelliteInfo *);
+  void (*onStatusReceived)(void *, enum FixType);
+  void (*onTimeReceived)(void *, uint64_t);
 };
 /*----------------------------------------------------------------------------*/
 static void onMessageReceivedNavSat(struct Ublox *,
@@ -50,8 +74,7 @@ static void onMessageReceivedNavSat(struct Ublox *receiver,
 {
   static const uint32_t qualityMask = 0x00000007UL;
 
-  const struct UbxNavSatPacket * const packet =
-      (const struct UbxNavSatPacket *)message->data;
+  const struct UbxNavSatPacket * const packet = &message->data.ubxNavSat;
   const size_t count = (message->length - sizeof(struct UbxNavSatPacket))
       / sizeof(struct UbxNavSatData);
 
@@ -123,8 +146,7 @@ static void onMessageReceivedNavStatus(struct Ublox *receiver,
   // static const uint8_t flagsWknSet = 0x04; // TODO
   // static const uint8_t flagsTowSet = 0x08; // TODO
 
-  const struct UbxNavStatusPacket * const packet =
-      (const struct UbxNavStatusPacket *)message->data;
+  const struct UbxNavStatusPacket * const packet = &message->data.ubxNavStatus;
   enum FixType fix;
 
   switch (packet->gpsFix)
@@ -167,8 +189,7 @@ static void onMessageReceivedTimTp(struct Ublox *receiver,
   if (timerGetValue64(receiver->timer) - receiver->timestamp >= 1000000)
     return;
 
-  const struct UbxTimTpPacket * const packet =
-      (const struct UbxTimTpPacket *)message->data;
+  const struct UbxTimTpPacket * const packet = &message->data.ubxTimTp;
   const uint32_t towMS = fromLittleEndian32(packet->towMS);
   const uint32_t towSubMS = fromLittleEndian32(packet->towSubMS);
   const uint16_t week = fromLittleEndian16(packet->week);

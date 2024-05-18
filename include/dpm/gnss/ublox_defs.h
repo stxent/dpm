@@ -9,7 +9,8 @@
 /*----------------------------------------------------------------------------*/
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
-#define UBLOX_TYPE_PACK(group, id) (((id) << 8) | (group))
+#define UBLOX_MESSAGE_LENGTH            1024
+#define UBLOX_TYPE_PACK(group, id)      (((id) << 8) | (group))
 /*----------------------------------------------------------------------------*/
 enum UbloxMessageClass
 {
@@ -74,7 +75,8 @@ enum UbloxSystemId
   UBX_SYSTEM_GLONASS = 6
 };
 /*----------------------------------------------------------------------------*/
-struct [[gnu::packed]] UbxNavSatData {
+struct [[gnu::packed]] UbxNavSatData
+{
   uint8_t gnssId;
   uint8_t svId;
   uint8_t cno;
@@ -84,15 +86,19 @@ struct [[gnu::packed]] UbxNavSatData {
   uint32_t flags;
 };
 
-struct [[gnu::packed]] UbxNavSatPacket {
+struct [[gnu::packed]] UbxNavSatPacket
+{
   uint32_t iTOW;
   uint8_t version;
   uint8_t numSvs;
   uint8_t reserved1[2];
-  struct UbxNavSatData data[];
+  struct UbxNavSatData data[
+      (UBLOX_MESSAGE_LENGTH - 8) / sizeof(struct UbxNavSatData)
+  ];
 };
 
-struct [[gnu::packed]] UbxNavStatusPacket {
+struct [[gnu::packed]] UbxNavStatusPacket
+{
   uint32_t iTOW;
   uint8_t gpsFix;
   uint8_t flags;
@@ -102,7 +108,8 @@ struct [[gnu::packed]] UbxNavStatusPacket {
   uint32_t msss;
 };
 
-struct [[gnu::packed]] UbxTimTpPacket {
+struct [[gnu::packed]] UbxTimTpPacket
+{
   uint32_t towMS;
   uint32_t towSubMS;
   int32_t qErr;
