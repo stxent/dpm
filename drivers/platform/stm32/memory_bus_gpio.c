@@ -48,7 +48,7 @@ static void interruptHandler(void *object)
   {
     interface->busy = false;
 
-    if (interface->callback)
+    if (interface->callback != NULL)
       interface->callback(interface->callbackArgument);
   }
 }
@@ -85,7 +85,6 @@ static enum Result busInit(void *object, const void *configPtr)
 static void busDeinit(void *object)
 {
   struct MemoryBusGpio * const interface = object;
-
   deinit(interface->timer);
 }
 /*----------------------------------------------------------------------------*/

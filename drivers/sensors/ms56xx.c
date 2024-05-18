@@ -134,8 +134,8 @@ static void calcOffSens5611(const uint16_t *prom, int32_t dt, int64_t *off,
 /*----------------------------------------------------------------------------*/
 static inline uint32_t calcResetTimeout(const struct Timer *timer)
 {
-  static const uint32_t RESET_FREQ = 10;
-  return (timerGetFrequency(timer) + RESET_FREQ - 1) / RESET_FREQ;
+  static const uint32_t resetRequestFreq = 10;
+  return (timerGetFrequency(timer) + resetRequestFreq - 1) / resetRequestFreq;
 }
 /*----------------------------------------------------------------------------*/
 static bool checkCrc4(const uint16_t *prom)

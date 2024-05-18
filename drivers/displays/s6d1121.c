@@ -212,7 +212,7 @@ static void interruptHandler(void *object)
   ifSetCallback(display->bus, NULL, NULL);
   ifSetParam(display->bus, IF_BLOCKING, NULL);
 
-  if (display->callback)
+  if (display->callback != NULL)
     display->callback(display->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/

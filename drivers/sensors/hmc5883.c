@@ -116,8 +116,8 @@ static void busInit(struct HMC5883 *sensor, bool read)
 /*----------------------------------------------------------------------------*/
 static inline uint32_t calcResetTimeout(const struct Timer *timer)
 {
-  static const uint32_t RESET_FREQ = 10;
-  return (timerGetFrequency(timer) + RESET_FREQ - 1) / RESET_FREQ;
+  static const uint32_t resetRequestFreq = 10;
+  return (timerGetFrequency(timer) + resetRequestFreq - 1) / resetRequestFreq;
 }
 /*----------------------------------------------------------------------------*/
 static void calcValues(struct HMC5883 *sensor)
@@ -140,7 +140,7 @@ static void calcValues(struct HMC5883 *sensor)
 /*----------------------------------------------------------------------------*/
 static int32_t gainToScale(const struct HMC5883 *sensor)
 {
-  static const int32_t SCALE[] = {
+  static const int32_t scaleMap[] = {
       [GN_0_88_GA] = 12246, /* 1370 LSB / Gauss */
       [GN_1_3_GA] = 15392, /* 1090 LSB / Gauss */
       [GN_1_9_GA] = 20460, /* 820 LSB / Gauss */
@@ -151,7 +151,7 @@ static int32_t gainToScale(const struct HMC5883 *sensor)
       [GN_8_1_GA] = 72944 /* 230 LSB / Gauss */
   };
 
-  return SCALE[sensor->gain];
+  return scaleMap[sensor->gain];
 }
 /*----------------------------------------------------------------------------*/
 static void makeConfig(const struct HMC5883 *sensor, uint8_t *config)

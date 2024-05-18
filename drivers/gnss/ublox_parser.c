@@ -65,9 +65,9 @@ const struct UbloxMessage *ubloxParserData(const struct UbloxParser *parser)
 size_t ubloxParserPrepare(uint8_t *buffer, size_t length,
     const struct UbloxMessage *message)
 {
-  static const size_t LENGTH_OVERHEAD = 8;
+  static const size_t lengthOverhead = 8;
 
-  if (length < message->length + LENGTH_OVERHEAD)
+  if (length < message->length + lengthOverhead)
     return 0;
 
   uint8_t *position = buffer;

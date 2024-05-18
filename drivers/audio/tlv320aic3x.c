@@ -223,7 +223,7 @@ static uint8_t convertInputGain(uint8_t gain)
 /*----------------------------------------------------------------------------*/
 static inline enum ConfigStep groupIndexToConfigStep(unsigned int index)
 {
-  static const enum ConfigStep INDEX_TO_GROUP_MAP[] = {
+  static const enum ConfigStep indexToGroupMap[] = {
       CONFIG_RESET,
       CONFIG_GROUP_GENERIC,
       CONFIG_GROUP_RATE,
@@ -233,8 +233,8 @@ static inline enum ConfigStep groupIndexToConfigStep(unsigned int index)
       CONFIG_GROUP_OUTPUT_LEVEL
   };
 
-  assert(index < ARRAY_SIZE(INDEX_TO_GROUP_MAP));
-  return INDEX_TO_GROUP_MAP[index];
+  assert(index < ARRAY_SIZE(indexToGroupMap));
+  return indexToGroupMap[index];
 }
 /*----------------------------------------------------------------------------*/
 static inline bool isLastConfigGroupStep(enum ConfigStep step)

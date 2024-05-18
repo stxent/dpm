@@ -173,7 +173,7 @@ static void startReading(struct XPT2046 *sensor)
 /*----------------------------------------------------------------------------*/
 static enum Result tsInit(void *object, const void *configBase)
 {
-  static const uint32_t UPDATE_FREQ = 100;
+  static const uint32_t dataUpdateFreq = 100;
 
   const struct XPT2046Config * const config = configBase;
   assert(config != NULL);
@@ -211,7 +211,8 @@ static enum Result tsInit(void *object, const void *configBase)
   sensor->yMin = 0;
 
   const uint32_t overflow =
-      (timerGetFrequency(sensor->timer) + (UPDATE_FREQ - 1)) / UPDATE_FREQ;
+      (timerGetFrequency(sensor->timer) + (dataUpdateFreq - 1))
+          / dataUpdateFreq;
 
   interruptSetCallback(sensor->event, onPinEvent, sensor);
   timerSetAutostop(sensor->timer, true);

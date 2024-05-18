@@ -48,7 +48,7 @@ static const struct HandlerEntry handlers[] = {
 static void onMessageReceivedNavSat(struct Ublox *receiver,
     const struct UbloxMessage *message)
 {
-  static const uint32_t QUALITY_MASK = 0x00000007UL;
+  static const uint32_t qualityMask = 0x00000007UL;
 
   const struct UbxNavSatPacket * const packet =
       (const struct UbxNavSatPacket *)message->data;
@@ -66,7 +66,7 @@ static void onMessageReceivedNavSat(struct Ublox *receiver,
   for (size_t i = 0; i < count; ++i)
   {
     const uint32_t quality =
-        fromLittleEndian32(packet->data[i].flags) & QUALITY_MASK;
+        fromLittleEndian32(packet->data[i].flags) & qualityMask;
 
     /* Ignore when no signal, unusable or not found */
     if (quality < 2 || quality == 3)
@@ -118,10 +118,10 @@ static void onMessageReceivedNavStatus(struct Ublox *receiver,
     GPSFIX_TIME_ONLY
   };
 
-  static const uint8_t FLAGS_GPS_FIX_OK = 0x01;
-  static const uint8_t FLAGS_DIFF_SOLN  = 0x02;
-  // static const uint8_t FLAGS_WKN_SET    = 0x04; // TODO
-  // static const uint8_t FLAGS_TOW_SET    = 0x08; // TODO
+  static const uint8_t flagsGPSFixOk = 0x01;
+  static const uint8_t flagsDiffSoln = 0x02;
+  // static const uint8_t flagsWknSet = 0x04; // TODO
+  // static const uint8_t flagsTowSet = 0x08; // TODO
 
   const struct UbxNavStatusPacket * const packet =
       (const struct UbxNavStatusPacket *)message->data;
@@ -138,9 +138,9 @@ static void onMessageReceivedNavStatus(struct Ublox *receiver,
       break;
 
     case GPSFIX_3DFIX:
-      if (packet->flags & FLAGS_GPS_FIX_OK)
+      if (packet->flags & flagsGPSFixOk)
       {
-        if (packet->flags & FLAGS_DIFF_SOLN)
+        if (packet->flags & flagsDiffSoln)
           fix = FIX_3D_CORRECTED;
         else
           fix = FIX_3D;

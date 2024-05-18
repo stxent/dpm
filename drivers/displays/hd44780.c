@@ -127,7 +127,7 @@ static void interruptHandler(void *object)
     }
     else
     {
-      if (display->callback)
+      if (display->callback != NULL)
         display->callback(display->callbackArgument);
     }
   }

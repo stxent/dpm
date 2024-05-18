@@ -128,8 +128,8 @@ static void busInit(struct MPU60XX *sensor, bool read)
 /*----------------------------------------------------------------------------*/
 static inline uint32_t calcResetTimeout(const struct Timer *timer)
 {
-  static const uint32_t RESET_FREQ = 10;
-  return (timerGetFrequency(timer) + RESET_FREQ - 1) / RESET_FREQ;
+  static const uint32_t resetRequestFreq = 10;
+  return (timerGetFrequency(timer) + resetRequestFreq - 1) / resetRequestFreq;
 }
 /*----------------------------------------------------------------------------*/
 static void calcValues(struct MPU60XX *sensor)

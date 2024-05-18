@@ -35,7 +35,7 @@ static void ledDeinit(void *)
 void rgbLedSet(struct RgbLed *led, uint16_t hue, uint8_t saturation,
     uint8_t value)
 {
-  static const uint8_t mapping[6][3] = {
+  static const uint8_t hueToColorMap[6][3] = {
       {0, 2, 1},
       {3, 0, 1},
       {1, 0, 2},
@@ -58,9 +58,9 @@ void rgbLedSet(struct RgbLed *led, uint16_t hue, uint8_t saturation,
   const uint8_t hi = (hue / 60) % 6;
   const uint32_t resolution = led->resolution;
   const uint32_t values[3] = {
-      (fill[mapping[hi][0]] * resolution) / (100 * 100),
-      (fill[mapping[hi][1]] * resolution) / (100 * 100),
-      (fill[mapping[hi][2]] * resolution) / (100 * 100)
+      (fill[hueToColorMap[hi][0]] * resolution) / (100 * 100),
+      (fill[hueToColorMap[hi][1]] * resolution) / (100 * 100),
+      (fill[hueToColorMap[hi][2]] * resolution) / (100 * 100)
   };
 
   pwmSetDuration(led->channels[0], values[0]);
