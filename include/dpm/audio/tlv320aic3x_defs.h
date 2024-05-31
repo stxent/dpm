@@ -367,6 +367,18 @@ enum
   DECAY_TIME_500MS  = 3
 };
 
+enum
+{
+  TARGET_LEVEL_5P5DB  = 0,
+  TARGET_LEVEL_8DB    = 1,
+  TARGET_LEVEL_10DB   = 2,
+  TARGET_LEVEL_12DB   = 3,
+  TARGET_LEVEL_14DB   = 4,
+  TARGET_LEVEL_17DB   = 5,
+  TARGET_LEVEL_20DB   = 6,
+  TARGET_LEVEL_24DB   = 7
+};
+
 #define AGC_CTRL_A_DECAY_TIME(value)    BIT_FIELD((value), 0)
 #define AGC_CTRL_A_DECAY_TIME_MASK      BIT_FIELD(MASK(2), 0)
 #define AGC_CTRL_A_DECAY_TIME_VALUE(reg) \
@@ -405,6 +417,15 @@ enum
     BIT_FIELD(MASK(2), 6)
 #define AGC_CTRL_C_NOISE_HYSTERESIS_VALUE(reg) \
     FIELD_VALUE((reg), AGC_CTRL_C_NOISE_HYSTERESIS_MASK, 6)
+/*------------------ADC Flag register-----------------------------------------*/
+#define ADC_FLAGS_RAGC_SATURATED        BIT(0)
+#define ADC_FLAGS_RAGC_SIGNAL_LOW       BIT(1)
+#define ADC_FLAGS_RADC_ENABLED          BIT(2)
+#define ADC_FLAGS_RADC_PGA_GAIN_EQUAL   BIT(3)
+#define ADC_FLAGS_LAGC_SATURATED        BIT(4)
+#define ADC_FLAGS_LAGC_SIGNAL_LOW       BIT(5)
+#define ADC_FLAGS_LADC_ENABLED          BIT(6)
+#define ADC_FLAGS_LADC_PGA_GAIN_EQUAL   BIT(7)
 /*------------------DAC Power and Output Driver Control register--------------*/
 enum
 {
@@ -519,5 +540,12 @@ enum
 #define DAC_PGA_ANALOG_VOL_GAIN_MUTE    127
 
 #define DAC_PGA_ANALOG_VOL_UNMUTE       BIT(7)
+/*------------------Module Power Status register------------------------------*/
+#define POWER_STATUS_HPROUT_ENABLED     BIT(1)
+#define POWER_STATUS_HPLOUT_ENABLED     BIT(2)
+#define POWER_STATUS_RLOPM_ENABLED      BIT(3)
+#define POWER_STATUS_LLOPM_ENABLED      BIT(4)
+#define POWER_STATUS_RDAC_ENABLED       BIT(6)
+#define POWER_STATUS_LDAC_ENABLED       BIT(7)
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_AUDIO_TLV320AIC3X_DEFS_H_ */

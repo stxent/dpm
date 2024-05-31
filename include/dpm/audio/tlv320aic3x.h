@@ -82,7 +82,7 @@ struct TLV320AIC3x
   struct
   {
     size_t length;
-    uint8_t buffer[3];
+    uint8_t buffer[4];
     uint8_t page[2];
     uint8_t groups;
     uint8_t passed;
@@ -110,6 +110,11 @@ struct TLV320AIC3x
 
       uint8_t gainL;
       uint8_t gainR;
+      uint8_t maxGainL;
+      uint8_t maxGainR;
+
+      uint8_t agcControlA;
+      uint8_t agcControlC;
       bool agc;
     } input;
 
@@ -122,5 +127,12 @@ struct TLV320AIC3x
     } output;
   } config;
 };
+/*----------------------------------------------------------------------------*/
+BEGIN_DECLS
+
+void aic3xSetAGCNoiseLevel(struct TLV320AIC3x *, int);
+void aic3xSetAGCTargetLevel(struct TLV320AIC3x *, int);
+
+END_DECLS
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_AUDIO_TLV320AIC3X_H_ */

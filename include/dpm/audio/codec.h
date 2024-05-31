@@ -44,6 +44,7 @@ struct CodecClass
   void (*setUpdateCallback)(void *, void (*)(void *), void *);
   void (*setUpdateWorkQueue)(void *, struct WorkQueue *);
 
+  void (*check)(void *);
   void (*reset)(void *, uint32_t, int, int);
   bool (*update)(void *);
 };
@@ -54,6 +55,15 @@ struct Codec
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS
+
+/**
+ * Asynchronously check the codec status.
+ * @param codec Pointer to a Codec object.
+ */
+static inline void codecCheck(void *codec)
+{
+  ((const struct CodecClass *)CLASS(codec))->check(codec);
+}
 
 /**
  * Get current input gain of a selected channel.
