@@ -24,8 +24,7 @@ static enum Result busGetParam(void *, int, void *);
 static enum Result busSetParam(void *, int, const void *);
 static size_t busWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
-const struct InterfaceClass * const SgpioBus =
-    &(const struct InterfaceClass){
+const struct InterfaceClass * const SgpioBus = &(const struct InterfaceClass){
     .size = sizeof(struct SgpioBus),
     .init = busInit,
     .deinit = busDeinit,
@@ -134,8 +133,8 @@ static bool enqueueNextTransfer(struct SgpioBus *interface)
 
   /* Enable slices */
   const IrqState state = irqSave();
-  reg->CTRL_ENABLE = interface->controlEnableMask;
   reg->CTRL_DISABLE = interface->controlDisableMask;
+  reg->CTRL_ENABLE = interface->controlEnableMask;
   irqRestore(state);
 
   return true;
@@ -262,12 +261,6 @@ static enum Result busInit(void *object, const void *configBase)
   interface->slices.dma = sgpioPinToSlice(pinTimer, OUT_DOUTM1);
   interface->slices.gate = config->slices.gate;
   interface->slices.qualifier = config->slices.qualifier;
-  interface->controlEnableMask = 1 << interface->slices.qualifier
-      | 1 << interface->slices.clock
-      | 1 << interface->slices.dma
-      | 1 << interface->slices.gate
-      | 1 << interface->slices.chain;
-  interface->controlDisableMask = 1 << interface->slices.qualifier;
 
   interface->base.handler = interruptHandler;
   interface->callback = NULL;
@@ -284,13 +277,16 @@ static enum Result busInit(void *object, const void *configBase)
       OUT_DOUTM8A);
 
   if (firstDataSlice == SGPIO_SLICE_A)
-  {
     interface->slices.chain = SGPIO_SLICE_A;
-  }
   else
-  {
     interface->slices.chain = SGPIO_SLICE_B;
-  }
+
+  interface->controlEnableMask = 1 << interface->slices.qualifier
+      | 1 << interface->slices.clock
+      | 1 << interface->slices.dma
+      | 1 << interface->slices.gate
+      | 1 << interface->slices.chain;
+  interface->controlDisableMask = 1 << interface->slices.qualifier;
 
   const int8_t gateClockSource =
       sgpioSliceToClockSource(interface->slices.gate);

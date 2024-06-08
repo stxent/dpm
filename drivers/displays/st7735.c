@@ -389,6 +389,20 @@ static enum Result displaySetParam(void *object, int parameter,
     }
 
     default:
+      break;
+  }
+
+  switch ((enum IfParameter)parameter)
+  {
+    case IF_BLOCKING:
+      display->blocking = true;
+      return E_OK;
+
+    case IF_ZEROCOPY:
+      display->blocking = false;
+      return E_OK;
+
+    default:
       return E_INVALID;
   }
 }

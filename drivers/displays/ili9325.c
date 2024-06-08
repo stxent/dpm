@@ -311,9 +311,9 @@ static enum Result displayInit(void *object, const void *configPtr)
 
   /* Reset display */
   pinReset(display->reset);
-  mdelay(20);
+  mdelay(1);
   pinSet(display->reset);
-  mdelay(20);
+  mdelay(50);
 
   /* Enable blocking mode by default */
   ifSetCallback(display->bus, NULL, NULL);
@@ -432,6 +432,20 @@ static enum Result displaySetParam(void *object, int parameter,
       else
         return E_VALUE;
     }
+
+    default:
+      break;
+  }
+
+  switch ((enum IfParameter)parameter)
+  {
+    case IF_BLOCKING:
+      display->blocking = true;
+      return E_OK;
+
+    case IF_ZEROCOPY:
+      display->blocking = false;
+      return E_OK;
 
     default:
       return E_INVALID;
