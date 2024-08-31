@@ -25,17 +25,12 @@ static void serialInterruptHandler(void *);
 static void timerInterruptHandler(void *);
 /*----------------------------------------------------------------------------*/
 static enum Result serialInit(void *, const void *);
+static void serialDeinit(void *);
 static void serialSetCallback(void *, void (*)(void *), void *);
 static enum Result serialGetParam(void *, int, void *);
 static enum Result serialSetParam(void *, int, const void *);
 static size_t serialRead(void *, void *, size_t);
 static size_t serialWrite(void *, const void *, size_t);
-
-#ifndef CONFIG_PLATFORM_STM32_UART_NO_DEINIT
-static void serialDeinit(void *);
-#else
-#  define serialDeinit deletedDestructorTrap
-#endif
 /*----------------------------------------------------------------------------*/
 const struct InterfaceClass * const Irda = &(const struct InterfaceClass){
     .size = sizeof(struct Irda),
@@ -242,7 +237,6 @@ static enum Result serialInit(void *object, const void *configBase)
   return E_OK;
 }
 /*----------------------------------------------------------------------------*/
-#ifndef CONFIG_PLATFORM_STM32_UART_NO_DEINIT
 static void serialDeinit(void *object)
 {
   struct Irda * const interface = object;
@@ -254,7 +248,6 @@ static void serialDeinit(void *object)
   byteQueueDeinit(&interface->rxQueue);
   UartBase->deinit(interface);
 }
-#endif
 /*----------------------------------------------------------------------------*/
 static void serialSetCallback(void *object, void (*callback)(void *),
     void *argument)

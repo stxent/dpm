@@ -2,6 +2,7 @@
 # Project is distributed under the terms of the MIT License
 
 set(HAS_NXP_GPTIMER TRUE)
+set(HAS_NXP_SSP TRUE)
 
 if(${PLATFORM} MATCHES "LPC17XX|LPC43XX")
     set(HAS_NXP_GPDMA TRUE)
@@ -41,6 +42,10 @@ if(HAS_NXP_SGPIO)
     list(APPEND SOURCE_FILES "sgpio_bus.c")
     list(APPEND SOURCE_FILES "sgpio_bus_dma.c")
     list(APPEND SOURCE_FILES "sgpio_bus_timer.c")
+endif()
+
+if(HAS_NXP_SSP)
+    list(APPEND SOURCE_FILES "ws281x_ssp.c")
 endif()
 
 if(SOURCE_FILES)

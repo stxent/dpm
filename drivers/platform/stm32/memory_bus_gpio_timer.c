@@ -11,12 +11,9 @@
 static void interruptHandler(void *);
 static enum Result setupChannels(struct MemoryBusGpioTimer *,
     const struct MemoryBusGpioTimerConfig *);
-
-#ifdef CONFIG_PLATFORM_STM32_GPTIMER_PM
-static void powerStateHandler(void *, enum PmState);
-#endif
 /*----------------------------------------------------------------------------*/
 static enum Result tmrInit(void *, const void *);
+static void tmrDeinit(void *);
 static void tmrSetCallback(void *, void (*)(void *), void *);
 static void tmrEnable(void *);
 static void tmrDisable(void *);
@@ -24,12 +21,6 @@ static void tmrSetFrequency(void *, uint32_t);
 static void tmrSetOverflow(void *, uint32_t);
 static uint32_t tmrGetValue(const void *);
 static void tmrSetValue(void *, uint32_t);
-
-#ifndef CONFIG_PLATFORM_STM32_GPTIMER_NO_DEINIT
-static void tmrDeinit(void *);
-#else
-#  define tmrDeinit deletedDestructorTrap
-#endif
 /*----------------------------------------------------------------------------*/
 const struct TimerClass * const MemoryBusGpioTimer = &(const struct TimerClass){
     .size = sizeof(struct MemoryBusGpioTimer),
@@ -58,17 +49,6 @@ static void interruptHandler(void *object)
 
   timer->callback(timer->callbackArgument);
 }
-/*----------------------------------------------------------------------------*/
-#ifdef CONFIG_PLATFORM_STM32_GPTIMER_PM
-static void powerStateHandler(void *object, enum PmState state)
-{
-  if (state == PM_ACTIVE)
-  {
-    struct MemoryBusGpioTimer * const timer = object;
-    gpTimerSetTimerFrequency(&timer->base, timer->frequency);
-  }
-}
-#endif
 /*----------------------------------------------------------------------------*/
 static enum Result setupChannels(struct MemoryBusGpioTimer *timer,
     const struct MemoryBusGpioTimerConfig *config)
@@ -128,11 +108,6 @@ static enum Result tmrInit(void *object, const void *configPtr)
   tmrSetFrequency(timer, config->frequency);
   tmrSetOverflow(timer, config->cycle);
 
-#ifdef CONFIG_PLATFORM_STM32_GPTIMER_PM
-  if ((res = pmRegister(powerStateHandler, timer)) != E_OK)
-    return res;
-#endif
-
   irqSetPriority(timer->base.irq, config->priority);
   irqEnable(timer->base.irq);
 
@@ -146,10 +121,6 @@ static void tmrDeinit(void *object)
 
   irqDisable(timer->base.irq);
   reg->CR1 &= ~CR1_CEN;
-
-#ifdef CONFIG_PLATFORM_STM32_GPTIMER_PM
-  pmUnregister(timer);
-#endif
 
   GpTimerBase->deinit(timer);
 }
