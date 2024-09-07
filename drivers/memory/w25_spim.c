@@ -4,6 +4,7 @@
  * Project is distributed under the terms of the MIT License
  */
 
+#include <dpm/memory/nor_defs.h>
 #include <dpm/memory/w25_defs.h>
 #include <dpm/memory/w25_spim.h>
 #include <halm/generic/flash.h>
@@ -29,6 +30,7 @@ static void busAcquire(struct W25SPIM *);
 static void busRelease(struct W25SPIM *);
 static bool changeDriverStrength(struct W25SPIM *, enum W25DriverStrength);
 static bool changeQuadMode(struct W25SPIM *, bool);
+static void contextReset(struct W25SPIM *);
 static void eraseBlock64KB(struct W25SPIM *, uint32_t);
 static void eraseSector4KB(struct W25SPIM *, uint32_t);
 static void exitQpiXipMode(struct W25SPIM *);
@@ -114,6 +116,15 @@ static bool changeQuadMode(struct W25SPIM *memory, bool enabled)
   }
 
   return (status & SR2_QE) == mask;
+}
+/*----------------------------------------------------------------------------*/
+static void contextReset(struct W25SPIM *memory)
+{
+  memory->context.buffer = NULL;
+  memory->context.left = 0;
+  memory->context.length = 0;
+  memory->context.position = 0;
+  memory->context.state = STATE_IDLE;
 }
 /*----------------------------------------------------------------------------*/
 static void eraseBlock64KB(struct W25SPIM *memory, uint32_t position)
@@ -214,13 +225,12 @@ static void interruptHandler(void *argument)
       event = true;
 
       memory->position += memory->context.length;
-      if (memory->position >= memory->capacity)
+      if (memory->position == memory->capacity)
         memory->position = 0;
 
       if (memory->dtr)
         ifSetParam(memory->spim, IF_SPIM_SDR, NULL);
 
-      memory->context.length = 0;
       busRelease(memory);
       break;
 
@@ -232,6 +242,7 @@ static void interruptHandler(void *argument)
           - (position & (MEMORY_PAGE_SIZE - 1));
       const uint32_t chunk = MIN(available, memory->context.left);
 
+      /* Update context */
       memory->context.buffer = data + chunk;
       memory->context.left -= chunk;
       memory->context.position += chunk;
@@ -259,13 +270,9 @@ static void interruptHandler(void *argument)
         event = true;
 
         memory->position += memory->context.length;
-        if (memory->position >= memory->capacity)
+        if (memory->position == memory->capacity)
           memory->position = 0;
 
-        memory->context.buffer = NULL;
-        memory->context.left = 0;
-        memory->context.length = 0;
-        memory->context.position = 0;
         busRelease(memory);
       }
       break;
@@ -291,8 +298,6 @@ static void interruptHandler(void *argument)
       memory->context.state = STATE_IDLE;
       event = true;
 
-      memory->context.length = 0;
-      memory->context.position = 0;
       busRelease(memory);
       break;
 
@@ -607,19 +612,13 @@ static enum Result memoryInit(void *object, const void *configBase)
 
   memory->callback = NULL;
   memory->spim = config->spim;
-
   memory->position = 0;
   memory->blocking = true;
   memory->dtr = false;
   memory->extended = false;
   memory->shrink = config->shrink;
   memory->xip = false;
-
-  memory->context.buffer = NULL;
-  memory->context.left = 0;
-  memory->context.length = 0;
-  memory->context.position = 0;
-  memory->context.state = STATE_IDLE;
+  contextReset(memory);
 
   /* Lock the interface */
   ifSetParam(memory->spim, IF_ACQUIRE, NULL);
@@ -632,83 +631,48 @@ static enum Result memoryInit(void *object, const void *configBase)
   /* Unlock the interface */
   ifSetParam(memory->spim, IF_RELEASE, NULL);
 
-  if (info.manufacturer != JEDEC_MANUFACTURER_WINBOND)
+  const uint16_t capabilities = norGetCapabilitiesByJedecInfo(&info);
+
+  if (!capabilities)
     return E_DEVICE;
+  if (!(capabilities & NOR_HAS_DIO))
+    return E_INTERFACE;
 
-  if (info.type == JEDEC_DEVICE_IM_JM)
-  {
-    /* DTR, QPI and XIP modes are supported only on IM and JM parts */
-
-    if (config->dtr)
-    {
-      if (ifSetParam(memory->spim, IF_SPIM_DDR, NULL) == E_OK)
-      {
-        /* Restore SDR mode */
-        ifSetParam(memory->spim, IF_SPIM_SDR, NULL);
-
-        memory->dtr = true;
-      }
-      else
-      {
-        /* Peripheral interface does not support DDR mode */
-        return E_INTERFACE;
-      }
-    }
-
-    if (config->xip)
-      memory->xip = true;
-  }
-  else if (info.type != JEDEC_DEVICE_IN_IQ_JQ)
-  {
-    /* Unsupported memory chip */
+  memory->capacity = norGetCapacityByJedecInfo(&info);
+  if (!memory->capacity)
     return E_DEVICE;
-  }
-
-  switch (info.capacity)
-  {
-    case JEDEC_CAPACITY_W25Q016:
-      memory->capacity = 2 * 1024 * 1024;
-      break;
-
-    case JEDEC_CAPACITY_W25Q032:
-      memory->capacity = 4 * 1024 * 1024;
-      break;
-
-    case JEDEC_CAPACITY_W25Q064:
-      memory->capacity = 8 * 1024 * 1024;
-      break;
-
-    case JEDEC_CAPACITY_W25Q128:
-      memory->capacity = 16 * 1024 * 1024;
-      break;
-
-    case JEDEC_CAPACITY_W25Q256:
-      memory->capacity = 32 * 1024 * 1024;
-      break;
-
-    case JEDEC_CAPACITY_W25Q512:
-      memory->capacity = 64 * 1024 * 1024;
-      break;
-
-    case JEDEC_CAPACITY_W25Q01:
-      memory->capacity = 128 * 1024 * 1024;
-      break;
-
-    case JEDEC_CAPACITY_W25Q02:
-      memory->capacity = 256 * 1024 * 1024;
-      break;
-
-    default:
-      /* Unsupported capacity code */
-      return E_DEVICE;
-  }
-
   if (memory->capacity > (1UL << 24))
     memory->extended = true;
 
+  if (memory->quad && !(capabilities & NOR_HAS_QIO))
+    memory->quad = false;
+
+  if (config->xip && (capabilities & NOR_HAS_XIP))
+    memory->xip = true;
+
+  if (config->dtr && (capabilities & NOR_HAS_DDR))
+  {
+    busAcquire(memory);
+    /* Try to enable DDR mode */
+    if ((res = ifSetParam(memory->spim, IF_SPIM_DDR, NULL)) == E_OK)
+    {
+      memory->dtr = true;
+
+      /* Restore SDR mode */
+      ifSetParam(memory->spim, IF_SPIM_SDR, NULL);
+    }
+    busRelease(memory);
+
+    if (res != E_OK)
+    {
+      /* Peripheral interface does not support DDR mode */
+      return E_INTERFACE;
+    }
+  }
+
   busAcquire(memory);
   /* Configure memory bus mode */
-  if (!changeQuadMode(memory, memory->quad))
+  if ((capabilities & NOR_HAS_QIO) && !changeQuadMode(memory, memory->quad))
     res = E_INTERFACE;
   /* Configure driver strength */
   if (!changeDriverStrength(memory, config->strength))
@@ -803,7 +767,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
       {
         if (memory->blocking)
         {
-          memory->context.state = STATE_IDLE;
+          contextReset(memory);
 
           busAcquire(memory);
           writeEnable(memory, true);
@@ -815,6 +779,10 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
         }
         else
         {
+          /* Unused fields */
+          memory->context.buffer = NULL;
+          memory->context.left = 0;
+          /* Setup context */
           memory->context.length = MEMORY_BLOCK_64KB_SIZE;
           memory->context.position = position;
           memory->context.state = STATE_ERASE_ENABLE;
@@ -837,7 +805,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
       {
         if (memory->blocking)
         {
-          memory->context.state = STATE_IDLE;
+          contextReset(memory);
 
           busAcquire(memory);
           writeEnable(memory, true);
@@ -849,6 +817,10 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
         }
         else
         {
+          /* Unused fields */
+          memory->context.buffer = NULL;
+          memory->context.left = 0;
+          /* Setup context */
           memory->context.length = MEMORY_SECTOR_4KB_SIZE;
           memory->context.position = position;
           memory->context.state = STATE_ERASE_ENABLE;
@@ -912,19 +884,28 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
 {
   struct W25SPIM * const memory = object;
 
+  if (length > memory->capacity - memory->position)
+    length = memory->capacity - memory->position;
+
   if (memory->blocking)
   {
+    contextReset(memory);
+
     busAcquire(memory);
     pageRead(memory, memory->position, buffer, length);
     busRelease(memory);
 
-    memory->context.state = STATE_IDLE;
     memory->position += length;
-    if (memory->position >= memory->capacity)
+    if (memory->position == memory->capacity)
       memory->position = 0;
   }
   else
   {
+    /* Unused fields */
+    memory->context.buffer = NULL;
+    memory->context.left = 0;
+    memory->context.position = 0;
+    /* Setup context */
     memory->context.length = length;
     memory->context.state = STATE_READ_WAIT;
 
@@ -939,13 +920,18 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
 {
   struct W25SPIM * const memory = object;
 
+  if (length > memory->capacity - memory->position)
+    length = memory->capacity - memory->position;
+
   if (memory->blocking)
   {
     const uint8_t *data = buffer;
     uint32_t left = (uint32_t)length;
     uint32_t position = memory->position;
 
+    contextReset(memory);
     busAcquire(memory);
+
     while (left)
     {
       const uint32_t available = MEMORY_PAGE_SIZE
@@ -960,15 +946,16 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
       data += chunk;
       position += chunk;
     }
+
     busRelease(memory);
 
-    memory->context.state = STATE_IDLE;
     memory->position += length;
-    if (memory->position >= memory->capacity)
+    if (memory->position == memory->capacity)
       memory->position = 0;
   }
   else
   {
+    /* Setup context */
     memory->context.buffer = buffer;
     memory->context.left = length;
     memory->context.length = length;

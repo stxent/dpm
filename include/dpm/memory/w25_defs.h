@@ -10,11 +10,6 @@
 #include <xcore/bits.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
-#define JEDEC_MANUFACTURER_WINBOND        0xEF
-
-#define JEDEC_DEVICE_IN_IQ_JQ             0x40
-#define JEDEC_DEVICE_IM_JM                0x70
-
 #define JEDEC_CAPACITY_W25Q016            0x15  /* 16 Mbit */
 #define JEDEC_CAPACITY_W25Q032            0x16  /* 32 Mbit */
 #define JEDEC_CAPACITY_W25Q064            0x17  /* 64 Mbit */
@@ -131,12 +126,5 @@
 #define XIP_MODE_ENTER      0xEF
 /* Bits M5-4 must not be equal to 0b10 */
 #define XIP_MODE_EXIT       0xFF
-/*----------------------------------------------------------------------------*/
-struct [[gnu::packed]] JedecInfo
-{
-  uint8_t manufacturer;
-  uint8_t type;
-  uint8_t capacity;
-};
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_MEMORY_W25_DEFS_H_ */

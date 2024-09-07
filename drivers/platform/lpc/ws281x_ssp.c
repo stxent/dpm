@@ -8,6 +8,7 @@
 #include <halm/platform/lpc/ssp_defs.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 /*----------------------------------------------------------------------------*/
 #define DATA_BITRATE  2500000
 #define IDLE_BITRATE  880000
@@ -21,6 +22,7 @@ enum
 };
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);
+static uint32_t packSingleColor(uint8_t);
 /*----------------------------------------------------------------------------*/
 static enum Result busInit(void *, const void *);
 static void busDeinit(void *);
@@ -104,6 +106,15 @@ static void interruptHandler(void *object)
         interface->callback(interface->callbackArgument);
     }
   }
+}
+/*----------------------------------------------------------------------------*/
+static uint32_t packSingleColor(uint8_t color)
+{
+  const uint32_t w0 = ((color >> 4) + (color << 16)) & 0x000F000FUL;
+  const uint32_t w1 = (w0 | (w0 << 4)) & 0x00C300C3UL;
+  const uint32_t w2 = (w1 | (w1 << 2)) & 0x02490249UL;
+
+  return 0x09240924UL | (w2 << 1);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result busInit(void *object, const void *configBase)
@@ -231,21 +242,16 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
   const uint8_t *input = buffer;
   uint16_t *output = interface->buffer;
 
-  for (size_t index = 0; index < length; ++index)
+  for (size_t index = 0; index < length; index += 3)
   {
-    const uint8_t value = *input++;
-    uint32_t word = 0;
+    const uint32_t rWord = packSingleColor(*input++);
+    const uint32_t gWord = packSingleColor(*input++);
+    const uint32_t bWord = packSingleColor(*input++);
 
-    for (unsigned int bit = 0; bit < 8; ++bit)
-    {
-      if (value & (1 << bit))
-        word |= 6 << (bit * 3);
-      else
-        word |= 4 << (bit * 3);
-    }
-
-    *output++ = word >> 12;
-    *output++ = word;
+    memcpy(&output[0], &gWord, sizeof(uint32_t));
+    memcpy(&output[2], &rWord, sizeof(uint32_t));
+    memcpy(&output[4], &bWord, sizeof(uint32_t));
+    output += 6;
   }
 
   interface->txPosition = interface->buffer;
