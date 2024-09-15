@@ -12,6 +12,17 @@
 #include <stdbool.h>
 #include <stddef.h>
 /*----------------------------------------------------------------------------*/
+struct UbloxConfigMessage
+{
+  union
+  {
+    struct UbxCfgMsgPacket ubxCfgMsg;
+    struct UbxCfgPrtPacket ubxCfgPrt;
+    struct UbxCfgRatePacket ubxCfgRate;
+    struct UbxCfgTP5Packet ubxCfgTP5;
+  };
+};
+
 struct UbloxMessage
 {
   uint16_t length;
@@ -21,9 +32,13 @@ struct UbloxMessage
   {
     uint8_t raw[UBLOX_MESSAGE_LENGTH];
 
+    struct UbxAckAckPacket ubxAckAck;
+    struct UbxAckNakPacket ubxAckNak;
+    struct UbxNavPosLLHPacket ubxPosLLH;
     struct UbxNavSatPacket ubxNavSat;
     struct UbxNavStatusPacket ubxNavStatus;
     struct UbxTimTpPacket ubxTimTp;
+    struct UbxNavVelNEDPacket ubxVelNED;
   } data;
 };
 
@@ -43,7 +58,7 @@ BEGIN_DECLS
 
 void ubloxParserInit(struct UbloxParser *);
 const struct UbloxMessage *ubloxParserData(const struct UbloxParser *);
-size_t ubloxParserPrepare(uint8_t *, size_t, const struct UbloxMessage *);
+size_t ubloxParserPrepare(uint8_t *, uint16_t, const void *, size_t);
 size_t ubloxParserProcess(struct UbloxParser *, const uint8_t *, size_t);
 bool ubloxParserReady(const struct UbloxParser *);
 void ubloxParserReset(struct UbloxParser *);

@@ -62,26 +62,21 @@ const struct UbloxMessage *ubloxParserData(const struct UbloxParser *parser)
   return &parser->message;
 }
 /*----------------------------------------------------------------------------*/
-size_t ubloxParserPrepare(uint8_t *buffer, size_t length,
-    const struct UbloxMessage *message)
+size_t ubloxParserPrepare(uint8_t *buffer, uint16_t type, const void *data,
+    size_t length)
 {
-  static const size_t lengthOverhead = 8;
-
-  if (length < message->length + lengthOverhead)
-    return 0;
-
   uint8_t *position = buffer;
   uint8_t checksum[2] = {0};
 
   *position++ = UBLOX_SYNC_WORD_1;
   *position++ = UBLOX_SYNC_WORD_2;
-  *position++ = (uint8_t)message->type;
-  *position++ = (uint8_t)(message->type >> 8);
-  *position++ = (uint8_t)message->length;
-  *position++ = (uint8_t)(message->length >> 8);
+  *position++ = (uint8_t)type;
+  *position++ = (uint8_t)(type >> 8);
+  *position++ = (uint8_t)length;
+  *position++ = (uint8_t)(length >> 8);
 
-  memcpy(position, message->data.raw, message->length);
-  position += message->length;
+  memcpy(position, data, length);
+  position += length;
 
   updateChecksumWithBuffer(checksum, buffer + 2, position - buffer - 2);
   *position++ = checksum[0];
