@@ -19,7 +19,7 @@ struct WorkQueue;
 
 struct M24Config
 {
-  /** Mandatory: serial interface. */
+  /** Mandatory: I2C interface. */
   struct Interface *bus;
   /** Mandatory: timer instance for delays and watchdogs. */
   struct Timer *timer;

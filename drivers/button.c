@@ -7,9 +7,11 @@
 #include <dpm/button.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
+#define DEBOUNCE_FREQUENCY 100
+/*----------------------------------------------------------------------------*/
 static void onPinInterrupt(void *);
 static void onTimerOverflow(void *);
-/*----------------------------------------------------------------------------*/
+
 static enum Result buttonInit(void *, const void *);
 static void buttonEnable(void *);
 static void buttonDeinit(void *);
@@ -83,8 +85,13 @@ static enum Result buttonInit(void *object, const void *configBase)
   button->delay = config->delay;
   button->level = config->level;
 
+  const uint32_t overflow =
+      (timerGetFrequency(button->timer) + DEBOUNCE_FREQUENCY - 1)
+          / DEBOUNCE_FREQUENCY;
+
   interruptSetCallback(button->interrupt, onPinInterrupt, button);
   timerSetCallback(button->timer, onTimerOverflow, button);
+  timerSetOverflow(button->timer, overflow);
 
   return E_OK;
 }
