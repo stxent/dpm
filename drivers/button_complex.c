@@ -1,11 +1,12 @@
 /*
- * button.c
- * Copyright (C) 2020 xent
+ * button_complex.c
+ * Copyright (C) 2024 xent
  * Project is distributed under the terms of the MIT License
  */
 
+#include <halm/interrupt.h>
 #include <halm/timer.h>
-#include <dpm/button.h>
+#include <dpm/button_complex.h>
 #include <assert.h>
 #include <limits.h>
 /*----------------------------------------------------------------------------*/
@@ -16,24 +17,16 @@ static void onTimerOverflow(void *);
 
 static enum Result buttonInit(void *, const void *);
 static void buttonDeinit(void *);
-static void buttonEnable(void *);
-static void buttonDisable(void *);
-static void buttonSetCallback(void *, void (*)(void *), void *);
 /*----------------------------------------------------------------------------*/
-const struct InterruptClass * const Button =
-    &(const struct InterruptClass){
-    .size = sizeof(struct Button),
+const struct EntityClass * const ButtonComplex = &(const struct EntityClass){
+    .size = sizeof(struct ButtonComplex),
     .init = buttonInit,
-    .deinit = buttonDeinit,
-
-    .enable = buttonEnable,
-    .disable = buttonDisable,
-    .setCallback = buttonSetCallback
+    .deinit = buttonDeinit
 };
 /*----------------------------------------------------------------------------*/
 static void onPinInterrupt(void *argument)
 {
-  struct Button * const button = argument;
+  struct ButtonComplex * const button = argument;
 
   interruptDisable(button->interrupt);
   timerEnable(button->timer);
@@ -41,18 +34,29 @@ static void onPinInterrupt(void *argument)
 /*----------------------------------------------------------------------------*/
 static void onTimerOverflow(void *argument)
 {
-  struct Button * const button = argument;
+  struct ButtonComplex * const button = argument;
   void (*callback)(void *) = NULL;
   void *callbackArgument = NULL;
   bool stop = false;
 
   if (pinRead(button->pin) == button->level)
   {
-    if (button->counter == button->delay)
+    if (button->counter == button->delayWait)
     {
+      if (!button->delayHold)
+        stop = true;
+
+      callback = button->pressCallback;
+      callbackArgument = button->pressCallbackArgument;
+    }
+
+    if (button->delayHold && button->counter == button->delayHold)
+    {
+      button->counter = button->delayWait;
+
       stop = true;
-      callback = button->callback;
-      callbackArgument = button->callbackArgument;
+      callback = button->longPressCallback;
+      callbackArgument = button->longPressCallbackArgument;
     }
 
     if (!stop && button->counter < USHRT_MAX)
@@ -61,7 +65,11 @@ static void onTimerOverflow(void *argument)
   else
   {
     if (button->counter == 0)
+    {
       stop = true;
+      callback = button->releaseCallback;
+      callbackArgument = button->releaseCallbackArgument;
+    }
 
     if (!stop && button->counter > 0)
       --button->counter;
@@ -79,21 +87,28 @@ static void onTimerOverflow(void *argument)
 /*----------------------------------------------------------------------------*/
 static enum Result buttonInit(void *object, const void *configBase)
 {
-  const struct ButtonConfig * const config = configBase;
+  const struct ButtonComplexConfig * const config = configBase;
   assert(config != NULL);
   assert(config->interrupt != NULL && config->timer != NULL);
+  assert(!config->hold || config->hold > config->delay);
 
-  struct Button * const button = object;
+  struct ButtonComplex * const button = object;
 
   button->pin = pinInit(config->pin);
   assert(pinValid(button->pin));
 
-  button->callback = NULL;
-  button->callbackArgument = NULL;
+  button->longPressCallback = NULL;
+  button->longPressCallbackArgument = NULL;
+  button->pressCallback = NULL;
+  button->pressCallbackArgument = NULL;
+  button->releaseCallback = NULL;
+  button->releaseCallbackArgument = NULL;
+
   button->interrupt = config->interrupt;
   button->timer = config->timer;
   button->counter = 0;
-  button->delay = config->delay;
+  button->delayHold = config->hold;
+  button->delayWait = config->delay;
   button->level = config->level;
 
   const uint32_t overflow =
@@ -109,33 +124,42 @@ static enum Result buttonInit(void *object, const void *configBase)
 /*----------------------------------------------------------------------------*/
 static void buttonDeinit(void *object)
 {
-  struct Button * const button = object;
+  struct ButtonComplex * const button = object;
 
-  buttonDisable(button);
+  buttonComplexDisable(button);
 
   timerSetCallback(button->timer, NULL, NULL);
   interruptSetCallback(button->interrupt, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
-static void buttonEnable(void *object)
+void buttonComplexEnable(struct ButtonComplex *button)
 {
-  struct Button * const button = object;
   interruptEnable(button->interrupt);
 }
 /*----------------------------------------------------------------------------*/
-static void buttonDisable(void *object)
+void buttonComplexDisable(struct ButtonComplex *button)
 {
-  struct Button * const button = object;
-
   timerDisable(button->timer);
   interruptDisable(button->interrupt);
 }
 /*----------------------------------------------------------------------------*/
-static void buttonSetCallback(void *object, void (*callback)(void *),
-    void *argument)
+void buttonComplexSetLongPressCallback(struct ButtonComplex *button,
+    void (*callback)(void *), void *argument)
 {
-  struct Button * const button = object;
-
-  button->callbackArgument = argument;
-  button->callback = callback;
+  button->longPressCallback = callback;
+  button->longPressCallbackArgument = argument;
+}
+    /*----------------------------------------------------------------------------*/
+void buttonComplexSetPressCallback(struct ButtonComplex *button,
+    void (*callback)(void *), void *argument)
+{
+  button->pressCallback = callback;
+  button->pressCallbackArgument = argument;
+}
+/*----------------------------------------------------------------------------*/
+void buttonComplexSetReleaseCallback(struct ButtonComplex *button,
+    void (*callback)(void *), void *argument)
+{
+  button->releaseCallback = callback;
+  button->releaseCallbackArgument = argument;
 }

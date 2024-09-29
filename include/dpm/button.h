@@ -9,24 +9,25 @@
 /*----------------------------------------------------------------------------*/
 #include <halm/interrupt.h>
 #include <halm/pin.h>
-#include <halm/timer.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterruptClass * const Button;
-/*----------------------------------------------------------------------------*/
+
+struct Timer;
+
 struct ButtonConfig
 {
   /** Mandatory: pin interrupt. */
   struct Interrupt *interrupt;
-  /** Mandatory: tick timer. */
+  /** Mandatory: tick timer, timer will be configured for 100 Hz tick rate. */
   struct Timer *timer;
-  /** Mandatory: pin. */
+  /** Mandatory: input pin. */
   PinNumber pin;
-  /** Optional: delay. */
-  unsigned int delay;
+  /** Optional: debouncing delay in timer ticks. */
+  unsigned short delay;
   /** Mandatory: active level. */
   bool level;
 };
-/*----------------------------------------------------------------------------*/
+
 struct Button
 {
   struct Interrupt base;
@@ -38,8 +39,8 @@ struct Button
   struct Timer *timer;
   struct Pin pin;
 
-  unsigned int counter;
-  unsigned int delay;
+  unsigned short counter;
+  unsigned short delay;
   bool level;
 };
 /*----------------------------------------------------------------------------*/
