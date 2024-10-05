@@ -29,6 +29,8 @@ struct UbloxConfig
   void *wq;
   /** Optional: measurement rate in Hz. */
   uint32_t rate;
+  /** Optional: elevation mask. */
+  int8_t elevation;
 };
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS

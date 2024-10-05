@@ -21,6 +21,7 @@ enum ConfigState
   CONFIG_START,
   CONFIG_PORT = CONFIG_START,
   CONFIG_RATE,
+  CONFIG_NAV,
   CONFIG_TP,
   CONFIG_RATE_POSLLH,
   CONFIG_RATE_VELNED,
@@ -53,6 +54,7 @@ struct Ublox
 
     uint32_t rate;
     uint16_t pending;
+    int8_t elevation;
     uint8_t measurements;
     uint8_t port;
     uint8_t retries;
@@ -91,6 +93,7 @@ static void onMessageReceivedVelNED(struct Ublox *,
 
 static inline uint32_t calcConfigTimeout(const struct Timer *);
 static void configMessageRate(struct Ublox *, uint16_t, uint8_t);
+static void sendConfigNavMessage(struct Ublox *, int8_t);
 static void sendConfigPortMessage(struct Ublox *, uint8_t, uint32_t);
 static void sendConfigRateMessage(struct Ublox *, uint16_t);
 static void sendConfigTpMessage(struct Ublox *, uint32_t);
@@ -344,6 +347,47 @@ static void configMessageRate(struct Ublox *receiver, uint16_t type,
   ifWrite(receiver->serial, receiver->config.buffer, length);
 }
 /*----------------------------------------------------------------------------*/
+static void sendConfigNavMessage(struct Ublox *receiver, int8_t elevation)
+{
+  /* Update dynamic model and fix mode */
+  static const uint16_t cfgNav5Mask = 0x0005;
+  /* Update min elevation */
+  static const uint16_t cfgNav5MaskMinElev = 0x0002;
+  /* Airborne < 2g */
+  static const uint8_t cfgNav5DynModel = 7;
+  /* 3D only */
+  static const uint8_t cfgNav5FixMode = 2;
+
+  const struct UbxCfgNav5Packet packet = {
+      .mask = cfgNav5Mask | (elevation ? cfgNav5MaskMinElev : 0),
+      .dynModel = cfgNav5DynModel,
+      .fixMode = cfgNav5FixMode,
+      .fixedAlt = 0, /* Signed */
+      .fixedAltVar = 0,
+      .minElev = (uint8_t)elevation,
+      .drLimit = 0,
+      .pDop = 0,
+      .tDop = 0,
+      .pAcc = 0,
+      .tAcc = 0,
+      .staticHoldThresh = 0,
+      .dgnssTimeout = 0,
+      .cnoThreshNumSVs = 0,
+      .cnoThresh = 0,
+      .reserved1 = {0},
+      .staticHoldMaxDist = 0,
+      .utcStandard = 0,
+      .reserved2 = {0}
+  };
+
+  receiver->config.pending = UBLOX_TYPE_PACK(UBX_CFG, UBX_CFG_NAV5);
+
+  const size_t length = ubloxParserPrepare(receiver->config.buffer,
+      receiver->config.pending, &packet, sizeof(packet));
+
+  ifWrite(receiver->serial, receiver->config.buffer, length);
+}
+/*----------------------------------------------------------------------------*/
 static void sendConfigPortMessage(struct Ublox *receiver, uint8_t port,
     uint32_t rate)
 {
@@ -360,7 +404,7 @@ static void sendConfigPortMessage(struct Ublox *receiver, uint8_t port,
       .inProtoMask = toLittleEndian16(cfgPrtInProtoMask),
       .outProtoMask = toLittleEndian16(cfgPrtOutProtoMask),
       .flags = 0,
-      .reserved2 = 0
+      .reserved2 = {0}
   };
 
   receiver->config.pending = UBLOX_TYPE_PACK(UBX_CFG, UBX_CFG_PRT);
@@ -397,17 +441,17 @@ static void sendConfigTpMessage(struct Ublox *receiver, uint32_t period)
   static const uint32_t cfgTP5PulseLenRatioLock = 1000;
 
   const struct UbxCfgTP5Packet packet = {
-	    .tpIdx = 0,
-	    .version = 0,
-	    .reserved1 = 0,
-	    .antCableDelay = toLittleEndian16((uint16_t)cfgTP5AntCableDelay),
-	    .rfGroupDelay = 0,
-	    .freqPeriod = toLittleEndian32(period),
-	    .freqPeriodLock = toLittleEndian32(period),
-	    .pulseLenRatio = 0,
-	    .pulseLenRatioLock = toLittleEndian32(cfgTP5PulseLenRatioLock),
-	    .userConfigDelay = 0,
-	    .flags = toLittleEndian32(cfgTP5Flags)
+      .tpIdx = 0,
+      .version = 0,
+      .reserved1 = {0},
+      .antCableDelay = toLittleEndian16((uint16_t)cfgTP5AntCableDelay),
+      .rfGroupDelay = 0,
+      .freqPeriod = toLittleEndian32(period),
+      .freqPeriodLock = toLittleEndian32(period),
+      .pulseLenRatio = 0,
+      .pulseLenRatioLock = toLittleEndian32(cfgTP5PulseLenRatioLock),
+      .userConfigDelay = 0,
+      .flags = toLittleEndian32(cfgTP5Flags)
   };
 
   receiver->config.pending = UBLOX_TYPE_PACK(UBX_CFG, UBX_CFG_TP5);
@@ -524,6 +568,10 @@ static void updateConfigState(void *argument)
 
     case CONFIG_RATE:
       sendConfigRateMessage(receiver, receiver->config.measurements);
+      break;
+
+    case CONFIG_NAV:
+      sendConfigNavMessage(receiver, receiver->config.elevation);
       break;
 
     case CONFIG_TP:
@@ -646,6 +694,7 @@ static enum Result ubloxInit(void *object, const void *configBase)
 
   receiver->config.rate = 0;
   receiver->config.pending = 0;
+  receiver->config.elevation = config->elevation;
   receiver->config.measurements = config->rate ? config->rate : 1;
   receiver->config.port = 1; /* UART 1 */
   receiver->config.retries = 0;

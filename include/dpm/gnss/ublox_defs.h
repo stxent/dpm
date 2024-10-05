@@ -78,62 +78,92 @@ enum UbloxSystemId
   UBX_SYSTEM_GLONASS = 6
 };
 /*----------------------------------------------------------------------------*/
-struct [[gnu::packed]] UbxAckAckPacket {
-	uint8_t clsID;
-	uint8_t msgID;
+struct [[gnu::packed]] UbxAckAckPacket
+{
+  uint8_t clsID;
+  uint8_t msgID;
 };
 
-struct [[gnu::packed]] UbxAckNakPacket {
-	uint8_t clsID;
-	uint8_t msgID;
+struct [[gnu::packed]] UbxAckNakPacket
+{
+  uint8_t clsID;
+  uint8_t msgID;
 };
 
-struct [[gnu::packed]] UbxCfgMsgPacket {
-	uint8_t msgClass;
-	uint8_t msgID;
-	uint8_t rate;
+struct [[gnu::packed]] UbxCfgMsgPacket
+{
+  uint8_t msgClass;
+  uint8_t msgID;
+  uint8_t rate;
 };
 
-struct [[gnu::packed]] UbxCfgPrtPacket {
-	uint8_t portID;
-	uint8_t reserved1;
-	uint16_t txReady;
-	uint32_t mode;
-	uint32_t baudRate;
-	uint16_t inProtoMask;
-	uint16_t outProtoMask;
-	uint16_t flags;
-	uint16_t reserved2;
+struct [[gnu::packed]] UbxCfgNav5Packet
+{
+  uint16_t mask;
+  uint8_t dynModel;
+  uint8_t fixMode;
+  uint32_t fixedAlt; /* Signed */
+  uint32_t fixedAltVar;
+  uint8_t minElev; /* Signed */
+  uint8_t drLimit;
+  uint16_t pDop;
+  uint16_t tDop;
+  uint16_t pAcc;
+  uint16_t tAcc;
+  uint8_t staticHoldThresh;
+  uint8_t dgnssTimeout;
+  uint8_t cnoThreshNumSVs;
+  uint8_t cnoThresh;
+  uint8_t reserved1[2];
+  uint16_t staticHoldMaxDist;
+  uint8_t utcStandard;
+  uint8_t reserved2[5];
 };
 
-struct [[gnu::packed]] UbxCfgRatePacket {
-	uint16_t measRate;
-	uint16_t navRate;
-	uint16_t timeRef;
+struct [[gnu::packed]] UbxCfgPrtPacket
+{
+  uint8_t portID;
+  uint8_t reserved1;
+  uint16_t txReady;
+  uint32_t mode;
+  uint32_t baudRate;
+  uint16_t inProtoMask;
+  uint16_t outProtoMask;
+  uint16_t flags;
+  uint8_t reserved2[2];
 };
 
-struct [[gnu::packed]] UbxCfgTP5Packet {
-	uint8_t tpIdx;
-	uint8_t version;
-	uint16_t reserved1;
-	uint16_t antCableDelay; /* Signed */
-	uint16_t rfGroupDelay; /* Signed */
-	uint32_t freqPeriod;
-	uint32_t freqPeriodLock;
-	uint32_t pulseLenRatio;
-	uint32_t pulseLenRatioLock;
-	uint32_t userConfigDelay; /* Signed */
-	uint32_t flags;
+struct [[gnu::packed]] UbxCfgRatePacket
+{
+  uint16_t measRate;
+  uint16_t navRate;
+  uint16_t timeRef;
 };
 
-struct [[gnu::packed]] UbxNavPosLLHPacket {
-	uint32_t iTOW;
-	uint32_t lon; /* Signed */
-	uint32_t lat; /* Signed */
-	uint32_t height; /* Signed */
-	uint32_t hMSL; /* Signed */
-	uint32_t hAcc;
-	uint32_t vAcc;
+struct [[gnu::packed]] UbxCfgTP5Packet
+{
+  uint8_t tpIdx;
+  uint8_t version;
+  uint8_t reserved1[2];
+  uint16_t antCableDelay; /* Signed */
+  uint16_t rfGroupDelay; /* Signed */
+  uint32_t freqPeriod;
+  uint32_t freqPeriodLock;
+  uint32_t pulseLenRatio;
+  uint32_t pulseLenRatioLock;
+  uint32_t userConfigDelay; /* Signed */
+  uint32_t flags;
+};
+
+struct [[gnu::packed]] UbxNavPosLLHPacket
+{
+  uint32_t iTOW;
+  uint32_t lon; /* Signed */
+  uint32_t lat; /* Signed */
+  uint32_t height; /* Signed */
+  uint32_t hMSL; /* Signed */
+  uint32_t hAcc;
+  uint32_t vAcc;
 };
 
 struct [[gnu::packed]] UbxNavSatData
@@ -169,16 +199,17 @@ struct [[gnu::packed]] UbxNavStatusPacket
   uint32_t msss;
 };
 
-struct [[gnu::packed]] UbxNavVelNEDPacket {
-	uint32_t iTOW;
-	uint32_t velN; /* Signed */
-	uint32_t velE; /* Signed */
-	uint32_t velD; /* Signed */
-	uint32_t speed;
-	uint32_t gSpeed;
-	uint32_t heading; /* Signed */
-	uint32_t sAcc;
-	uint32_t cAcc;
+struct [[gnu::packed]] UbxNavVelNEDPacket
+{
+  uint32_t iTOW;
+  uint32_t velN; /* Signed */
+  uint32_t velE; /* Signed */
+  uint32_t velD; /* Signed */
+  uint32_t speed;
+  uint32_t gSpeed;
+  uint32_t heading; /* Signed */
+  uint32_t sAcc;
+  uint32_t cAcc;
 };
 
 struct [[gnu::packed]] UbxTimTpPacket

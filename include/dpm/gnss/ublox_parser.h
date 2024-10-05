@@ -17,6 +17,7 @@ struct UbloxConfigMessage
   union
   {
     struct UbxCfgMsgPacket ubxCfgMsg;
+    struct UbxCfgNav5Packet ubxCfgNav5;
     struct UbxCfgPrtPacket ubxCfgPrt;
     struct UbxCfgRatePacket ubxCfgRate;
     struct UbxCfgTP5Packet ubxCfgTP5;
