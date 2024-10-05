@@ -7,6 +7,7 @@
 #include <dpm/displays/display.h>
 #include <dpm/displays/st7735.h>
 #include <halm/delay.h>
+#include <halm/generic/spi.h>
 #include <xcore/bits.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
@@ -78,7 +79,7 @@ enum DisplayCommand
 };
 /*----------------------------------------------------------------------------*/
 static void deselectChip(struct ST7735 *);
-static void selectChip(struct ST7735 *);
+static void selectChip(struct ST7735 *, bool);
 static void selectCommandMode(struct ST7735 *);
 static void selectDataMode(struct ST7735 *);
 static void interruptHandler(void *);
@@ -111,12 +112,33 @@ const struct InterfaceClass * const ST7735 = &(const struct InterfaceClass){
 static void deselectChip(struct ST7735 *display)
 {
   pinSet(display->cs);
+
+  ifSetCallback(display->bus, NULL, NULL);
   ifSetParam(display->bus, IF_RELEASE, NULL);
 }
 /*----------------------------------------------------------------------------*/
-static void selectChip(struct ST7735 *display)
+static void selectChip(struct ST7735 *display, bool blocking)
 {
+  /* Lock the interface */
   ifSetParam(display->bus, IF_ACQUIRE, NULL);
+
+  if (display->rate)
+    ifSetParam(display->bus, IF_RATE, &display->rate);
+
+  ifSetParam(display->bus, IF_SPI_MODE, &(uint8_t){0});
+  ifSetParam(display->bus, IF_SPI_UNIDIRECTIONAL, NULL);
+
+  if (blocking)
+  {
+    ifSetParam(display->bus, IF_BLOCKING, NULL);
+    ifSetCallback(display->bus, NULL, NULL);
+  }
+  else
+  {
+    ifSetParam(display->bus, IF_ZEROCOPY, NULL);
+    ifSetCallback(display->bus, interruptHandler, display);
+  }
+
   pinReset(display->cs);
 }
 /*----------------------------------------------------------------------------*/
@@ -133,10 +155,6 @@ static void selectDataMode(struct ST7735 *display)
 static void interruptHandler(void *object)
 {
   struct ST7735 * const display = object;
-
-  /* Restore blocking mode */
-  ifSetCallback(display->bus, NULL, NULL);
-  ifSetParam(display->bus, IF_BLOCKING, NULL);
 
   /* Release the interface */
   deselectChip(display);
@@ -185,7 +203,7 @@ static void setOrientation(struct ST7735 *display,
   const uint8_t buffer[] = {0x00, orientation << 6};
 
   /* Lock the interface */
-  selectChip(display);
+  selectChip(display, true);
 
   sendCommand(display, CMD_MADCTL);
   sendData(display, buffer, sizeof(buffer));
@@ -201,7 +219,7 @@ static void setWindow(struct ST7735 *display,
   const uint8_t yBuffer[] = {0x00, window->ay, 0x00, window->by};
 
   /* Lock the interface */
-  selectChip(display);
+  selectChip(display, true);
 
   sendCommand(display, CMD_CASET);
   sendData(display, xBuffer, sizeof(xBuffer));
@@ -236,9 +254,18 @@ static enum Result displayInit(void *object, const void *configPtr)
     return E_VALUE;
   pinOutput(display->rs, false);
 
-  display->callback = 0;
+  display->callback = NULL;
   display->bus = config->bus;
   display->blocking = true;
+
+  if (!config->rate)
+  {
+    const enum Result res = ifGetParam(display->bus, IF_RATE, &display->rate);
+    if (res != E_OK)
+      return res;
+  }
+  else
+    display->rate = config->rate;
 
   /* Reset display */
   pinReset(display->reset);
@@ -246,12 +273,8 @@ static enum Result displayInit(void *object, const void *configPtr)
   pinSet(display->reset);
   mdelay(20);
 
-  /* Enable blocking mode by default */
-  ifSetCallback(display->bus, NULL, NULL);
-  ifSetParam(display->bus, IF_BLOCKING, NULL);
-
   /* Start of the initialization */
-  selectChip(display);
+  selectChip(display, true);
 
   /*
    * Some implementations also use undocumented commands 0xB0 and 0xB9.
@@ -344,6 +367,10 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
 
   switch ((enum IfParameter)parameter)
   {
+    case IF_RATE:
+      *(uint32_t *)data = display->rate;
+      return E_OK;
+
     case IF_STATUS:
       return ifGetParam(display->bus, IF_STATUS, NULL);
 
@@ -394,6 +421,15 @@ static enum Result displaySetParam(void *object, int parameter,
 
   switch ((enum IfParameter)parameter)
   {
+    case IF_RATE:
+    {
+      const enum Result res = ifSetParam(display->bus, IF_RATE, data);
+
+      if (res == E_OK)
+        display->rate = *(const uint32_t *)data;
+      return res;
+    }
+
     case IF_BLOCKING:
       display->blocking = true;
       return E_OK;
@@ -412,20 +448,29 @@ static size_t displayRead(void *object, void *buffer, size_t length)
   struct ST7735 * const display = object;
   size_t bytesRead;
 
-  /* Lock the interface */
-  selectChip(display);
-
   if (!display->gramActive)
   {
+    /* Lock the interface */
+    selectChip(display, true);
+
     sendCommand(display, CMD_RAMRD);
     display->gramActive = true;
+
+    /* Release the interface */
+    deselectChip(display);
   }
 
   selectDataMode(display);
+
+  /* Lock the interface in blocking or non-blocking mode and read data */
+  selectChip(display, display->blocking);
   bytesRead = ifRead(display->bus, buffer, length);
 
-  /* Release the interface */
-  deselectChip(display);
+  if (display->blocking || bytesRead != length)
+  {
+    /* Release the interface */
+    deselectChip(display);
+  }
 
   return bytesRead;
 }
@@ -435,40 +480,28 @@ static size_t displayWrite(void *object, const void *buffer, size_t length)
   struct ST7735 * const display = object;
   size_t bytesWritten;
 
-  /* Lock the interface */
-  selectChip(display);
-
   if (!display->gramActive)
   {
+    /* Lock the interface */
+    selectChip(display, true);
+
     sendCommand(display, CMD_RAMWR);
     display->gramActive = true;
-  }
-
-  selectDataMode(display);
-
-  if (display->blocking)
-  {
-    bytesWritten = ifWrite(display->bus, buffer, length);
 
     /* Release the interface */
     deselectChip(display);
   }
-  else
+
+  selectDataMode(display);
+
+  /* Lock the interface in blocking or non-blocking mode and write data */
+  selectChip(display, display->blocking);
+  bytesWritten = ifWrite(display->bus, buffer, length);
+
+  if (display->blocking || bytesWritten != length)
   {
-    ifSetCallback(display->bus, interruptHandler, display);
-    ifSetParam(display->bus, IF_ZEROCOPY, NULL);
-
-    bytesWritten = ifWrite(display->bus, buffer, length);
-
-    if (bytesWritten != length)
-    {
-      /* Error occurred, restore bus state */
-      ifSetCallback(display->bus, NULL, NULL);
-      ifSetParam(display->bus, IF_BLOCKING, NULL);
-
-      /* Release the interface */
-      deselectChip(display);
-    }
+    /* Release the interface */
+    deselectChip(display);
   }
 
   return bytesWritten;

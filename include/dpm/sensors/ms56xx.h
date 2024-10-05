@@ -23,7 +23,9 @@ enum [[gnu::packed]] MS56XXOversampling
   MS56XX_OVERSAMPLING_512,
   MS56XX_OVERSAMPLING_1024,
   MS56XX_OVERSAMPLING_2048,
-  MS56XX_OVERSAMPLING_4096
+  MS56XX_OVERSAMPLING_4096,
+
+  MS56XX_OVERSAMPLING_END
 };
 
 enum [[gnu::packed]] MS56XXSubtype
@@ -41,7 +43,7 @@ struct MS56XXConfig
 
   /** Optional: sensor address. */
   uint32_t address;
-  /** Optional: baud rate of the serial interface. */
+  /** Optional: bit rate of the serial interface. */
   uint32_t rate;
   /** Optional: pin used as Chip Select output. */
   PinNumber cs;

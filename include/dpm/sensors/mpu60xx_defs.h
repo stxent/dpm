@@ -60,6 +60,8 @@ enum
   REG_FIFO_R_W            = 0x74,
   REG_WHO_AM_I            = 0x75
 };
+/*------------------Sample Rate Divider register------------------------------*/
+#define SMPLRT_DIV_MAX                  1000
 /*------------------Configuration register------------------------------------*/
 enum
 {

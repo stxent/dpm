@@ -108,6 +108,7 @@ static void busInit(struct MPU60XX *sensor, bool read)
   if (pinValid(sensor->gpio))
   {
     /* SPI bus */
+    ifSetParam(sensor->bus, IF_SPI_MODE, &(uint8_t){0});
     ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, NULL);
     pinReset(sensor->gpio);
   }
@@ -524,18 +525,26 @@ static enum Result mpuInit(void *object, const void *configBase)
 
   /* Scale and rate settings */
 
-  if (config->sampleRate > 0)
+  if (config->sampleRate > 0 && config->sampleRate <= SMPLRT_DIV_MAX)
     sensor->sampleRate = config->sampleRate;
   else
     return E_VALUE;
 
   if (config->accelScale != MPU60XX_ACCEL_DEFAULT)
+  {
+    if (config->accelScale >= MPU60XX_ACCEL_END)
+      return E_VALUE;
     sensor->accelScale = config->accelScale;
+  }
   else
     sensor->accelScale = MPU60XX_ACCEL_16;
 
   if (config->gyroScale != MPU60XX_GYRO_DEFAULT)
+  {
+    if (config->gyroScale >= MPU60XX_GYRO_END)
+      return E_VALUE;
     sensor->gyroScale = config->gyroScale;
+  }
   else
     sensor->gyroScale = MPU60XX_GYRO_2000;
 

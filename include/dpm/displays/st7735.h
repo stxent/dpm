@@ -17,6 +17,8 @@ struct ST7735Config
 {
   /** Mandatory: memory interface. */
   void *bus;
+  /** Optional: bit rate of the serial interface. */
+  uint32_t rate;
   /** Mandatory: pin used as Chip Select output. */
   PinNumber cs;
   /** Mandatory: pin used for display reset. */
@@ -34,6 +36,8 @@ struct ST7735
 
   /* Serial bus */
   struct Interface *bus;
+  /* Bit rate of the serial interface */
+  uint32_t rate;
 
   /* Chip Select output */
   struct Pin cs;

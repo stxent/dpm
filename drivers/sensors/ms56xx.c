@@ -270,6 +270,7 @@ static void busInit(struct MS56XX *sensor, bool read)
   if (pinValid(sensor->gpio))
   {
     /* SPI bus */
+    ifSetParam(sensor->bus, IF_SPI_MODE, &(uint8_t){0});
     ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, NULL);
     pinReset(sensor->gpio);
   }
@@ -539,7 +540,8 @@ static enum Result msInit(void *object, const void *configBase)
 {
   const struct MS56XXConfig * const config = configBase;
   assert(config != NULL);
-  assert(config->bus != NULL && config->timer != NULL);
+  assert(config->bus != NULL);
+  assert(config->timer != NULL);
 
   struct MS56XX * const sensor = object;
 
@@ -561,7 +563,11 @@ static enum Result msInit(void *object, const void *configBase)
   calReset(sensor);
 
   if (config->oversampling != MS56XX_OVERSAMPLING_DEFAULT)
+  {
+    if (sensor->oversampling >= MS56XX_OVERSAMPLING_END)
+      return E_VALUE;
     sensor->oversampling = (uint8_t)config->oversampling;
+  }
   else
     sensor->oversampling = MS56XX_OVERSAMPLING_4096;
 
@@ -570,11 +576,13 @@ static enum Result msInit(void *object, const void *configBase)
     sensor->calculate = calcOffSens5607;
     sensor->compensate = makeTemperatureCompensation5607;
   }
-  else
+  else if (config->subtype == MS56XX_TYPE_5611)
   {
     sensor->calculate = calcOffSens5611;
     sensor->compensate = makeTemperatureCompensation5611;
   }
+  else
+    return E_VALUE;
 
   if (config->cs)
   {

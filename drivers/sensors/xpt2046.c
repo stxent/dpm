@@ -148,11 +148,12 @@ static void startReading(struct XPT2046 *sensor)
   /* Lock the interface */
   ifSetParam(sensor->bus, IF_ACQUIRE, NULL);
 
+  ifSetParam(sensor->bus, IF_SPI_MODE, &(uint8_t){0});
   ifSetParam(sensor->bus, IF_SPI_BIDIRECTIONAL, NULL);
   ifSetParam(sensor->bus, IF_ZEROCOPY, NULL);
   ifSetCallback(sensor->bus, onBusEvent, sensor);
 
-  if (sensor->rate != 0)
+  if (sensor->rate)
     ifSetParam(sensor->bus, IF_RATE, &sensor->rate);
 
   pinReset(sensor->cs);

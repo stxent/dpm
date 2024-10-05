@@ -76,13 +76,22 @@ static void busAcquire(struct W25SPI *memory)
 {
   ifSetParam(memory->spi, IF_ACQUIRE, NULL);
 
-  if (!memory->blocking)
+  if (memory->rate)
+    ifSetParam(memory->spi, IF_RATE, &memory->rate);
+
+  ifSetParam(memory->spi, IF_SPI_MODE, &(uint8_t){0});
+  ifSetParam(memory->spi, IF_SPI_UNIDIRECTIONAL, NULL);
+
+  if (memory->blocking)
   {
-    ifSetCallback(memory->spi, interruptHandler, memory);
-    ifSetParam(memory->spi, IF_ZEROCOPY, NULL);
+    ifSetParam(memory->spi, IF_BLOCKING, NULL);
+    ifSetCallback(memory->spi, NULL, NULL);
   }
   else
-    ifSetParam(memory->spi, IF_BLOCKING, NULL);
+  {
+    ifSetParam(memory->spi, IF_ZEROCOPY, NULL);
+    ifSetCallback(memory->spi, interruptHandler, memory);
+  }
 }
 /*----------------------------------------------------------------------------*/
 static void busRelease(struct W25SPI *memory)
@@ -571,6 +580,14 @@ static enum Result memoryInit(void *object, const void *configBase)
   memory->subsectors = false;
   contextReset(memory);
 
+  if (!config->rate)
+  {
+    if ((res = ifGetParam(memory->spi, IF_RATE, &memory->rate)) != E_OK)
+      return res;
+  }
+  else
+    memory->rate = config->rate;
+
   if (memory->timer != NULL)
   {
     /* Configure polling timer */
@@ -586,13 +603,13 @@ static enum Result memoryInit(void *object, const void *configBase)
   }
 
   /* Lock the interface */
-  ifSetParam(memory->spi, IF_ACQUIRE, NULL);
+  busAcquire(memory);
   /* Reset interface mode on the memory side */
   exitQpiXipMode(memory);
   /* Read device information */
   info = readJedecInfo(memory);
   /* Unlock the interface */
-  ifSetParam(memory->spi, IF_RELEASE, NULL);
+  busRelease(memory);
 
   const uint16_t capabilities = norGetCapabilitiesByJedecInfo(&info);
 
@@ -668,6 +685,10 @@ static enum Result memoryGetParam(void *object, int parameter, void *data)
 
   switch ((enum IfParameter)parameter)
   {
+    case IF_RATE:
+      *(uint32_t *)data = memory->rate;
+      return E_OK;
+
     case IF_POSITION:
       *(uint32_t *)data = memory->position;
       return E_OK;
@@ -793,6 +814,15 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
 
   switch ((enum IfParameter)parameter)
   {
+    case IF_RATE:
+    {
+      const enum Result res = ifSetParam(memory->spi, IF_RATE, data);
+
+      if (res == E_OK)
+        memory->rate = *(const uint32_t *)data;
+      return res;
+    }
+
     case IF_POSITION:
     {
       const uint32_t position = *(const uint32_t *)data;

@@ -68,15 +68,20 @@ const struct InterfaceClass * const W25SPIM = &(const struct InterfaceClass){
 static void busAcquire(struct W25SPIM *memory)
 {
   ifSetParam(memory->spim, IF_ACQUIRE, NULL);
+
+  ifSetParam(memory->spim, IF_SPIM_MODE, &(uint8_t){0});
   ifSetParam(memory->spim, memory->quad ? IF_SPIM_QUAD : IF_SPIM_DUAL, NULL);
 
-  if (!memory->blocking)
+  if (memory->blocking)
+  {
+    ifSetParam(memory->spim, IF_BLOCKING, NULL);
+    ifSetCallback(memory->spim, NULL, NULL);
+  }
+  else
   {
     ifSetParam(memory->spim, IF_ZEROCOPY, NULL);
     ifSetCallback(memory->spim, interruptHandler, memory);
   }
-  else
-    ifSetParam(memory->spim, IF_BLOCKING, NULL);
 }
 /*----------------------------------------------------------------------------*/
 static void busRelease(struct W25SPIM *memory)
@@ -420,7 +425,7 @@ static void pageRead(struct W25SPIM *memory, uint32_t position,
 
   if (memory->dtr)
   {
-    /* Enable DDR mode */
+    /* Enable DDR mode, initial state should be restored */
     ifSetParam(memory->spim, IF_SPIM_DDR, NULL);
   }
 

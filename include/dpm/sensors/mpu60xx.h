@@ -25,7 +25,9 @@ enum [[gnu::packed]] MPU60XXAccelScale
   MPU60XX_ACCEL_2,
   MPU60XX_ACCEL_4,
   MPU60XX_ACCEL_8,
-  MPU60XX_ACCEL_16
+  MPU60XX_ACCEL_16,
+
+  MPU60XX_ACCEL_END
 };
 
 enum [[gnu::packed]] MPU60XXGyroScale
@@ -34,7 +36,9 @@ enum [[gnu::packed]] MPU60XXGyroScale
   MPU60XX_GYRO_250,
   MPU60XX_GYRO_500,
   MPU60XX_GYRO_1000,
-  MPU60XX_GYRO_2000
+  MPU60XX_GYRO_2000,
+
+  MPU60XX_GYRO_END
 };
 
 struct MPU60XXConfig
@@ -48,7 +52,7 @@ struct MPU60XXConfig
 
   /** Optional: sensor address. */
   uint32_t address;
-  /** Optional: baud rate of the serial interface. */
+  /** Optional: bit rate of the serial interface. */
   uint32_t rate;
   /** Optional: pin used as Chip Select output. */
   PinNumber cs;

@@ -24,7 +24,9 @@ enum [[gnu::packed]] HMC5883Frequency
   HMC5883_FREQUENCY_7_5HZ,
   HMC5883_FREQUENCY_15HZ,
   HMC5883_FREQUENCY_30HZ,
-  HMC5883_FREQUENCY_75HZ
+  HMC5883_FREQUENCY_75HZ,
+
+  HMC5883_FREQUENCY_END
 };
 
 enum [[gnu::packed]] HMC5883Gain
@@ -37,7 +39,9 @@ enum [[gnu::packed]] HMC5883Gain
   HMC5883_GAIN_4000MGA,
   HMC5883_GAIN_4700MGA,
   HMC5883_GAIN_5600MGA,
-  HMC5883_GAIN_8100MGA
+  HMC5883_GAIN_8100MGA,
+
+  HMC5883_GAIN_END
 };
 
 enum [[gnu::packed]] HMC5883Oversampling
@@ -46,7 +50,9 @@ enum [[gnu::packed]] HMC5883Oversampling
   HMC5883_OVERSAMPLING_NONE,
   HMC5883_OVERSAMPLING_2,
   HMC5883_OVERSAMPLING_4,
-  HMC5883_OVERSAMPLING_8
+  HMC5883_OVERSAMPLING_8,
+
+  HMC5883_OVERSAMPLING_END
 };
 
 struct HMC5883Config
@@ -60,7 +66,7 @@ struct HMC5883Config
 
   /** Optional: sensor address. */
   uint32_t address;
-  /** Optional: baud rate of the serial interface. */
+  /** Optional: bit rate of the serial interface. */
   uint32_t rate;
 
   /** Mandatory: sample rate for the magnetometer. */

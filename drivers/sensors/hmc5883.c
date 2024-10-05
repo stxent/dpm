@@ -284,7 +284,8 @@ static enum Result hmcInit(void *object, const void *configBase)
 {
   const struct HMC5883Config * const config = configBase;
   assert(config != NULL);
-  assert(config->bus != NULL && config->timer != NULL);
+  assert(config->bus != NULL);
+  assert(config->timer != NULL);
 
   struct HMC5883 * const sensor = object;
 
@@ -304,17 +305,29 @@ static enum Result hmcInit(void *object, const void *configBase)
   sensor->state = STATE_IDLE;
 
   if (config->frequency != HMC5883_FREQUENCY_DEFAULT)
+  {
+    if (config->frequency >= HMC5883_FREQUENCY_END)
+      return E_VALUE;
     sensor->frequency = (uint8_t)config->frequency - 1;
+  }
   else
     sensor->frequency = HMC5883_FREQUENCY_15HZ;
 
   if (config->gain != HMC5883_GAIN_DEFAULT)
+  {
+    if (config->gain >= HMC5883_GAIN_END)
+      return E_VALUE;
     sensor->gain = (uint8_t)config->gain - 1;
+  }
   else
     sensor->gain = HMC5883_GAIN_1300MGA;
 
   if (config->oversampling != HMC5883_OVERSAMPLING_DEFAULT)
+  {
+    if (config->oversampling >= HMC5883_OVERSAMPLING_END)
+      return E_VALUE;
     sensor->oversampling = (uint8_t)config->oversampling - 1;
+  }
   else
     sensor->oversampling = HMC5883_OVERSAMPLING_NONE;
 

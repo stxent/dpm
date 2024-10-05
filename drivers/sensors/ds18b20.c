@@ -273,7 +273,8 @@ static enum Result dsInit(void *object, const void *configBase)
 {
   const struct DS18B20Config * const config = configBase;
   assert(config != NULL);
-  assert(config->bus != NULL && config->timer != NULL);
+  assert(config->bus != NULL);
+  assert(config->timer != NULL);
 
   struct DS18B20 * const sensor = object;
 

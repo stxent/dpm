@@ -27,6 +27,8 @@ struct W25SPIConfig
    * will be used. Poll rate can't be higher than timer tick rate.
    */
   uint32_t poll;
+  /** Optional: bit rate of the serial interface. */
+  uint32_t rate;
   /** Mandatory: chip select output. */
   PinNumber cs;
   /** Optional: output driver strength. */
@@ -51,6 +53,8 @@ struct W25SPI
   uint32_t capacity;
   /* Read and write position inside memory address space */
   uint32_t position;
+  /* Bit rate of the serial interface */
+  uint32_t rate;
 
   struct
   {

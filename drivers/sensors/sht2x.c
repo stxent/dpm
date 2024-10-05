@@ -350,7 +350,8 @@ static enum Result shtInit(void *object, const void *configBase)
 {
   const struct SHT2XConfig * const config = configBase;
   assert(config != NULL);
-  assert(config->bus != NULL && config->timer != NULL);
+  assert(config->bus != NULL);
+  assert(config->timer != NULL);
 
   struct SHT2X * const sensor = object;
 
@@ -371,7 +372,11 @@ static enum Result shtInit(void *object, const void *configBase)
   sensor->state = STATE_IDLE;
 
   if (config->resolution != SHT2X_RESOLUTION_DEFAULT)
+  {
+    if (config->resolution >= SHT2X_RESOLUTION_END)
+      return E_VALUE;
     sensor->resolution = (uint8_t)config->resolution;
+  }
   else
     sensor->resolution = SHT2X_RESOLUTION_12BIT;
 
