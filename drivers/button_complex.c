@@ -132,15 +132,20 @@ static void buttonDeinit(void *object)
   interruptSetCallback(button->interrupt, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
+void buttonComplexDisable(struct ButtonComplex *button)
+{
+  timerDisable(button->timer);
+  interruptDisable(button->interrupt);
+}
+/*----------------------------------------------------------------------------*/
 void buttonComplexEnable(struct ButtonComplex *button)
 {
   interruptEnable(button->interrupt);
 }
 /*----------------------------------------------------------------------------*/
-void buttonComplexDisable(struct ButtonComplex *button)
+bool buttonComplexIsPressed(const struct ButtonComplex *button)
 {
-  timerDisable(button->timer);
-  interruptDisable(button->interrupt);
+  return pinRead(button->pin) == button->level;
 }
 /*----------------------------------------------------------------------------*/
 void buttonComplexSetLongPressCallback(struct ButtonComplex *button,

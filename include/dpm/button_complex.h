@@ -54,8 +54,9 @@ struct ButtonComplex
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS
 
-void buttonComplexEnable(struct ButtonComplex *);
 void buttonComplexDisable(struct ButtonComplex *);
+void buttonComplexEnable(struct ButtonComplex *);
+bool buttonComplexIsPressed(const struct ButtonComplex *);
 void buttonComplexSetLongPressCallback(struct ButtonComplex *,
     void (*)(void *), void *);
 void buttonComplexSetPressCallback(struct ButtonComplex *,
