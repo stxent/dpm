@@ -219,8 +219,8 @@ enum
 enum
 {
   DAC_PATH_MUTED  = 0,
-  DAC_PATH_RIGHT  = 1,
-  DAC_PATH_LEFT   = 2,
+  DAC_PATH_SAME   = 1,
+  DAC_PATH_SWAP   = 2,
   DAC_PATH_MONO   = 3
 };
 

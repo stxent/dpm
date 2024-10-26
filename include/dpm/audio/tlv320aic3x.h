@@ -52,6 +52,8 @@ struct TLV320AIC3xConfig
   uint32_t address;
   /** Optional: codec management interface rate. */
   uint32_t rate;
+  /** Optional: codec sample rate. */
+  uint32_t samplerate;
   /** Optional: use master clock prescaler instead of PLL. */
   uint16_t prescaler;
   /** Mandatory: codec reset enable pin. */
@@ -106,7 +108,8 @@ struct TLV320AIC3x
 
     struct
     {
-      uint8_t path;
+      enum CodecChannel channels;
+      enum AIC3xPath path;
 
       uint8_t gainL;
       uint8_t gainR;
@@ -120,7 +123,8 @@ struct TLV320AIC3x
 
     struct
     {
-      uint8_t path;
+      enum CodecChannel channels;
+      enum AIC3xPath path;
 
       uint8_t gainL;
       uint8_t gainR;

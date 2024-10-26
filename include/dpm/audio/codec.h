@@ -13,11 +13,12 @@
 /*----------------------------------------------------------------------------*/
 struct WorkQueue;
 
-enum CodecChannel
+enum [[gnu::packed]] CodecChannel
 {
-  CHANNEL_BOTH,
-  CHANNEL_LEFT,
-  CHANNEL_RIGHT
+  CHANNEL_NONE  = 0x00,
+  CHANNEL_LEFT  = 0x01,
+  CHANNEL_RIGHT = 0x02,
+  CHANNEL_BOTH  = 0x03
 };
 
 /* Class descriptor */
@@ -34,9 +35,9 @@ struct CodecClass
   /* Setters */
   void (*setAGCEnabled)(void *, bool);
   void (*setInputGain)(void *, enum CodecChannel, uint8_t);
-  void (*setInputPath)(void *, int);
+  void (*setInputPath)(void *, int, enum CodecChannel);
   void (*setOutputGain)(void *, enum CodecChannel, uint8_t);
-  void (*setOutputPath)(void *, int);
+  void (*setOutputPath)(void *, int, enum CodecChannel);
   void (*setSampleRate)(void *, uint32_t);
 
   void (*setErrorCallback)(void *, void (*)(void *), void *);
@@ -45,7 +46,7 @@ struct CodecClass
   void (*setUpdateWorkQueue)(void *, struct WorkQueue *);
 
   void (*check)(void *);
-  void (*reset)(void *, uint32_t, int, int);
+  void (*reset)(void *);
   bool (*update)(void *);
 };
 
@@ -137,13 +138,15 @@ static inline void codecSetInputGain(void *codec, enum CodecChannel channel,
 }
 
 /**
- * Set input path.
+ * Set input path and input channels.
  * @param codec Pointer to a Codec object.
  * @param path Input path.
  */
-static inline void codecSetInputPath(void *codec, int path)
+static inline void codecSetInputPath(void *codec, int path,
+    enum CodecChannel channels)
 {
-  ((const struct CodecClass *)CLASS(codec))->setInputPath(codec, path);
+  ((const struct CodecClass *)CLASS(codec))->setInputPath(codec, path,
+      channels);
 }
 
 /**
@@ -160,13 +163,15 @@ static inline void codecSetOutputGain(void *codec, enum CodecChannel channel,
 }
 
 /**
- * Set output path.
+ * Set output path and output channels.
  * @param codec Pointer to a Codec object.
  * @param path Output path.
  */
-static inline void codecSetOutputPath(void *codec, int path)
+static inline void codecSetOutputPath(void *codec, int path,
+    enum CodecChannel channels)
 {
-  ((const struct CodecClass *)CLASS(codec))->setOutputPath(codec, path);
+  ((const struct CodecClass *)CLASS(codec))->setOutputPath(codec, path,
+      channels);
 }
 
 /**
@@ -181,16 +186,13 @@ static inline void codecSetSampleRate(void *codec, uint32_t rate)
 
 /**
  * Reset a codec.
+ * Perform a software or a hardware reset and reconfigure the codec.
+ * All previously configured parameters will be preserved.
  * @param codec Pointer to a Codec object.
- * @param rate Sample rate.
- * @param inputPath Input path.
- * @param outputPath Output path.
  */
-static inline void codecReset(void *codec, uint32_t rate, int inputPath,
-    int outputPath)
+static inline void codecReset(void *codec)
 {
-  ((const struct CodecClass *)CLASS(codec))->reset(codec, rate, inputPath,
-      outputPath);
+  ((const struct CodecClass *)CLASS(codec))->reset(codec);
 }
 
 /**
