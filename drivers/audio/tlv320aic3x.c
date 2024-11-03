@@ -76,7 +76,9 @@ enum [[gnu::packed]] ConfigStep
   CONFIG_MIC2LR_LINE2LR_TO_LADC_CTRL = CONFIG_GROUP_INPUT,
   CONFIG_MIC2LR_LINE2LR_TO_RADC_CTRL,
   CONFIG_MIC1LP_LINE1LP_TO_LADC_CTRL,
+  CONFIG_MIC1RP_LINE1RP_TO_LADC_CTRL,
   CONFIG_MIC1RP_LINE1RP_TO_RADC_CTRL,
+  CONFIG_MIC1LP_LINE1LP_TO_RADC_CTRL,
   CONFIG_LINE2L_TO_LADC_CTRL,
   CONFIG_LINE2R_TO_RADC_CTRL,
   CONFIG_MICBIAS_CTRL,
@@ -177,7 +179,7 @@ static uint8_t makeRegHpOutCtrl(const struct TLV320AIC3x *, enum CodecChannel);
 static uint8_t makeRegHpOutSC(const struct TLV320AIC3x *);
 static uint8_t makeRegMicBiasCtrl(const struct TLV320AIC3x *);
 static uint8_t makeRegMicLine1ToAdcCtrl(const struct TLV320AIC3x *,
-    enum CodecChannel);
+    enum CodecChannel, enum CodecChannel);
 static uint8_t makeRegMicLine2ToAdcCtrl(const struct TLV320AIC3x *,
     enum CodecChannel);
 static uint8_t makeRegMicLine23ToAdcCtrl(const struct TLV320AIC3x *,
@@ -357,10 +359,12 @@ static uint8_t makeRegCodecDataPathSetup(const struct TLV320AIC3x *codec)
 
   if (codec->config.output.path != AIC3X_NONE)
   {
+    const unsigned int dir = codec->swap ? DAC_PATH_SWAP : DAC_PATH_SAME;
+
     if (codec->config.output.channels & CHANNEL_LEFT)
-      value |= DATA_PATH_SETUP_LDAC(DAC_PATH_SAME);
+      value |= DATA_PATH_SETUP_LDAC(dir);
     if (codec->config.output.channels & CHANNEL_RIGHT)
-      value |= DATA_PATH_SETUP_RDAC(DAC_PATH_SAME);
+      value |= DATA_PATH_SETUP_RDAC(dir);
   }
 
   if (codec->config.rate > 48000)
@@ -635,36 +639,38 @@ static uint8_t makeRegMicBiasCtrl(const struct TLV320AIC3x *codec)
 }
 /*----------------------------------------------------------------------------*/
 static uint8_t makeRegMicLine1ToAdcCtrl(const struct TLV320AIC3x *codec,
-    enum CodecChannel channel)
+    enum CodecChannel source, enum CodecChannel destination)
 {
-  uint8_t value;
+  uint8_t value = MIC_LINE_LP_RP_GAIN(MIC_LINE_GAIN_DISABLED);
 
   if (codec->config.input.path != AIC3X_NONE
-      && (codec->config.input.channels & channel))
+      && (codec->config.input.channels & source))
   {
-    value = MIC_LINE_LP_RP_SOFT_STEPPING(MIC_LINE_SOFT_STEPPING_DISABLED)
-        | MIC_LINE_LP_RP_ENABLE;
-
-    switch (codec->config.input.path)
+    if (source == destination)
     {
-      case AIC3X_MIC_1_IN_DIFF:
-      case AIC3X_LINE_1_IN_DIFF:
-        value |= MIC_LINE_LP_RP_GAIN(0) | MIC_LINE_LP_RP_DIFF;
-        break;
-
-      case AIC3X_MIC_1_IN:
-      case AIC3X_LINE_1_IN:
-        value |= MIC_LINE_LP_RP_GAIN(0);
-        break;
-
-      default:
-        value |= MIC_LINE_LP_RP_GAIN(MIC_LINE_GAIN_DISABLED);
-        break;
+      value |= MIC_LINE_LP_RP_SOFT_STEPPING(MIC_LINE_SOFT_STEPPING_DISABLED)
+          | MIC_LINE_LP_RP_ENABLE;
     }
-  }
-  else
-  {
-    value = MIC_LINE_LP_RP_GAIN(MIC_LINE_GAIN_DISABLED);
+
+    /* swap && source != destination || !swap && source == destination */
+    if (!(codec->swap ^ (source != destination)))
+    {
+      switch (codec->config.input.path)
+      {
+        case AIC3X_MIC_1_IN_DIFF:
+        case AIC3X_LINE_1_IN_DIFF:
+          value |= MIC_LINE_LP_RP_DIFF;
+          [[fallthrough]];
+
+        case AIC3X_MIC_1_IN:
+        case AIC3X_LINE_1_IN:
+          value = (value & ~MIC_LINE_LP_RP_GAIN_MASK) | MIC_LINE_LP_RP_GAIN(0);
+          break;
+
+        default:
+          break;
+      }
+    }
   }
 
   return value;
@@ -673,7 +679,10 @@ static uint8_t makeRegMicLine1ToAdcCtrl(const struct TLV320AIC3x *codec,
 static uint8_t makeRegMicLine2ToAdcCtrl(const struct TLV320AIC3x *codec,
     enum CodecChannel channel)
 {
-  /* MIC2/LINE2 for TLV320AIC3105, unused on TLV320AIC3101/3104 */
+  /*
+   * MIC2/LINE2 for TLV320AIC3105, unused on TLV320AIC3101/3104.
+   * Stereo channel swap function is not available for MIC2/LINE2 inputs.
+   */
 
   uint8_t value = MIC_LINE_LP_RP_GAIN(MIC_LINE_GAIN_DISABLED);
 
@@ -732,10 +741,15 @@ static uint8_t makeRegMicLine23ToAdcCtrl(const struct TLV320AIC3x *codec,
 
     if (enable)
     {
+      static const uint8_t enableChannelL =
+          MIC_LINE_R_GAIN(MIC_LINE_GAIN_DISABLED) | MIC_LINE_L_GAIN(0);
+      static const uint8_t enableChannelR =
+          MIC_LINE_R_GAIN(0) | MIC_LINE_L_GAIN(MIC_LINE_GAIN_DISABLED);
+
       if (channel == CHANNEL_LEFT)
-        value = MIC_LINE_R_GAIN(MIC_LINE_GAIN_DISABLED) | MIC_LINE_L_GAIN(0);
+        value = codec->swap ? enableChannelR : enableChannelL;
       else
-        value = MIC_LINE_R_GAIN(0) | MIC_LINE_L_GAIN(MIC_LINE_GAIN_DISABLED);
+        value = codec->swap ? enableChannelL : enableChannelR;
     }
   }
 
@@ -1232,13 +1246,25 @@ static bool startConfigUpdate(struct TLV320AIC3x *codec)
     case CONFIG_MIC1LP_LINE1LP_TO_LADC_CTRL:
       codec->transfer.buffer[0] = REG_MIC1LP_LINE1LP_TO_LADC_CTRL;
       codec->transfer.buffer[1] = makeRegMicLine1ToAdcCtrl(codec,
-          CHANNEL_LEFT);
+          CHANNEL_LEFT, CHANNEL_LEFT);
+      break;
+
+    case CONFIG_MIC1RP_LINE1RP_TO_LADC_CTRL:
+      codec->transfer.buffer[0] = REG_MIC1RP_LINE1RP_TO_LADC_CTRL;
+      codec->transfer.buffer[1] = makeRegMicLine1ToAdcCtrl(codec,
+          CHANNEL_RIGHT, CHANNEL_LEFT);
       break;
 
     case CONFIG_MIC1RP_LINE1RP_TO_RADC_CTRL:
       codec->transfer.buffer[0] = REG_MIC1RP_LINE1RP_TO_RADC_CTRL;
       codec->transfer.buffer[1] = makeRegMicLine1ToAdcCtrl(codec,
-          CHANNEL_RIGHT);
+          CHANNEL_RIGHT, CHANNEL_RIGHT);
+      break;
+
+    case CONFIG_MIC1LP_LINE1LP_TO_RADC_CTRL:
+      codec->transfer.buffer[0] = REG_MIC1LP_LINE1LP_TO_RADC_CTRL;
+      codec->transfer.buffer[1] = makeRegMicLine1ToAdcCtrl(codec,
+          CHANNEL_LEFT, CHANNEL_RIGHT);
       break;
 
     case CONFIG_LINE2L_TO_LADC_CTRL:
@@ -1481,6 +1507,7 @@ static enum Result aic3xInit(void *object, const void *arguments)
   codec->type = config->type;
   codec->pending = false;
   codec->ready = false;
+  codec->swap = config->swap;
 
   codec->transfer.groups = 0;
   codec->transfer.passed = 0;

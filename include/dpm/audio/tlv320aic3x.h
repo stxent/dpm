@@ -69,6 +69,8 @@ struct TLV320AIC3xConfig
   PinNumber reset;
   /** Mandatory: codec type. */
   enum AIC3xType type;
+  /** Optional: swap stereo channels. */
+  bool swap;
 };
 
 struct TLV320AIC3x
@@ -92,6 +94,7 @@ struct TLV320AIC3x
   enum AIC3xType type;
   bool pending;
   bool ready;
+  bool swap;
 
   struct
   {
