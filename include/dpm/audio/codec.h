@@ -17,8 +17,7 @@ enum [[gnu::packed]] CodecChannel
 {
   CHANNEL_NONE  = 0x00,
   CHANNEL_LEFT  = 0x01,
-  CHANNEL_RIGHT = 0x02,
-  CHANNEL_BOTH  = 0x03
+  CHANNEL_RIGHT = 0x02
 };
 
 /* Class descriptor */
@@ -28,15 +27,19 @@ struct CodecClass
 
   /* Getters */
   uint8_t (*getInputGain)(const void *, enum CodecChannel);
+  enum CodecChannel (*getInputMute)(const void *);
   uint8_t (*getOutputGain)(const void *, enum CodecChannel);
+  enum CodecChannel (*getOutputMute)(const void *);
   bool (*isAGCEnabled)(const void *);
   bool (*isReady)(const void *);
 
   /* Setters */
   void (*setAGCEnabled)(void *, bool);
   void (*setInputGain)(void *, enum CodecChannel, uint8_t);
+  void (*setInputMute)(void *, enum CodecChannel);
   void (*setInputPath)(void *, int, enum CodecChannel);
   void (*setOutputGain)(void *, enum CodecChannel, uint8_t);
+  void (*setOutputMute)(void *, enum CodecChannel);
   void (*setOutputPath)(void *, int, enum CodecChannel);
   void (*setSampleRate)(void *, uint32_t);
 
@@ -81,6 +84,16 @@ static inline uint8_t codecGetInputGain(const void *codec,
 }
 
 /**
+ * Get current mute status of input channels.
+ * @param codec Pointer to a Codec object.
+ * @return Muted channels.
+ */
+static inline enum CodecChannel codecGetInputMute(const void *codec)
+{
+  return ((const struct CodecClass *)CLASS(codec))->getInputMute(codec);
+}
+
+/**
  * Get output gain of a selected channel.
  * @param codec Pointer to a Codec object.
  * @param channel Output channel.
@@ -92,6 +105,16 @@ static inline uint8_t codecGetOutputGain(const void *codec,
 {
   return ((const struct CodecClass *)CLASS(codec))->getOutputGain(codec,
       channel);
+}
+
+/**
+ * Get current mute status of output channels.
+ * @param codec Pointer to a Codec object.
+ * @return Muted channels.
+ */
+static inline enum CodecChannel codecGetOutputMute(const void *codec)
+{
+  return ((const struct CodecClass *)CLASS(codec))->getOutputMute(codec);
 }
 
 /**
@@ -138,9 +161,20 @@ static inline void codecSetInputGain(void *codec, enum CodecChannel channel,
 }
 
 /**
+ * Mute or unmute input channels.
+ * @param codec Pointer to a Codec object.
+ * @param channels Input channels.
+ */
+static inline void codecSetInputMute(void *codec, enum CodecChannel channels)
+{
+  ((const struct CodecClass *)CLASS(codec))->setInputMute(codec, channels);
+}
+
+/**
  * Set input path and input channels.
  * @param codec Pointer to a Codec object.
  * @param path Input path.
+ * @param channels Input channels.
  */
 static inline void codecSetInputPath(void *codec, int path,
     enum CodecChannel channels)
@@ -163,9 +197,20 @@ static inline void codecSetOutputGain(void *codec, enum CodecChannel channel,
 }
 
 /**
+ * Mute or unmute output channels.
+ * @param codec Pointer to a Codec object.
+ * @param channels Output channels.
+ */
+static inline void codecSetOutputMute(void *codec, enum CodecChannel channels)
+{
+  ((const struct CodecClass *)CLASS(codec))->setOutputMute(codec, channels);
+}
+
+/**
  * Set output path and output channels.
  * @param codec Pointer to a Codec object.
  * @param path Output path.
+ * @param channels Output channels.
  */
 static inline void codecSetOutputPath(void *codec, int path,
     enum CodecChannel channels)

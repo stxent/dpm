@@ -30,8 +30,8 @@ enum [[gnu::packed]] AIC3xPath
   /* Available on TLV320AIC3101/3104 */
   AIC3X_LINE_1_IN_DIFF,
   AIC3X_LINE_2_IN,
-  AIC3X_LINE_3_IN,
   /* Available on TLV320AIC3105 */
+  AIC3X_LINE_3_IN,
   AIC3X_MIC_1_IN,
   /* Available on TLV320AIC3101/3104 */
   AIC3X_MIC_1_IN_DIFF,
@@ -40,6 +40,15 @@ enum [[gnu::packed]] AIC3xPath
   AIC3X_MIC_3_IN,
 
   AIC3X_END
+};
+
+enum [[gnu::packed]] AIC3xType
+{
+  AIC3X_TYPE_3101,
+  AIC3X_TYPE_3104,
+  AIC3X_TYPE_3105,
+
+  AIC3X_TYPE_END
 };
 
 struct TLV320AIC3xConfig
@@ -58,6 +67,8 @@ struct TLV320AIC3xConfig
   uint16_t prescaler;
   /** Mandatory: codec reset enable pin. */
   PinNumber reset;
+  /** Mandatory: codec type. */
+  enum AIC3xType type;
 };
 
 struct TLV320AIC3x
@@ -78,6 +89,7 @@ struct TLV320AIC3x
   struct Pin reset;
   uint32_t address;
   uint32_t rate;
+  enum AIC3xType type;
   bool pending;
   bool ready;
 
@@ -86,7 +98,7 @@ struct TLV320AIC3x
     size_t length;
     uint8_t buffer[4];
     uint8_t page[2];
-    uint8_t groups;
+    uint16_t groups;
     uint8_t passed;
     uint8_t state;
     uint8_t step;
@@ -109,6 +121,7 @@ struct TLV320AIC3x
     struct
     {
       enum CodecChannel channels;
+      enum CodecChannel unmute;
       enum AIC3xPath path;
 
       uint8_t gainL;
@@ -124,6 +137,7 @@ struct TLV320AIC3x
     struct
     {
       enum CodecChannel channels;
+      enum CodecChannel unmute;
       enum AIC3xPath path;
 
       uint8_t gainL;

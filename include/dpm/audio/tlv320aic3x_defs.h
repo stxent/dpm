@@ -337,6 +337,8 @@ enum
     FIELD_VALUE((reg), MIC_LINE_LP_RP_GAIN_MASK, 3)
 
 #define MIC_LINE_LP_RP_DIFF             BIT(7)
+/*------------------LINE2 L/R Control registers-------------------------------*/
+#define LINE2_WEAK_CM_BIAS_CONTROL      BIT(2)
 /*------------------Microphone Bias Control register--------------------------*/
 enum
 {
