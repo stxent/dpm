@@ -44,10 +44,14 @@ static void interruptHandler(void *object)
   struct MemoryBusGpioTimer * const timer = object;
   STM_TIM_Type * const reg = timer->base.reg;
 
-  /* Clear all pending interrupts */
-  reg->SR = ~(SR_CCIF_MASK | SR_UIF);
+  if (reg->SR & (SR_UIF | SR_CCIF_MASK))
+  {
+    /* Clear all pending interrupts */
+    reg->SR = 0;
 
-  timer->callback(timer->callbackArgument);
+    if (timer->callback != NULL)
+      timer->callback(timer->callbackArgument);
+  }
 }
 /*----------------------------------------------------------------------------*/
 static enum Result setupChannels(struct MemoryBusGpioTimer *timer,
@@ -95,7 +99,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
   reg->CR1 = CR1_CKD(CKD_CK_INT) | CR1_CMS(CMS_EDGE_ALIGNED_MODE);
   reg->ARR = getMaxValue(timer->base.flags);
   reg->CNT = 0;
-  reg->DIER = 0;
+  reg->DIER = DIER_CCIE(timer->channel);
 
   reg->CCMR[timer->channel >> 1] = CCMR_OCPE(timer->channel & 1)
       | CCMR_OCM(timer->channel & 1, OCM_PWM_MODE_2)
@@ -133,19 +137,6 @@ static void tmrSetCallback(void *object, void (*callback)(void *),
 
   timer->callbackArgument = argument;
   timer->callback = callback;
-
-  if (timer->callback != NULL)
-  {
-    /* Clear pending interrupt flags */
-    reg->SR = 0;
-    /* Enable generation of an interrupt request */
-    reg->DIER |= DIER_CCIE(timer->channel);
-  }
-  else
-  {
-    /* Disable interrupt request generation */
-    reg->DIER &= ~DIER_CCIE_MASK;
-  }
 }
 /*----------------------------------------------------------------------------*/
 static void tmrEnable(void *object)

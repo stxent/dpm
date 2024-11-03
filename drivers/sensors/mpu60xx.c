@@ -254,7 +254,7 @@ static void onBusEvent(void *object)
   {
     case STATE_CONFIG_REQUEST_WAIT:
       release = false;
-      /* Falls through */
+      [[fallthrough]];
     case STATE_CONFIG_BUS_WAIT:
       sensor->state = STATE_CONFIG_END;
       break;

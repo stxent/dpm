@@ -98,8 +98,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
   reg->IR = IR_MATCH_MASK;
 
   /* Configure interrupts */
-  reg->MCR = MCR_RESET(timer->reset)
-      | MCR_INTERRUPT(timer->leading);
+  reg->MCR = MCR_RESET(timer->reset) | MCR_INTERRUPT(timer->leading);
 
   /* Configure timings */
   tmrSetFrequency(timer, config->frequency);
@@ -141,8 +140,7 @@ static void tmrEnable(void *object)
   LPC_TIMER_Type * const reg = timer->base.reg;
 
   reg->PC = reg->TC = 0;
-  reg->MCR &= ~(MCR_INTERRUPT(timer->reset)
-      | MCR_STOP(timer->reset));
+  reg->MCR &= ~(MCR_INTERRUPT(timer->reset) | MCR_STOP(timer->reset));
   reg->TCR = TCR_CEN;
 }
 /*----------------------------------------------------------------------------*/
@@ -152,8 +150,7 @@ static void tmrDisable(void *object)
   LPC_TIMER_Type * const reg = timer->base.reg;
 
   /* Complete current operation and stop */
-  reg->MCR |= MCR_INTERRUPT(timer->reset)
-      | MCR_STOP(timer->reset);
+  reg->MCR |= MCR_INTERRUPT(timer->reset) | MCR_STOP(timer->reset);
 }
 /*----------------------------------------------------------------------------*/
 static void tmrSetFrequency(void *object, uint32_t frequency)

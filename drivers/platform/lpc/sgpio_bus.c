@@ -62,10 +62,10 @@ static bool enqueueNextTransfer(struct SgpioBus *interface)
     {
       case 3:
         word = interface->buffer[2] << 16;
-        /* Falls through */
+        [[fallthrough]];
       case 2:
         word |= interface->buffer[1] << 8;
-        /* Falls through */
+        [[fallthrough]];
       case 1:
         word |= interface->buffer[0];
         break;
