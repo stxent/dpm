@@ -88,28 +88,28 @@ uint32_t norGetCapacityByJedecInfo(const struct JedecInfo *info)
 {
   switch (info->capacity)
   {
-    case JEDEC_CAPACITY_W25Q016:
+    case JEDEC_CAPACITY_25Q016:
       return 2 * 1024 * 1024;
 
-    case JEDEC_CAPACITY_W25Q032:
+    case JEDEC_CAPACITY_25Q032:
       return 4 * 1024 * 1024;
 
-    case JEDEC_CAPACITY_W25Q064:
+    case JEDEC_CAPACITY_25Q064:
       return 8 * 1024 * 1024;
 
-    case JEDEC_CAPACITY_W25Q128:
+    case JEDEC_CAPACITY_25Q128:
       return 16 * 1024 * 1024;
 
-    case JEDEC_CAPACITY_W25Q256:
+    case JEDEC_CAPACITY_25Q256:
       return 32 * 1024 * 1024;
 
-    case JEDEC_CAPACITY_W25Q512:
+    case JEDEC_CAPACITY_25Q512:
       return 64 * 1024 * 1024;
 
-    case JEDEC_CAPACITY_W25Q01:
+    case JEDEC_CAPACITY_25Q01:
       return 128 * 1024 * 1024;
 
-    case JEDEC_CAPACITY_W25Q02:
+    case JEDEC_CAPACITY_25Q02:
       return 256 * 1024 * 1024;
 
     default:

@@ -24,14 +24,14 @@
 #define JEDEC_DEVICE_WINBOND_W25Q_IQ        0x60
 #define JEDEC_DEVICE_WINBOND_W25X           0x30
 
-#define JEDEC_CAPACITY_W25Q016              0x15  /* 16 Mbit */
-#define JEDEC_CAPACITY_W25Q032              0x16  /* 32 Mbit */
-#define JEDEC_CAPACITY_W25Q064              0x17  /* 64 Mbit */
-#define JEDEC_CAPACITY_W25Q128              0x18  /* 128 Mbit */
-#define JEDEC_CAPACITY_W25Q256              0x19  /* 256 Mbit */
-#define JEDEC_CAPACITY_W25Q512              0x20  /* 512 Mbit */
-#define JEDEC_CAPACITY_W25Q01               0x21  /* 1 Gbit */
-#define JEDEC_CAPACITY_W25Q02               0x22  /* 2 Gbit */
+#define JEDEC_CAPACITY_25Q016               0x15  /* 16 Mbit */
+#define JEDEC_CAPACITY_25Q032               0x16  /* 32 Mbit */
+#define JEDEC_CAPACITY_25Q064               0x17  /* 64 Mbit */
+#define JEDEC_CAPACITY_25Q128               0x18  /* 128 Mbit */
+#define JEDEC_CAPACITY_25Q256               0x19  /* 256 Mbit */
+#define JEDEC_CAPACITY_25Q512               0x20  /* 512 Mbit */
+#define JEDEC_CAPACITY_25Q01                0x21  /* 1 Gbit */
+#define JEDEC_CAPACITY_25Q02                0x22  /* 2 Gbit */
 /*----------------------------------------------------------------------------*/
 enum
 {

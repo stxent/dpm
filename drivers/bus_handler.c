@@ -23,7 +23,7 @@ static void bhOnDetach(void *argument)
 
   while (!handler->busy && handler->detaching)
   {
-    const uint32_t index = 31 - countLeadingZeros32(handler->updating);
+    const uint32_t index = 31 - countLeadingZeros32(handler->detaching);
     struct BHEntry * const entry = &handler->devices[index];
 
     atomicFetchAnd(&handler->detaching, ~entry->mask);

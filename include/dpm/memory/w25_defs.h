@@ -10,15 +10,6 @@
 #include <xcore/bits.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
-#define JEDEC_CAPACITY_W25Q016            0x15  /* 16 Mbit */
-#define JEDEC_CAPACITY_W25Q032            0x16  /* 32 Mbit */
-#define JEDEC_CAPACITY_W25Q064            0x17  /* 64 Mbit */
-#define JEDEC_CAPACITY_W25Q128            0x18  /* 128 Mbit */
-#define JEDEC_CAPACITY_W25Q256            0x19  /* 256 Mbit */
-#define JEDEC_CAPACITY_W25Q512            0x20  /* 512 Mbit */
-#define JEDEC_CAPACITY_W25Q01             0x21  /* 1 Gbit */
-#define JEDEC_CAPACITY_W25Q02             0x22  /* 2 Gbit */
-/*----------------------------------------------------------------------------*/
 #define CMD_WRITE_STATUS_REGISTER_1       0x01
 #define CMD_WRITE_DISABLE                 0x04
 #define CMD_READ_STATUS_REGISTER_1        0x05
