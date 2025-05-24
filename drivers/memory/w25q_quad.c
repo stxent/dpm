@@ -1,12 +1,13 @@
 /*
- * w25_spim.c
+ * w25q_quad.c
  * Copyright (C) 2023 xent
  * Project is distributed under the terms of the MIT License
  */
 
 #include <dpm/memory/nor_defs.h>
-#include <dpm/memory/w25_defs.h>
-#include <dpm/memory/w25_spim.h>
+#include <dpm/memory/w25q_defs.h>
+#include <dpm/memory/w25q_quad.h>
+#include <halm/delay.h>
 #include <halm/generic/flash.h>
 #include <halm/generic/spim.h>
 #include <xcore/memory.h>
@@ -26,24 +27,27 @@ enum
   STATE_ERROR
 };
 /*----------------------------------------------------------------------------*/
-static void busAcquire(struct W25SPIM *);
-static void busRelease(struct W25SPIM *);
-static bool changeDriverStrength(struct W25SPIM *, enum W25DriverStrength);
-static bool changeQuadMode(struct W25SPIM *, bool);
-static void contextReset(struct W25SPIM *);
-static void eraseBlock64KB(struct W25SPIM *, uint32_t);
-static void eraseSector4KB(struct W25SPIM *, uint32_t);
-static void exitQpiXipMode(struct W25SPIM *);
+static void busAcquire(struct W25QQuad *);
+static void busRelease(struct W25QQuad *);
+static bool changeDriverStrength(struct W25QQuad *, enum W25DriverStrength);
+static void changePowerDownMode(struct W25QQuad *, bool, bool);
+static bool changeQuadMode(struct W25QQuad *, bool);
+static void contextReset(struct W25QQuad *);
+static void eraseBlock64KB(struct W25QQuad *, uint32_t);
+static void eraseSector4KB(struct W25QQuad *, uint32_t);
+static void exitQpiXipMode(struct W25QQuad *);
+static uint32_t getCapacityFromInfo(uint8_t);
 static void interruptHandler(void *);
-static void makeReadCommandValues(const struct W25SPIM *, uint8_t *, uint8_t *);
-static void pageProgram(struct W25SPIM *, uint32_t, const void *, size_t);
-static void pageRead(struct W25SPIM *, uint32_t, void *, size_t);
-static void pollStatusRegister(struct W25SPIM *, uint8_t, uint8_t);
-static struct JedecInfo readJedecInfo(struct W25SPIM *);
-static uint8_t readStatusRegister(struct W25SPIM *, uint8_t);
-static void waitMemoryBusy(struct W25SPIM *);
-static void writeEnable(struct W25SPIM *, bool);
-static void writeStatusRegister(struct W25SPIM *, uint8_t, uint8_t, bool);
+static void makeReadCommandValues(const struct W25QQuad *, uint8_t *,
+    uint8_t *);
+static void pageProgram(struct W25QQuad *, uint32_t, const void *, size_t);
+static void pageRead(struct W25QQuad *, uint32_t, void *, size_t);
+static void pollStatusRegister(struct W25QQuad *, uint8_t, uint8_t);
+static struct JedecInfo readJedecInfo(struct W25QQuad *);
+static uint8_t readStatusRegister(struct W25QQuad *, uint8_t);
+static void waitMemoryBusy(struct W25QQuad *);
+static void writeEnable(struct W25QQuad *, bool);
+static void writeStatusRegister(struct W25QQuad *, uint8_t, uint8_t, bool);
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInit(void *, const void *);
 static void memoryDeinit(void *);
@@ -53,8 +57,8 @@ static enum Result memorySetParam(void *, int, const void *);
 static size_t memoryRead(void *, void *, size_t);
 static size_t memoryWrite(void *, const void *, size_t);
 /*----------------------------------------------------------------------------*/
-const struct InterfaceClass * const W25SPIM = &(const struct InterfaceClass){
-    .size = sizeof(struct W25SPIM),
+const struct InterfaceClass * const W25QQuad = &(const struct InterfaceClass){
+    .size = sizeof(struct W25QQuad),
     .init = memoryInit,
     .deinit = memoryDeinit,
 
@@ -65,7 +69,7 @@ const struct InterfaceClass * const W25SPIM = &(const struct InterfaceClass){
     .write = memoryWrite
 };
 /*----------------------------------------------------------------------------*/
-static void busAcquire(struct W25SPIM *memory)
+static void busAcquire(struct W25QQuad *memory)
 {
   ifSetParam(memory->spim, IF_ACQUIRE, NULL);
 
@@ -84,14 +88,14 @@ static void busAcquire(struct W25SPIM *memory)
   }
 }
 /*----------------------------------------------------------------------------*/
-static void busRelease(struct W25SPIM *memory)
+static void busRelease(struct W25QQuad *memory)
 {
   if (!memory->blocking)
     ifSetCallback(memory->spim, NULL, NULL);
   ifSetParam(memory->spim, IF_RELEASE, NULL);
 }
 /*----------------------------------------------------------------------------*/
-static bool changeDriverStrength(struct W25SPIM *memory,
+static bool changeDriverStrength(struct W25QQuad *memory,
     enum W25DriverStrength strength)
 {
   if (strength == W25_DRV_DEFAULT)
@@ -109,21 +113,43 @@ static bool changeDriverStrength(struct W25SPIM *memory,
   return current == expected;
 }
 /*----------------------------------------------------------------------------*/
-static bool changeQuadMode(struct W25SPIM *memory, bool enabled)
+static void changePowerDownMode(struct W25QQuad *memory, bool enable, bool qpi)
 {
-  const uint8_t mask = enabled ? SR2_QE : 0;
-  uint8_t status = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_2);
+  const uint8_t command = enable ? CMD_POWER_DOWN : CMD_POWER_DOWN_RELEASE;
 
-  if ((status & SR2_QE) != mask)
+  ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
+
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
+
+  if (qpi)
   {
-    writeStatusRegister(memory, CMD_WRITE_STATUS_REGISTER_2, mask, false);
-    status = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_2);
+    /* Send release command in parallel mode to exit QPI Power Down */
+    ifSetParam(memory->spim, IF_SPIM_COMMAND_PARALLEL, NULL);
+    ifWrite(memory->spim, NULL, 0);
   }
 
-  return (status & SR2_QE) == mask;
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
+  ifWrite(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
-static void contextReset(struct W25SPIM *memory)
+static bool changeQuadMode(struct W25QQuad *memory, bool enabled)
+{
+  uint8_t current = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_2);
+  const uint8_t expected = enabled ? (current | SR2_QE) : (current & ~SR2_QE);
+
+  if (current != expected)
+  {
+    writeStatusRegister(memory, CMD_WRITE_STATUS_REGISTER_2, expected, false);
+    current = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_2);
+  }
+
+  return current == expected;
+}
+/*----------------------------------------------------------------------------*/
+static void contextReset(struct W25QQuad *memory)
 {
   memory->context.buffer = NULL;
   memory->context.left = 0;
@@ -132,7 +158,7 @@ static void contextReset(struct W25SPIM *memory)
   memory->context.state = STATE_IDLE;
 }
 /*----------------------------------------------------------------------------*/
-static void eraseBlock64KB(struct W25SPIM *memory, uint32_t position)
+static void eraseBlock64KB(struct W25QQuad *memory, uint32_t position)
 {
   const uint32_t address = toLittleEndian32(position);
   uint8_t command;
@@ -159,7 +185,7 @@ static void eraseBlock64KB(struct W25SPIM *memory, uint32_t position)
   ifWrite(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
-static void eraseSector4KB(struct W25SPIM *memory, uint32_t position)
+static void eraseSector4KB(struct W25QQuad *memory, uint32_t position)
 {
   const uint32_t address = toLittleEndian32(position);
   uint8_t command;
@@ -186,7 +212,7 @@ static void eraseSector4KB(struct W25SPIM *memory, uint32_t position)
   ifWrite(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
-static void exitQpiXipMode(struct W25SPIM *memory)
+static void exitQpiXipMode(struct W25QQuad *memory)
 {
   uint8_t pattern[9];
 
@@ -203,9 +229,14 @@ static void exitQpiXipMode(struct W25SPIM *memory)
   ifWrite(memory->spim, pattern, sizeof(pattern));
 }
 /*----------------------------------------------------------------------------*/
+static uint32_t getCapacityFromInfo(uint8_t capacity)
+{
+  return (capacity >= 0x15 && capacity <= 0x22) ? (1UL << capacity) : 0;
+}
+/*----------------------------------------------------------------------------*/
 static void interruptHandler(void *argument)
 {
-  struct W25SPIM * const memory = argument;
+  struct W25QQuad * const memory = argument;
   const enum Result status = ifGetParam(memory->spim, IF_STATUS, NULL);
   bool event = false;
 
@@ -314,7 +345,7 @@ static void interruptHandler(void *argument)
     memory->callback(memory->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
-static void makeReadCommandValues(const struct W25SPIM *memory,
+static void makeReadCommandValues(const struct W25QQuad *memory,
     uint8_t *command, uint8_t *delay)
 {
   if (memory->extended && !memory->shrink)
@@ -341,8 +372,14 @@ static void makeReadCommandValues(const struct W25SPIM *memory,
       }
       else
       {
+        /*
+         * In QPI mode the number of dummy clocks may be configured
+         * for 0Bh, 0Ch and EBh commands used with Set Read Parameters command,
+         * the default number after power up is device-dependent. In SPI mode
+         * the number of dummy clocks is fixed to 4.
+         */
         *command = CMD_FAST_READ_QUAD_IO;
-        *delay = 2; /* 4 clocks when not in QPI mode, 2 clocks per byte */
+        *delay = 2; /* 4 clocks, 2 clocks per byte */
       }
     }
     else
@@ -361,7 +398,7 @@ static void makeReadCommandValues(const struct W25SPIM *memory,
   }
 }
 /*----------------------------------------------------------------------------*/
-static void pageProgram(struct W25SPIM *memory, uint32_t position,
+static void pageProgram(struct W25QQuad *memory, uint32_t position,
     const void *buffer, size_t length)
 {
   const uint32_t address = toLittleEndian32(position);
@@ -397,7 +434,7 @@ static void pageProgram(struct W25SPIM *memory, uint32_t position,
   ifWrite(memory->spim, buffer, length);
 }
 /*----------------------------------------------------------------------------*/
-static void pageRead(struct W25SPIM *memory, uint32_t position,
+static void pageRead(struct W25QQuad *memory, uint32_t position,
     void *buffer, size_t length)
 {
   const uint32_t address = toLittleEndian32(position);
@@ -438,7 +475,7 @@ static void pageRead(struct W25SPIM *memory, uint32_t position,
   }
 }
 /*----------------------------------------------------------------------------*/
-static void pollStatusRegister(struct W25SPIM *memory, uint8_t command,
+static void pollStatusRegister(struct W25QQuad *memory, uint8_t command,
     uint8_t bit)
 {
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
@@ -453,7 +490,7 @@ static void pollStatusRegister(struct W25SPIM *memory, uint8_t command,
   ifRead(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
-static struct JedecInfo readJedecInfo(struct W25SPIM *memory)
+static struct JedecInfo readJedecInfo(struct W25QQuad *memory)
 {
   struct JedecInfo info;
 
@@ -471,7 +508,7 @@ static struct JedecInfo readJedecInfo(struct W25SPIM *memory)
   return info;
 }
 /*----------------------------------------------------------------------------*/
-static uint8_t readStatusRegister(struct W25SPIM *memory, uint8_t command)
+static uint8_t readStatusRegister(struct W25QQuad *memory, uint8_t command)
 {
   uint8_t data;
 
@@ -489,7 +526,7 @@ static uint8_t readStatusRegister(struct W25SPIM *memory, uint8_t command)
   return data;
 }
 /*----------------------------------------------------------------------------*/
-static void waitMemoryBusy(struct W25SPIM *memory)
+static void waitMemoryBusy(struct W25QQuad *memory)
 {
   uint8_t status;
 
@@ -500,7 +537,7 @@ static void waitMemoryBusy(struct W25SPIM *memory)
   while (status & SR1_BUSY);
 }
 /*----------------------------------------------------------------------------*/
-static void writeEnable(struct W25SPIM *memory, bool nonvolatile)
+static void writeEnable(struct W25QQuad *memory, bool nonvolatile)
 {
   const uint8_t command = nonvolatile ?
       CMD_WRITE_ENABLE : CMD_WRITE_ENABLE_VOLATILE;
@@ -516,7 +553,7 @@ static void writeEnable(struct W25SPIM *memory, bool nonvolatile)
   ifWrite(memory->spim, NULL, 0);
 }
 /*----------------------------------------------------------------------------*/
-static void writeStatusRegister(struct W25SPIM *memory, uint8_t command,
+static void writeStatusRegister(struct W25QQuad *memory, uint8_t command,
     uint8_t value, bool nonvolatile)
 {
   /* Enable write mode */
@@ -538,7 +575,7 @@ static void writeStatusRegister(struct W25SPIM *memory, uint8_t command,
   waitMemoryBusy(memory);
 }
 /*----------------------------------------------------------------------------*/
-void w25MemoryMappingDisable(struct W25SPIM *memory)
+void w25MemoryMappingDisable(struct W25QQuad *memory)
 {
   ifSetParam(memory->spim, IF_SPIM_INDIRECT, NULL);
 
@@ -561,7 +598,7 @@ void w25MemoryMappingDisable(struct W25SPIM *memory)
   busRelease(memory);
 }
 /*----------------------------------------------------------------------------*/
-void w25MemoryMappingEnable(struct W25SPIM *memory)
+void w25MemoryMappingEnable(struct W25QQuad *memory)
 {
   const uint8_t post = memory->xip ? XIP_MODE_ENTER : XIP_MODE_EXIT;
   uint8_t command;
@@ -606,12 +643,12 @@ void w25MemoryMappingEnable(struct W25SPIM *memory)
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInit(void *object, const void *configBase)
 {
-  const struct W25SPIMConfig * const config = configBase;
+  const struct W25QQuadConfig * const config = configBase;
   assert(config != NULL);
   assert(config->spim != NULL);
   assert(config->strength < W25_DRV_END);
 
-  struct W25SPIM * const memory = object;
+  struct W25QQuad * const memory = object;
   struct JedecInfo info;
   enum Result res = E_OK;
 
@@ -624,6 +661,17 @@ static enum Result memoryInit(void *object, const void *configBase)
   memory->shrink = config->shrink;
   memory->xip = false;
   contextReset(memory);
+
+  /* Lock the interface */
+  busAcquire(memory);
+  /* Explicitly enter indirect mode */
+  ifSetParam(memory->spim, IF_SPIM_INDIRECT, NULL);
+  /* Exit power down mode */
+  changePowerDownMode(memory, false, true);
+  /* Unlock the interface */
+  busRelease(memory);
+
+  udelay(MEMORY_RESET_TIMEOUT);
 
   /* Lock the interface */
   ifSetParam(memory->spim, IF_ACQUIRE, NULL);
@@ -643,7 +691,7 @@ static enum Result memoryInit(void *object, const void *configBase)
   if (!(capabilities & NOR_HAS_DIO))
     return E_INTERFACE;
 
-  memory->capacity = norGetCapacityByJedecInfo(&info);
+  memory->capacity = getCapacityFromInfo(info.capacity);
   if (!memory->capacity)
     return E_DEVICE;
   if (memory->capacity > (1UL << 24))
@@ -694,7 +742,7 @@ static void memoryDeinit(void *)
 static void memorySetCallback(void *object, void (*callback)(void *),
     void *argument)
 {
-  struct W25SPIM * const memory = object;
+  struct W25QQuad * const memory = object;
 
   memory->callbackArgument = argument;
   memory->callback = callback;
@@ -702,7 +750,7 @@ static void memorySetCallback(void *object, void (*callback)(void *),
 /*----------------------------------------------------------------------------*/
 static enum Result memoryGetParam(void *object, int parameter, void *data)
 {
-  struct W25SPIM * const memory = object;
+  struct W25QQuad * const memory = object;
 
   switch ((enum FlashParameter)parameter)
   {
@@ -760,7 +808,7 @@ static enum Result memoryGetParam(void *object, int parameter, void *data)
 /*----------------------------------------------------------------------------*/
 static enum Result memorySetParam(void *object, int parameter, const void *data)
 {
-  struct W25SPIM * const memory = object;
+  struct W25QQuad * const memory = object;
 
   switch ((enum FlashParameter)parameter)
   {
@@ -840,6 +888,14 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
         return E_ADDRESS;
     }
 
+    case IF_FLASH_SUSPEND:
+      changePowerDownMode(memory, true, false);
+      return E_OK;
+
+    case IF_FLASH_RESUME:
+      changePowerDownMode(memory, false, false);
+      return E_OK;
+
     default:
       break;
   }
@@ -887,7 +943,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
 /*----------------------------------------------------------------------------*/
 static size_t memoryRead(void *object, void *buffer, size_t length)
 {
-  struct W25SPIM * const memory = object;
+  struct W25QQuad * const memory = object;
 
   if (length > memory->capacity - memory->position)
     length = memory->capacity - memory->position;
@@ -923,7 +979,7 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
 /*----------------------------------------------------------------------------*/
 static size_t memoryWrite(void *object, const void *buffer, size_t length)
 {
-  struct W25SPIM * const memory = object;
+  struct W25QQuad * const memory = object;
 
   if (length > memory->capacity - memory->position)
     length = memory->capacity - memory->position;

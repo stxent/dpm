@@ -1,22 +1,22 @@
 /*
- * memory/w25_spim.h
+ * memory/w25q_quad.h
  * Copyright (C) 2023 xent
  * Project is distributed under the terms of the MIT License
  */
 
-#ifndef DPM_MEMORY_W25_SPIM_H_
-#define DPM_MEMORY_W25_SPIM_H_
+#ifndef DPM_MEMORY_W25Q_QUAD_H_
+#define DPM_MEMORY_W25Q_QUAD_H_
 /*----------------------------------------------------------------------------*/
 #include <dpm/memory/w25.h>
 #include <xcore/interface.h>
 #include <stdbool.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
-extern const struct InterfaceClass * const W25SPIM;
+extern const struct InterfaceClass * const W25QQuad;
 
-struct W25SPIMConfig
+struct W25QQuadConfig
 {
-  /** Mandatory: underlying SPIM interface. */
+  /** Mandatory: SPIM interface. */
   void *spim;
   /** Optional: output driver strength. */
   enum W25DriverStrength strength;
@@ -28,7 +28,7 @@ struct W25SPIMConfig
   bool xip;
 };
 
-struct W25SPIM
+struct W25QQuad
 {
   struct Interface base;
 
@@ -72,9 +72,9 @@ struct W25SPIM
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS
 
-void w25MemoryMappingDisable(struct W25SPIM *);
-void w25MemoryMappingEnable(struct W25SPIM *);
+void w25MemoryMappingDisable(struct W25QQuad *);
+void w25MemoryMappingEnable(struct W25QQuad *);
 
 END_DECLS
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_MEMORY_W25_SPIM_H_ */
+#endif /* DPM_MEMORY_W25Q_QUAD_H_ */

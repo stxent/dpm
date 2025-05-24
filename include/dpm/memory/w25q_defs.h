@@ -1,11 +1,11 @@
 /*
- * memory/w25_defs.h
+ * memory/w25q_defs.h
  * Copyright (C) 2023 xent
  * Project is distributed under the terms of the MIT License
  */
 
-#ifndef DPM_MEMORY_W25_DEFS_H_
-#define DPM_MEMORY_W25_DEFS_H_
+#ifndef DPM_MEMORY_W25Q_DEFS_H_
+#define DPM_MEMORY_W25Q_DEFS_H_
 /*----------------------------------------------------------------------------*/
 #include <xcore/bits.h>
 #include <stdint.h>
@@ -81,33 +81,37 @@
 #define CMD_RESET_ENABLE                  0x66
 #define CMD_SET_READ_PARAMETERS           0xC0
 /*----------------------------------------------------------------------------*/
+/* Reset and power down release timeout in us */
+#define MEMORY_RESET_TIMEOUT              30
+
 #define MEMORY_PAGE_SIZE                  256
 #define MEMORY_SECTOR_4KB_SIZE            4096
 #define MEMORY_BLOCK_32KB_SIZE            32768
 #define MEMORY_BLOCK_64KB_SIZE            65536
 /*------------------Status Register 1-----------------------------------------*/
-#define SR1_BUSY  BIT(0)
-#define SR1_WEL   BIT(1)
-#define SR1_BP0   BIT(2)
-#define SR1_BP1   BIT(3)
-#define SR1_BP2   BIT(4)
-#define SR1_BP3   BIT(5)
-#define SR1_TB    BIT(6)
-#define SR1_SRP   BIT(7)
+#define SR1_BUSY            BIT(0)
+#define SR1_WEL             BIT(1)
+#define SR1_BP0             BIT(2)
+#define SR1_BP1             BIT(3)
+#define SR1_BP2             BIT(4)
+#define SR1_BP3             BIT(5)
+#define SR1_TB              BIT(6)
+#define SR1_SRP             BIT(7)
 /*------------------Status Register 2-----------------------------------------*/
-#define SR2_SRL   BIT(0)
-#define SR2_QE    BIT(1)
-#define SR2_LB1   BIT(3)
-#define SR2_LB2   BIT(4)
-#define SR2_LB3   BIT(5)
-#define SR2_CMP   BIT(6)
-#define SR2_SUS   BIT(7)
+#define SR2_SRL             BIT(0)
+#define SR2_QE              BIT(1)
+#define SR2_LB1             BIT(3)
+#define SR2_LB2             BIT(4)
+#define SR2_LB3             BIT(5)
+#define SR2_CMP             BIT(6)
+#define SR2_SUS             BIT(7)
 /*------------------Status Register 3-----------------------------------------*/
-#define SR3_ADS   BIT(0)
-#define SR3_ADP   BIT(1)
-#define SR3_WPS   BIT(2)
-#define SR3_DRV0  BIT(5)
-#define SR3_DRV1  BIT(6)
+#define SR3_ADS             BIT(0)
+#define SR3_ADP             BIT(1)
+#define SR3_WPS             BIT(2)
+#define SR3_DRV0            BIT(5)
+#define SR3_DRV1            BIT(6)
+#define SR3_HOLD_RST        BIT(7)
 
 #define SR3_DRV_MASK        BIT_FIELD(MASK(2), 5)
 #define SR3_DRV(value)      BIT_FIELD((value), 5)
@@ -118,4 +122,4 @@
 /* Bits M5-4 must not be equal to 0b10 */
 #define XIP_MODE_EXIT       0xFF
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_MEMORY_W25_DEFS_H_ */
+#endif /* DPM_MEMORY_W25Q_DEFS_H_ */

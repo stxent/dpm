@@ -1,21 +1,21 @@
 /*
- * memory/w25_spi.h
+ * memory/w25q_serial.h
  * Copyright (C) 2024 xent
  * Project is distributed under the terms of the MIT License
  */
 
-#ifndef DPM_MEMORY_W25_SPI_H_
-#define DPM_MEMORY_W25_SPI_H_
+#ifndef DPM_MEMORY_W25Q_SERIAL_H_
+#define DPM_MEMORY_W25Q_SERIAL_H_
 /*----------------------------------------------------------------------------*/
 #include <dpm/memory/w25.h>
 #include <halm/pin.h>
 #include <xcore/interface.h>
 /*----------------------------------------------------------------------------*/
-extern const struct InterfaceClass * const W25SPI;
+extern const struct InterfaceClass * const W25QSerial;
 
-struct W25SPIConfig
+struct W25QSerialConfig
 {
-  /** Mandatory: underlying SPI interface. */
+  /** Mandatory: SPI interface. */
   void *spi;
   /**
    * Optional: timer for periodic polling of busy flag during
@@ -35,7 +35,7 @@ struct W25SPIConfig
   enum W25DriverStrength strength;
 };
 
-struct W25SPI
+struct W25QSerial
 {
   struct Interface base;
 
@@ -81,4 +81,4 @@ struct W25SPI
   bool subsectors;
 };
 /*----------------------------------------------------------------------------*/
-#endif /* DPM_MEMORY_W25_SPI_H_ */
+#endif /* DPM_MEMORY_W25Q_SERIAL_H_ */
