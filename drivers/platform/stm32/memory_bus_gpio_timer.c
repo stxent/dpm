@@ -133,7 +133,6 @@ static void tmrSetCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct MemoryBusGpioTimer * const timer = object;
-  STM_TIM_Type * const reg = timer->base.reg;
 
   timer->callbackArgument = argument;
   timer->callback = callback;

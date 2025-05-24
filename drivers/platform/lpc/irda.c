@@ -94,7 +94,7 @@ static void serialInterruptHandler(void *object)
 {
   struct Irda * const interface = object;
   LPC_UART_Type * const reg = interface->base.reg;
-  const uint32_t iir = reg->IIR & IIR_INTID_MASK;
+  const uint32_t iir = IIR_INTID_VALUE(reg->IIR);
   uint32_t lsr = reg->LSR;
   bool event = false;
 
@@ -151,7 +151,7 @@ static void serialInterruptHandler(void *object)
   }
 
   /* Handle line timeout */
-  if (iir == IIR_INTID_CTI && !byteQueueEmpty(&interface->rxQueue))
+  if (iir == INTID_CTI && !byteQueueEmpty(&interface->rxQueue))
   {
     event = true;
   }
