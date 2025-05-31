@@ -10,7 +10,6 @@
 #include <halm/generic/pointer_list.h>
 #include <halm/pwm.h>
 #include <halm/timer.h>
-#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct TimerClass * const SoftwarePwmUnit;
 

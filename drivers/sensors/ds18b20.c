@@ -10,7 +10,6 @@
 #include <xcore/crc/crc8_dallas.h>
 #include <xcore/interface.h>
 #include <assert.h>
-#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 #define LENGTH_READ_SCRATCHPAD  1
 #define LENGTH_SCRATCHPAD       9

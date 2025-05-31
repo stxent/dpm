@@ -8,7 +8,6 @@
 #define DPM_SENSORS_DS18B20_H_
 /*----------------------------------------------------------------------------*/
 #include <dpm/sensors/sensor.h>
-#include <stdbool.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct SensorClass * const DS18B20;

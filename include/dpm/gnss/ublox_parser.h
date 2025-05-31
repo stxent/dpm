@@ -9,7 +9,6 @@
 /*----------------------------------------------------------------------------*/
 #include <dpm/gnss/ublox_defs.h>
 #include <xcore/helpers.h>
-#include <stdbool.h>
 #include <stddef.h>
 /*----------------------------------------------------------------------------*/
 struct UbloxConfigMessage

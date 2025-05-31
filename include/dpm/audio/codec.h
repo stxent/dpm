@@ -8,7 +8,6 @@
 #define DPM_AUDIO_CODEC_H_
 /*----------------------------------------------------------------------------*/
 #include <xcore/entity.h>
-#include <stdbool.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
 struct WorkQueue;

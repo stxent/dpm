@@ -8,7 +8,6 @@
 #define DPM_PLATFORM_LPC_SGPIO_BUS_DMA_H_
 /*----------------------------------------------------------------------------*/
 #include <halm/platform/lpc/gpdma_oneshot.h>
-#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct DmaClass * const SgpioBusDma;
 

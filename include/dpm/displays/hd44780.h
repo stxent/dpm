@@ -9,7 +9,6 @@
 /*----------------------------------------------------------------------------*/
 #include <dpm/displays/display.h>
 #include <halm/pin.h>
-#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const HD44780;
 

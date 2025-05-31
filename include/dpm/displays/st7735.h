@@ -9,7 +9,6 @@
 /*----------------------------------------------------------------------------*/
 #include <halm/pin.h>
 #include <xcore/interface.h>
-#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const ST7735;
 

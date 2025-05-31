@@ -9,7 +9,6 @@
 /*----------------------------------------------------------------------------*/
 #include <dpm/sensors/sensor.h>
 #include <halm/pin.h>
-#include <stdbool.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct SensorClass * const XPT2046;

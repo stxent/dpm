@@ -8,7 +8,6 @@
 #define DPM_MEMORY_M24_H_
 /*----------------------------------------------------------------------------*/
 #include <xcore/interface.h>
-#include <stdbool.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const FM24;

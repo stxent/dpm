@@ -9,7 +9,6 @@
 /*----------------------------------------------------------------------------*/
 #include <dpm/gnss/gnss.h>
 #include <xcore/entity.h>
-#include <stdbool.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const Ublox;
 

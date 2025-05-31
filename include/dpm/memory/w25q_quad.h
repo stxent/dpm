@@ -9,7 +9,6 @@
 /*----------------------------------------------------------------------------*/
 #include <dpm/memory/w25.h>
 #include <xcore/interface.h>
-#include <stdbool.h>
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct InterfaceClass * const W25QQuad;
