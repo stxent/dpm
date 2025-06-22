@@ -319,6 +319,10 @@ static enum Result memoryInitGeneric(void *object, const void *configBase,
 static void memoryDeinit(void *object)
 {
   struct M24 * const memory = object;
+
+  timerDisable(memory->timer);
+  timerSetCallback(memory->timer, NULL, NULL);
+
   free(memory->transfer.buffer);
 }
 /*----------------------------------------------------------------------------*/

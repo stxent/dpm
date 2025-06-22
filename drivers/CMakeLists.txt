@@ -6,6 +6,7 @@ add_subdirectory("displays")
 add_subdirectory("gnss")
 add_subdirectory("memory")
 add_subdirectory("platform")
+add_subdirectory("radio")
 add_subdirectory("sensors")
 add_subdirectory("usb")
 

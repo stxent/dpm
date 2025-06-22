@@ -671,7 +671,10 @@ static void memoryDeinit(void *object)
   struct W25QSerial * const memory = object;
 
   if (memory->timer != NULL)
+  {
+    timerDisable(memory->timer);
     timerSetCallback(memory->timer, NULL, NULL);
+  }
 }
 /*----------------------------------------------------------------------------*/
 static void memorySetCallback(void *object, void (*callback)(void *),
