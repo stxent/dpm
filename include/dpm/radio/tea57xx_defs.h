@@ -14,8 +14,14 @@ enum
   FLAG_RESET    = 0x01,
   FLAG_CONFIG   = 0x02,
   FLAG_STATUS   = 0x04,
-  FLAG_SUSPEND  = 0x08
+  FLAG_SUSPEND  = 0x08,
+  FLAG_SEARCH   = 0x10
 };
+
+#define FREQUENCY_INTERMEDIATE          225000
+#define FREQUENCY_INITIAL               100000000
+#define FREQUENCY_XTAL_HS               50000 /* 13 MHz or 6.5 MHz */
+#define FREQUENCY_XTAL_LS               32768 /* 32768 Hz */
 /*------------------Read Data Byte 1------------------------------------------*/
 #define RDB1_PLL(value)                 BIT_FIELD((value), 0)
 #define RDB1_PLL_MASK                   BIT_FIELD(MASK(6), 0)
