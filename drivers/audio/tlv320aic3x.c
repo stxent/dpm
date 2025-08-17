@@ -227,6 +227,7 @@ static void aic3xSetIdleCallback(void *, void (*)(void *), void *);
 static void aic3xSetUpdateCallback(void *, void (*)(void *), void *);
 static void aic3xSetUpdateWorkQueue(void *, struct WorkQueue *);
 static void aic3xReset(void *);
+static void aic3xSuspend(void *);
 static bool aic3xUpdate(void *);
 /*----------------------------------------------------------------------------*/
 const struct CodecClass * const TLV320AIC3x = &(const struct CodecClass){
@@ -257,6 +258,7 @@ const struct CodecClass * const TLV320AIC3x = &(const struct CodecClass){
 
     .check = aic3xCheck,
     .reset = aic3xReset,
+    .suspend = aic3xSuspend,
     .update = aic3xUpdate
 };
 /*----------------------------------------------------------------------------*/
@@ -308,7 +310,7 @@ static inline bool isLastConfigGroupStep(enum ConfigStep step)
 static uint8_t makeRegAdcGainCtrl(const struct TLV320AIC3x *codec,
     enum CodecChannel channel)
 {
-  if (codec->config.input.path != AIC3X_NONE
+  if (!codec->suspend && codec->config.input.path != AIC3X_NONE
       && (codec->config.input.channels & channel)
       && (codec->config.input.channels & codec->config.input.unmute))
   {
@@ -326,8 +328,8 @@ static uint8_t makeRegAgcCtrlB(const struct TLV320AIC3x *codec,
 {
   uint8_t gain;
 
-  if (codec->config.input.path != AIC3X_NONE && codec->config.input.agc
-      && (codec->config.input.channels & channel))
+  if (!codec->suspend && codec->config.input.path != AIC3X_NONE
+      && codec->config.input.agc && (codec->config.input.channels & channel))
   {
     gain = levelToAnalogInputGain(channel == CHANNEL_LEFT ?
         codec->config.input.maxGainL : codec->config.input.maxGainR);
@@ -355,7 +357,7 @@ static uint8_t makeRegCodecDataPathSetup(const struct TLV320AIC3x *codec)
 {
   uint8_t value = 0;
 
-  if (codec->config.output.path != AIC3X_NONE)
+  if (!codec->suspend && codec->config.output.path != AIC3X_NONE)
   {
     if (codec->config.output.channels & CHANNEL_LEFT)
       value |= DATA_PATH_SETUP_LDAC(DAC_PATH_SAME);
@@ -378,7 +380,7 @@ static uint8_t makeRegDacMux(const struct TLV320AIC3x *codec)
 {
   uint8_t value = DAC_MUX_VOLUME_CONTROL(DAC_VOLUME_INDEPENDENT);
 
-  if (codec->config.output.path != AIC3X_NONE)
+  if (!codec->suspend && codec->config.output.path != AIC3X_NONE)
     value |= DAC_MUX_RDAC_CONTROL(DAC_MUX_1) | DAC_MUX_LDAC_CONTROL(DAC_MUX_1);
 
   return value;
@@ -461,7 +463,7 @@ static uint8_t makeRegDacToLOPMVol(const struct TLV320AIC3x *codec,
 static uint8_t makeRegDacVol(const struct TLV320AIC3x *codec,
     enum CodecChannel channel)
 {
-  if (codec->config.output.path != AIC3X_NONE
+  if (!codec->suspend && codec->config.output.path != AIC3X_NONE
       && (codec->config.output.channels & channel))
   {
     return DAC_DIGITAL_VOL_GAIN(0);
@@ -474,7 +476,7 @@ static uint8_t makeRegHpLCom(const struct TLV320AIC3x *codec)
 {
   uint8_t value = 0;
 
-  if (codec->config.output.path != AIC3X_NONE)
+  if (!codec->suspend && codec->config.output.path != AIC3X_NONE)
   {
     if (codec->config.output.channels & CHANNEL_LEFT)
       value |= HPLCOM_LDAC_POWER_CONTROL;
@@ -639,7 +641,7 @@ static uint8_t makeRegMicLine1ToAdcCtrl(const struct TLV320AIC3x *codec,
 {
   uint8_t value;
 
-  if (codec->config.input.path != AIC3X_NONE
+  if (!codec->suspend && codec->config.input.path != AIC3X_NONE
       && (codec->config.input.channels & channel))
   {
     value = MIC_LINE_LP_RP_SOFT_STEPPING(MIC_LINE_SOFT_STEPPING_DISABLED)
@@ -677,7 +679,7 @@ static uint8_t makeRegMicLine2ToAdcCtrl(const struct TLV320AIC3x *codec,
 
   uint8_t value = MIC_LINE_LP_RP_GAIN(MIC_LINE_GAIN_DISABLED);
 
-  if (codec->config.input.path != AIC3X_NONE
+  if (!codec->suspend && codec->config.input.path != AIC3X_NONE
       && (codec->config.input.channels & channel))
   {
     if (codec->type == AIC3X_TYPE_3101 || codec->type == AIC3X_TYPE_3105)
@@ -766,7 +768,8 @@ static size_t makeRegAgcCtrlTransfer(const struct TLV320AIC3x *codec,
   buffer[0] = channel == CHANNEL_LEFT ? REG_LAGC_CTRL_A : REG_RAGC_CTRL_A;
   buffer[2] = makeRegAgcCtrlB(codec, channel);
 
-  if (codec->config.input.path != AIC3X_NONE && codec->config.input.agc)
+  if (!codec->suspend && codec->config.input.path != AIC3X_NONE
+      && codec->config.input.agc)
   {
     buffer[1] = codec->config.input.agcControlA;
     buffer[3] = codec->config.input.agcControlC;
@@ -1481,6 +1484,7 @@ static enum Result aic3xInit(void *object, const void *arguments)
   codec->type = config->type;
   codec->pending = false;
   codec->ready = false;
+  codec->suspend = false;
 
   codec->transfer.groups = 0;
   codec->transfer.passed = 0;
@@ -1523,7 +1527,7 @@ static void aic3xDeinit(void *object)
   timerSetCallback(codec->timer, NULL, NULL);
 }
 /*----------------------------------------------------------------------------*/
-void aic3xCheck(void *object)
+static void aic3xCheck(void *object)
 {
   struct TLV320AIC3x * const codec = object;
 
@@ -1531,7 +1535,7 @@ void aic3xCheck(void *object)
     invokeAction(codec, GROUP_CHECK);
 }
 /*----------------------------------------------------------------------------*/
-uint8_t aic3xGetInputGain(const void *object, enum CodecChannel channel)
+static uint8_t aic3xGetInputGain(const void *object, enum CodecChannel channel)
 {
   const struct TLV320AIC3x * const codec = object;
 
@@ -1554,7 +1558,7 @@ static enum CodecChannel aic3xGetInputMute(const void *object)
   return ~codec->config.input.unmute & CHANNEL_MASK;
 }
 /*----------------------------------------------------------------------------*/
-uint8_t aic3xGetOutputGain(const void *object, enum CodecChannel channel)
+static uint8_t aic3xGetOutputGain(const void *object, enum CodecChannel channel)
 {
   const struct TLV320AIC3x * const codec = object;
 
@@ -1577,19 +1581,19 @@ static enum CodecChannel aic3xGetOutputMute(const void *object)
   return ~codec->config.output.unmute & CHANNEL_MASK;
 }
 /*----------------------------------------------------------------------------*/
-bool aic3xIsAGCEnabled(const void *object)
+static bool aic3xIsAGCEnabled(const void *object)
 {
   const struct TLV320AIC3x * const codec = object;
   return codec->config.input.agc;
 }
 /*----------------------------------------------------------------------------*/
-bool aic3xIsReady(const void *object)
+static bool aic3xIsReady(const void *object)
 {
   const struct TLV320AIC3x * const codec = object;
   return codec->ready;
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetAGCEnabled(void *object, bool state)
+static void aic3xSetAGCEnabled(void *object, bool state)
 {
   struct TLV320AIC3x * const codec = object;
 
@@ -1602,7 +1606,8 @@ void aic3xSetAGCEnabled(void *object, bool state)
   }
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetInputGain(void *object, enum CodecChannel channel, uint8_t gain)
+static void aic3xSetInputGain(void *object, enum CodecChannel channel,
+    uint8_t gain)
 {
   struct TLV320AIC3x * const codec = object;
   bool update = false;
@@ -1638,7 +1643,8 @@ static void aic3xSetInputMute(void *object, enum CodecChannel channels)
     invokeAction(codec, GROUP_INPUT);
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetInputPath(void *object, int path, enum CodecChannel channels)
+static void aic3xSetInputPath(void *object, int path,
+    enum CodecChannel channels)
 {
   struct TLV320AIC3x * const codec = object;
 
@@ -1657,7 +1663,8 @@ void aic3xSetInputPath(void *object, int path, enum CodecChannel channels)
   }
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetOutputGain(void *object, enum CodecChannel channel, uint8_t gain)
+static void aic3xSetOutputGain(void *object, enum CodecChannel channel,
+    uint8_t gain)
 {
   struct TLV320AIC3x * const codec = object;
   bool update = false;
@@ -1687,7 +1694,8 @@ static void aic3xSetOutputMute(void *object, enum CodecChannel channels)
     invokeAction(codec, GROUP_OUTPUT_LEVEL);
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetOutputPath(void *object, int path, enum CodecChannel channels)
+static void aic3xSetOutputPath(void *object, int path,
+    enum CodecChannel channels)
 {
   struct TLV320AIC3x * const codec = object;
 
@@ -1709,7 +1717,7 @@ void aic3xSetOutputPath(void *object, int path, enum CodecChannel channels)
   }
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetSampleRate(void *object, uint32_t rate)
+static void aic3xSetSampleRate(void *object, uint32_t rate)
 {
   struct TLV320AIC3x * const codec = object;
 
@@ -1722,7 +1730,7 @@ void aic3xSetSampleRate(void *object, uint32_t rate)
   }
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetErrorCallback(void *object, void (*callback)(void *),
+static void aic3xSetErrorCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct TLV320AIC3x * const codec = object;
@@ -1733,7 +1741,7 @@ void aic3xSetErrorCallback(void *object, void (*callback)(void *),
   codec->errorCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetIdleCallback(void *object, void (*callback)(void *),
+static void aic3xSetIdleCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct TLV320AIC3x * const codec = object;
@@ -1744,7 +1752,7 @@ void aic3xSetIdleCallback(void *object, void (*callback)(void *),
   codec->idleCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetUpdateCallback(void *object, void (*callback)(void *),
+static void aic3xSetUpdateCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct TLV320AIC3x * const codec = object;
@@ -1756,7 +1764,7 @@ void aic3xSetUpdateCallback(void *object, void (*callback)(void *),
   codec->updateCallback = callback;
 }
 /*----------------------------------------------------------------------------*/
-void aic3xSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
+static void aic3xSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct TLV320AIC3x * const codec = object;
 
@@ -1766,18 +1774,28 @@ void aic3xSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
   codec->wq = wq;
 }
 /*----------------------------------------------------------------------------*/
-void aic3xReset(void *object)
+static void aic3xReset(void *object)
 {
   struct TLV320AIC3x * const codec = object;
 
   codec->ready = false;
+  codec->suspend = false;
   codec->transfer.passed = 0;
 
   invokeAction(codec, GROUP_RESET | GROUP_GENERIC | GROUP_RATE | GROUP_PATH
       | GROUP_INPUT | GROUP_OUTPUT);
 }
 /*----------------------------------------------------------------------------*/
-bool aic3xUpdate(void *object)
+static void aic3xSuspend(void *object)
+{
+  struct TLV320AIC3x * const codec = object;
+
+  codec->suspend = true;
+
+  invokeAction(codec, GROUP_PATH | GROUP_INPUT | GROUP_OUTPUT);
+}
+/*----------------------------------------------------------------------------*/
+static bool aic3xUpdate(void *object)
 {
   struct TLV320AIC3x * const codec = object;
   bool busy;
@@ -1809,7 +1827,7 @@ bool aic3xUpdate(void *object)
         {
           const unsigned int index = countLeadingZeros32(mask);
 
-          atomicFetchAnd(&codec->transfer.groups, (uint16_t)(~(1 << index)));
+          atomicFetchAnd(&codec->transfer.groups, ~(1 << index));
           codec->transfer.passed |= 1 << index;
           codec->transfer.step = groupIndexToConfigStep(index);
         }
@@ -1844,9 +1862,15 @@ bool aic3xUpdate(void *object)
         break;
 
       case STATE_CHECK_START:
-        atomicFetchAnd(&codec->transfer.groups, (uint16_t)(~GROUP_CHECK));
-        codec->transfer.step = CHECK_GROUP_GENERIC;
-        codec->transfer.state = STATE_CHECK_UPDATE;
+        atomicFetchAnd(&codec->transfer.groups, ~GROUP_CHECK);
+
+        if (!codec->suspend)
+        {
+          codec->transfer.step = CHECK_GROUP_GENERIC;
+          codec->transfer.state = STATE_CHECK_UPDATE;
+        }
+        else
+          codec->transfer.state = STATE_CHECK_END;
 
         updated = true;
         break;

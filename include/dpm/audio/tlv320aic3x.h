@@ -92,6 +92,7 @@ struct TLV320AIC3x
   enum AIC3xType type;
   bool pending;
   bool ready;
+  bool suspend;
 
   struct
   {

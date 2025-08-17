@@ -49,6 +49,7 @@ struct CodecClass
 
   void (*check)(void *);
   void (*reset)(void *);
+  void (*suspend)(void *);
   bool (*update)(void *);
 };
 
@@ -229,7 +230,7 @@ static inline void codecSetSampleRate(void *codec, uint32_t rate)
 }
 
 /**
- * Reset a codec.
+ * Reset the codec.
  * Perform a software or a hardware reset and reconfigure the codec.
  * All previously configured parameters will be preserved.
  * @param codec Pointer to a Codec object.
@@ -237,6 +238,15 @@ static inline void codecSetSampleRate(void *codec, uint32_t rate)
 static inline void codecReset(void *codec)
 {
   ((const struct CodecClass *)CLASS(codec))->reset(codec);
+}
+
+/**
+ * Put the codec in a power saving mode.
+ * @param codec Pointer to a Codec object.
+ */
+static inline void codecSuspend(void *codec)
+{
+  ((const struct CodecClass *)CLASS(codec))->suspend(codec);
 }
 
 /**
