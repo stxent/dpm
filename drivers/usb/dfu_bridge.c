@@ -24,12 +24,12 @@ enum
 /*----------------------------------------------------------------------------*/
 static void bridgeReset(struct DfuBridge *);
 static void flashProgramTask(void *);
-static uint32_t getSectorEraseTime(const struct DfuBridge *, size_t);
-static bool isSectorAddress(const struct DfuBridge *, size_t);
+static uint32_t getSectorEraseTime(const struct DfuBridge *, uint32_t);
+static bool isSectorAddress(const struct DfuBridge *, uint32_t);
 static void onDetachRequest(void *, uint16_t);
-static size_t onDownloadRequest(void *, size_t, const void *, size_t,
+static size_t onDownloadRequest(void *, uint32_t, const void *, size_t,
     uint16_t *);
-static size_t onUploadRequest(void *, size_t, void *, size_t);
+static size_t onUploadRequest(void *, uint32_t, void *, size_t);
 static inline enum FlashParameter opTypeToEraseParam(uint8_t);
 /*----------------------------------------------------------------------------*/
 static enum Result bridgeInit(void *, const void *);
@@ -73,7 +73,7 @@ static void flashProgramTask(void *argument)
 }
 /*----------------------------------------------------------------------------*/
 static uint32_t getSectorEraseTime(const struct DfuBridge *loader,
-    size_t address)
+    uint32_t address)
 {
   const struct FlashGeometry * const region = flashFindRegion(loader->geometry,
       loader->regions, address);
@@ -81,7 +81,7 @@ static uint32_t getSectorEraseTime(const struct DfuBridge *loader,
   return region != NULL ? region->time : 0;
 }
 /*----------------------------------------------------------------------------*/
-static bool isSectorAddress(const struct DfuBridge *loader, size_t address)
+static bool isSectorAddress(const struct DfuBridge *loader, uint32_t address)
 {
   const struct FlashGeometry * const region = flashFindRegion(loader->geometry,
       loader->regions, address);
@@ -95,7 +95,7 @@ static void onDetachRequest(void *object, uint16_t)
   loader->reset();
 }
 /*----------------------------------------------------------------------------*/
-static size_t onDownloadRequest(void *object, size_t position,
+static size_t onDownloadRequest(void *object, uint32_t position,
     const void *buffer, size_t length, uint16_t *timeout)
 {
   struct DfuBridge * const loader = object;
@@ -160,11 +160,11 @@ static size_t onDownloadRequest(void *object, size_t position,
   return length;
 }
 /*----------------------------------------------------------------------------*/
-static size_t onUploadRequest(void *object, size_t position, void *buffer,
+static size_t onUploadRequest(void *object, uint32_t position, void *buffer,
     size_t length)
 {
   struct DfuBridge * const loader = object;
-  const size_t offset = position + loader->flashOffset;
+  const uint32_t offset = position + loader->flashOffset;
 
   if (offset + length > loader->flashSize)
     return 0;

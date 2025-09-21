@@ -21,11 +21,11 @@ struct DfuBridgeConfig
   /** Mandatory: flash memory interface. */
   void *flash;
   /** Mandatory: offset from the beginning of the flash memory. */
-  size_t offset;
+  uint32_t offset;
 
   /** Mandatory: geometry of the flash memory regions. */
   const struct FlashGeometry *geometry;
-  /** Mandatory: count of the flash memory regions. */
+  /** Mandatory: number of the flash memory regions. */
   size_t regions;
 
   /** Optional: disable firmware reading. */
