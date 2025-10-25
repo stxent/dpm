@@ -1,8 +1,13 @@
 # Copyright (C) 2018 xent
 # Project is distributed under the terms of the MIT License
 
-set(HAS_NXP_GPTIMER TRUE)
-set(HAS_NXP_SSP TRUE)
+if(NOT ${PLATFORM} MATCHES "LPC82X")
+    set(HAS_NXP_GPTIMER TRUE)
+    set(HAS_NXP_SSP TRUE)
+else()
+    set(HAS_NXP_GPTIMER FALSE)
+    set(HAS_NXP_SSP FALSE)
+endif()
 
 if(${PLATFORM} MATCHES "LPC17XX|LPC43XX")
     set(HAS_NXP_GPDMA TRUE)
