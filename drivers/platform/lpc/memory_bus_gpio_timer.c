@@ -56,7 +56,7 @@ static void setupChannels(struct MemoryBusGpioTimer *timer, uint8_t channel,
 {
   uint8_t mask = 0;
 
-  timer->trailing = gpTimerConfigMatchPin(channel, trailing);
+  timer->trailing = gpTimerConfigMatchPin(channel, trailing, false);
   mask |= 1 << timer->trailing;
 
   /* Only 3 channels are used, allocation always succeeds */

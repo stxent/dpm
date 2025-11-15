@@ -78,10 +78,10 @@ static void setupChannels(struct MemoryBusDmaTimer *timer,
 {
   uint8_t mask = 0;
 
-  timer->leading = gpTimerConfigMatchPin(channel, leading);
+  timer->leading = gpTimerConfigMatchPin(channel, leading, false);
   mask |= 1 << timer->leading;
 
-  timer->trailing = gpTimerConfigMatchPin(channel, trailing);
+  timer->trailing = gpTimerConfigMatchPin(channel, trailing, false);
   mask |= 1 << timer->trailing;
 
   timer->reset = gpTimerAllocateChannel(mask);
