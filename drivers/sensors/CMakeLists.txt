@@ -10,6 +10,7 @@ list(APPEND SOURCE_FILES "ms56xx_thermometer.c")
 list(APPEND SOURCE_FILES "sensor_handler.c")
 list(APPEND SOURCE_FILES "sht2x.c")
 list(APPEND SOURCE_FILES "sht2x_thermometer.c")
+list(APPEND SOURCE_FILES "thermistor_ntc.c")
 list(APPEND SOURCE_FILES "xpt2046.c")
 
 add_library(dpm_sensors OBJECT ${SOURCE_FILES})
