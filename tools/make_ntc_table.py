@@ -5,10 +5,11 @@ import math
 import os
 import textwrap
 
-TABLE_SIZE = 64
+TABLE_MIN = -32768
+TABLE_MAX = 32767
 
-def make_table(adc_max, adc_res, b_value, r_external, r_thermistor, lowside=False):
-    step = adc_max // TABLE_SIZE
+def make_table(size, adc_max, adc_res, b_value, r_external, r_thermistor, lowside=False):
+    step = adc_max // size
     kelvin_offset = 273.15
     t_ref = 25.0 + kelvin_offset
     lsb_offset = 2.0 / adc_res
@@ -25,8 +26,13 @@ def make_table(adc_max, adc_res, b_value, r_external, r_thermistor, lowside=Fals
             level = 1.0 - lsb_offset
         r_actual = (r_external * level) / (1.0 - level)
         t = 1.0 / (1.0 / t_ref - math.log(r_thermistor / r_actual) / b_value)
+        t_table = round((t - kelvin_offset) * 100.0)
+        if t_table < TABLE_MIN:
+            t_table = TABLE_MIN
+        elif t_table > TABLE_MAX:
+            t_table = TABLE_MAX
 
-        output.append(round((t - kelvin_offset) * 100.0))
+        output.append(t_table)
         raw += step
     return output
 
@@ -54,7 +60,7 @@ def generate_header(name, suffix):
         ''')
     return output
 
-def generate_source(table, name, suffix):
+def generate_source(table, name, suffix, size):
     output = textwrap.dedent(f'''\
         /*
          * {name}.c
@@ -64,7 +70,9 @@ def generate_source(table, name, suffix):
         #include <dpm/sensors/thermistor_ntc.h>
         #include <assert.h>
         /*----------------------------------------------------------------------------*/
-        static const int16_t TEMPERATURE_TABLE_{suffix}[] = {{
+        #define NTC_TABLE_SIZE {size + 1}
+        /*----------------------------------------------------------------------------*/
+        static const int16_t TEMPERATURE_TABLE_{suffix.upper()}[] = {{
         ''')
 
     i = 0
@@ -78,17 +86,15 @@ def generate_source(table, name, suffix):
 
     output += textwrap.dedent(f'''\
         }};
-        static_assert(ARRAY_SIZE(TEMPERATURE_TABLE_{suffix}) == NTC_TABLE_SIZE,
-            "Incorrect table size");
         /*----------------------------------------------------------------------------*/
         int32_t ntcRawToTemperature{suffix}(uint16_t value)
         {{
-            return ntcRawToTemperature(TEMPERATURE_TABLE_{suffix}, value);
+            return ntcRawToTemperature(TEMPERATURE_TABLE_{suffix.upper()}, {size + 1}, value);
         }}
         /*----------------------------------------------------------------------------*/
         uint16_t ntcTemperatureToRaw{suffix}(int32_t temperature)
         {{
-            return ntcTemperatureToRaw(TEMPERATURE_TABLE_{suffix}, temperature);
+            return ntcTemperatureToRaw(TEMPERATURE_TABLE_{suffix.upper()}, {size + 1}, temperature);
         }}
         ''')
     return output
@@ -110,6 +116,8 @@ def main():
                       type=str, default='right')
     args.add_argument('-b', dest='beta', help='beta value',
                       type=int, default=None)
+    args.add_argument('-c', dest='cells', help='table size',
+                      type=int, default=64)
     args.add_argument('-l', dest='lowside', help='thermistor is in low side',
                       default=False, action='store_true')
     args.add_argument('-n', dest='name', help='file name in generated code',
@@ -133,6 +141,8 @@ def main():
         raise ValueError()
     if options.justify not in ('left', 'right'):
         raise ValueError()
+    if options.cells < 32 or options.cells > 1024:
+        raise ValueError()
     if options.resolution is None or options.resolution < 8 or options.resolution > 16:
         raise ValueError()
     if not options.header and not options.source:
@@ -152,6 +162,7 @@ def main():
         suffix = make_resistor_suffix(options.r_thermistor).upper()
 
     table = make_table(
+        size=options.cells,
         adc_max=adc_max,
         adc_res=adc_res,
         b_value=options.beta,
@@ -168,7 +179,7 @@ def main():
         else:
             print(text, end='')
     if options.source:
-        text = generate_source(table, name, suffix)
+        text = generate_source(table, name, suffix, options.cells)
         if options.output:
             with open(os.path.join(options.output, name) + '.c', 'wb') as output_file:
                 output_file.write(text.encode())

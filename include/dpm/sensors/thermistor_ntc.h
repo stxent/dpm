@@ -8,14 +8,13 @@
 #define DPM_SENSORS_THERMISTOR_NTC_H_
 /*----------------------------------------------------------------------------*/
 #include <xcore/helpers.h>
+#include <stddef.h>
 #include <stdint.h>
-/*----------------------------------------------------------------------------*/
-#define NTC_TABLE_SIZE 65
 /*----------------------------------------------------------------------------*/
 BEGIN_DECLS
 
-int32_t ntcRawToTemperature(const int16_t *, uint16_t);
-uint16_t ntcTemperatureToRaw(const int16_t *, int32_t);
+int32_t ntcRawToTemperature(const int16_t *, size_t, uint16_t);
+uint16_t ntcTemperatureToRaw(const int16_t *, size_t, int32_t);
 
 END_DECLS
 /*----------------------------------------------------------------------------*/

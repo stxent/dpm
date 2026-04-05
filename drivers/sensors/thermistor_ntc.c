@@ -6,19 +6,18 @@
 
 #include <dpm/sensors/thermistor_ntc.h>
 #include <limits.h>
-#include <stddef.h>
 /*----------------------------------------------------------------------------*/
-size_t findBinIndex(const int16_t *, int32_t);
+size_t findBinIndex(const int16_t *, size_t, int32_t);
 /*----------------------------------------------------------------------------*/
-size_t findBinIndex(const int16_t *table, int32_t temperature)
+size_t findBinIndex(const int16_t *table, size_t size, int32_t temperature)
 {
   size_t left = 0;
-  size_t right = NTC_TABLE_SIZE - 1;
+  size_t right = size - 1;
 
   if (temperature < table[right])
     return 0;
   if (temperature > table[left])
-    return NTC_TABLE_SIZE;
+    return size;
 
   while ((right - left) > 1)
   {
@@ -33,9 +32,9 @@ size_t findBinIndex(const int16_t *table, int32_t temperature)
   return right;
 }
 /*----------------------------------------------------------------------------*/
-int32_t ntcRawToTemperature(const int16_t *table, uint16_t value)
+int32_t ntcRawToTemperature(const int16_t *table, size_t size, uint16_t value)
 {
-  static const int32_t step = (UINT16_MAX + 1) / (NTC_TABLE_SIZE - 1);
+  const int32_t step = (UINT16_MAX + 1) / (size - 1);
   const uint32_t binIndex = (uint32_t)((int32_t)value / step);
 
   const int32_t currentBinOutput = table[binIndex];
@@ -46,14 +45,15 @@ int32_t ntcRawToTemperature(const int16_t *table, uint16_t value)
       + (((int32_t)value - currentBinValue) * slope - step / 2) / step;
 }
 /*----------------------------------------------------------------------------*/
-uint16_t ntcTemperatureToRaw(const int16_t *table, int32_t temperature)
+uint16_t ntcTemperatureToRaw(const int16_t *table, size_t size,
+    int32_t temperature)
 {
-  static const int32_t step = (UINT16_MAX + 1) / (NTC_TABLE_SIZE - 1);
-  const uint32_t binIndex = (uint32_t)findBinIndex(table, temperature);
+  const int32_t step = (UINT16_MAX + 1) / (size - 1);
+  const uint32_t binIndex = (uint32_t)findBinIndex(table, size, temperature);
 
   if (binIndex == 0)
     return UINT16_MAX;
-  if (binIndex == NTC_TABLE_SIZE)
+  if (binIndex == size)
     return 0;
 
   const int32_t previousBinOutput = table[binIndex - 1];
