@@ -57,11 +57,12 @@ static void interruptHandler(void *object)
 static enum Result setupChannels(struct MemoryBusGpioTimer *timer,
     const struct MemoryBusGpioTimerConfig *config)
 {
-  const int channel = gpTimerConfigOutputPin(config->channel, config->pin);
+  const int channel = gpTimerConfigOutputPin(config->channel, config->pin,
+      config->inversion);
 
   if (channel != -1)
   {
-    timer->channel = channel >> 1;
+    timer->channel = channel;
     return E_OK;
   }
   else
@@ -90,6 +91,8 @@ static enum Result tmrInit(void *object, const void *configPtr)
     return res;
 
   /* Initialize peripheral block */
+  const unsigned int number = timer->channel >> 1;
+  const unsigned int part = timer->channel >> 2;
   STM_TIM_Type * const reg = timer->base.reg;
   uint32_t ccer = CCER_CCE(timer->channel);
 
@@ -99,11 +102,10 @@ static enum Result tmrInit(void *object, const void *configPtr)
   reg->CR1 = CR1_CKD(CKD_CK_INT) | CR1_CMS(CMS_EDGE_ALIGNED_MODE);
   reg->ARR = getMaxValue(timer->base.flags);
   reg->CNT = 0;
-  reg->DIER = DIER_CCIE(timer->channel);
+  reg->DIER = DIER_CCIE(number);
 
-  reg->CCMR[timer->channel >> 1] = CCMR_OCPE(timer->channel & 1)
-      | CCMR_OCM(timer->channel & 1, OCM_PWM_MODE_2)
-      | CCMR_CCS(timer->channel & 1, CCS_OUTPUT);
+  reg->CCMR[part] = CCMR_OCPE(number) | CCMR_OCM(number, OCM_PWM_MODE_2)
+      | CCMR_CCS(number, CCS_OUTPUT);
   reg->CCER = ccer;
 
   if (timer->base.flags & TIMER_FLAG_CONTROL)
@@ -177,7 +179,7 @@ static void tmrSetOverflow(void *object, uint32_t overflow)
 
   assert(overflow);
 
-  reg->CCR[timer->channel] = (overflow >> 1) - 1;
+  reg->CCR[timer->channel >> 1] = (overflow >> 1) - 1;
   reg->ARR = overflow - 1;
   reg->EGR = EGR_UG;
 }
