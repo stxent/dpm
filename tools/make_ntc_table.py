@@ -72,7 +72,7 @@ def generate_source(table, name, suffix, size):
         /*----------------------------------------------------------------------------*/
         #define NTC_TABLE_SIZE {size + 1}
         /*----------------------------------------------------------------------------*/
-        static const int16_t TEMPERATURE_TABLE_{suffix.upper()}[] = {{
+        static const int16_t NTC_TABLE_{suffix.upper()}[] = {{
         ''')
 
     i = 0
@@ -86,15 +86,17 @@ def generate_source(table, name, suffix, size):
 
     output += textwrap.dedent(f'''\
         }};
+        static_assert(ARRAY_SIZE(NTC_TABLE_{suffix.upper()}) == NTC_TABLE_SIZE,
+            "Incorrect table size");
         /*----------------------------------------------------------------------------*/
         int32_t ntcRawToTemperature{suffix}(uint16_t value)
         {{
-            return ntcRawToTemperature(TEMPERATURE_TABLE_{suffix.upper()}, {size + 1}, value);
+          return ntcRawToTemperature(NTC_TABLE_SIZE, NTC_TABLE_{suffix.upper()}, value);
         }}
         /*----------------------------------------------------------------------------*/
         uint16_t ntcTemperatureToRaw{suffix}(int32_t temperature)
         {{
-            return ntcTemperatureToRaw(TEMPERATURE_TABLE_{suffix.upper()}, {size + 1}, temperature);
+          return ntcTemperatureToRaw(NTC_TABLE_SIZE, NTC_TABLE_{suffix.upper()}, temperature);
         }}
         ''')
     return output
