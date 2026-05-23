@@ -4,6 +4,10 @@
 cmake_minimum_required(VERSION 3.21)
 project(dpm C)
 
+find_package(xcore QUIET)
+if(xcore_FOUND)
+    message(STATUS "Found xcore package")
+endif()
 find_package(halm QUIET)
 if(halm_FOUND)
     message(STATUS "Found halm package")
