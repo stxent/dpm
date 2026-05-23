@@ -1,12 +1,14 @@
 # Copyright (C) 2018 xent
 # Project is distributed under the terms of the MIT License
 
-if(NOT ${PLATFORM} MATCHES "LPC82X")
-    set(HAS_NXP_GPTIMER TRUE)
-    set(HAS_NXP_SSP TRUE)
-else()
+if(${PLATFORM} MATCHES "LPC82X")
     set(HAS_NXP_GPTIMER FALSE)
     set(HAS_NXP_SSP FALSE)
+    set(HAS_NXP_UART_V1 FALSE)
+else()
+    set(HAS_NXP_GPTIMER TRUE)
+    set(HAS_NXP_SSP TRUE)
+    set(HAS_NXP_UART_V1 TRUE)
 endif()
 
 if(${PLATFORM} MATCHES "LPC17XX|LPC43XX")
@@ -16,9 +18,9 @@ else()
 endif()
 
 if(${PLATFORM} MATCHES "LPC11EXX|LPC13UXX|LPC17XX|LPC43XX")
-    set(HAS_NXP_IRDA TRUE)
+    set(HAS_NXP_IRDA_V1 TRUE)
 else()
-    set(HAS_NXP_IRDA FALSE)
+    set(HAS_NXP_IRDA_V1 FALSE)
 endif()
 
 if(${PLATFORM} MATCHES "LPC43XX")
@@ -27,9 +29,9 @@ else()
     set(HAS_NXP_SGPIO FALSE)
 endif()
 
-if(HAS_NXP_GPTIMER AND HAS_NXP_IRDA)
-    list(APPEND SOURCE_FILES "irda.c")
-    list(APPEND SOURCE_FILES "irda_timer.c")
+if(HAS_NXP_GPTIMER AND HAS_NXP_IRDA_V1)
+    list(APPEND SOURCE_FILES "gen_1/irda.c")
+    list(APPEND SOURCE_FILES "gen_1/irda_timer.c")
 endif()
 
 if(HAS_NXP_GPTIMER)
@@ -50,7 +52,12 @@ if(HAS_NXP_SGPIO)
 endif()
 
 if(HAS_NXP_SSP)
+    list(APPEND SOURCE_FILES "one_wire_ssp.c")
     list(APPEND SOURCE_FILES "ws281x_ssp.c")
+endif()
+
+if(HAS_NXP_UART_V1)
+    list(APPEND SOURCE_FILES "gen_1/one_wire_uart.c")
 endif()
 
 if(SOURCE_FILES)

@@ -13,7 +13,7 @@
 #define DATA_BITRATE  2500000
 #define IDLE_BITRATE  880000
 #define FIFO_DEPTH    8
-
+/*----------------------------------------------------------------------------*/
 enum
 {
   STATE_IDLE,
