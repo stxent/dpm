@@ -42,6 +42,7 @@ static enum Result tsInit(void *, const void *);
 static void tsDeinit(void *);
 static const char *tsGetFormat(const void *);
 static enum SensorStatus tsGetStatus(const void *);
+static uint64_t tsGetTimestamp(const void *);
 static void tsSetCallbackArgument(void *, void *);
 static void tsSetErrorCallback(void *, void (*)(void *, enum SensorResult));
 static void tsSetResultCallback(void *,
@@ -61,6 +62,7 @@ const struct SensorClass * const XPT2046 = &(const struct SensorClass){
 
     .getFormat = tsGetFormat,
     .getStatus = tsGetStatus,
+    .getTimestamp = tsGetTimestamp,
     .setCallbackArgument = tsSetCallbackArgument,
     .setErrorCallback = tsSetErrorCallback,
     .setResultCallback = tsSetResultCallback,
@@ -241,6 +243,11 @@ static enum SensorStatus tsGetStatus(const void *object)
 {
   const struct XPT2046 * const sensor = object;
   return sensor->state == STATE_IDLE ? SENSOR_IDLE : SENSOR_BUSY;
+}
+/*----------------------------------------------------------------------------*/
+static uint64_t tsGetTimestamp(const void *)
+{
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
 static void tsSetCallbackArgument(void *object, void *argument)

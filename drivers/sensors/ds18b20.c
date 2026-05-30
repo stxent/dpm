@@ -63,6 +63,7 @@ static enum Result dsInit(void *, const void *);
 static void dsDeinit(void *);
 static const char *dsGetFormat(const void *);
 static enum SensorStatus dsGetStatus(const void *);
+static uint64_t dsGetTimestamp(const void *);
 static void dsSetCallbackArgument(void *, void *);
 static void dsSetErrorCallback(void *, void (*)(void *, enum SensorResult));
 static void dsSetResultCallback(void *,
@@ -82,6 +83,7 @@ const struct SensorClass * const DS18B20 = &(const struct SensorClass){
 
     .getFormat = dsGetFormat,
     .getStatus = dsGetStatus,
+    .getTimestamp = dsGetTimestamp,
     .setCallbackArgument = dsSetCallbackArgument,
     .setErrorCallback = dsSetErrorCallback,
     .setResultCallback = dsSetResultCallback,
@@ -318,6 +320,11 @@ static enum SensorStatus dsGetStatus(const void *object)
 {
   const struct DS18B20 * const sensor = object;
   return sensor->state == STATE_IDLE ? SENSOR_IDLE : SENSOR_BUSY;
+}
+/*----------------------------------------------------------------------------*/
+static uint64_t dsGetTimestamp(const void *)
+{
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
 static void dsSetCallbackArgument(void *object, void *argument)

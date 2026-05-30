@@ -209,6 +209,7 @@ enum
 #define WHO_AM_I_MPU60XX_VALUE          0x68
 /*----------------------------------------------------------------------------*/
 enum SensorStatus mpu60xxGetStatus(const struct MPU60XX *);
+uint64_t mpu60xxGetTimestamp(const struct MPU60XX *);
 void mpu60xxReset(struct MPU60XX *);
 void mpu60xxSample(struct MPU60XX *);
 void mpu60xxStart(struct MPU60XX *);

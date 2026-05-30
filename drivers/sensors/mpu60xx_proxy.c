@@ -27,6 +27,7 @@ static inline uint16_t typeToSampleConstant(const struct MPU60XXProxy *);
 static void proxyDeinit(void *);
 static const char *proxyGetFormat(const void *);
 static enum SensorStatus proxyGetStatus(const void *);
+static uint64_t proxyGetTimestamp(const void *);
 static void proxySetCallbackArgument(void *, void *);
 static void proxySetErrorCallback(void *, void (*)(void *, enum SensorResult));
 static void proxySetResultCallback(void *,
@@ -47,6 +48,7 @@ const struct SensorClass * const MPU60XXAccelerometer =
 
     .getFormat = proxyGetFormat,
     .getStatus = proxyGetStatus,
+    .getTimestamp = proxyGetTimestamp,
     .setCallbackArgument = proxySetCallbackArgument,
     .setErrorCallback = proxySetErrorCallback,
     .setResultCallback = proxySetResultCallback,
@@ -67,6 +69,7 @@ const struct SensorClass * const MPU60XXGyroscope =
 
     .getFormat = proxyGetFormat,
     .getStatus = proxyGetStatus,
+    .getTimestamp = proxyGetTimestamp,
     .setCallbackArgument = proxySetCallbackArgument,
     .setErrorCallback = proxySetErrorCallback,
     .setResultCallback = proxySetResultCallback,
@@ -87,6 +90,7 @@ const struct SensorClass * const MPU60XXThermometer =
 
     .getFormat = proxyGetFormat,
     .getStatus = proxyGetStatus,
+    .getTimestamp = proxyGetTimestamp,
     .setCallbackArgument = proxySetCallbackArgument,
     .setErrorCallback = proxySetErrorCallback,
     .setResultCallback = proxySetResultCallback,
@@ -189,6 +193,12 @@ static enum SensorStatus proxyGetStatus(const void *object)
 {
   const struct MPU60XXProxy * const proxy = object;
   return mpu60xxGetStatus(proxy->parent);
+}
+/*----------------------------------------------------------------------------*/
+static uint64_t proxyGetTimestamp(const void *object)
+{
+  const struct MPU60XXProxy * const proxy = object;
+  return mpu60xxGetTimestamp(proxy->parent);
 }
 /*----------------------------------------------------------------------------*/
 static void proxySetCallbackArgument(void *object, void *argument)

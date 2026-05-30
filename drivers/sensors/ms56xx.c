@@ -81,6 +81,7 @@ static enum Result msInit(void *, const void *);
 static void msDeinit(void *);
 static const char *msGetFormat(const void *);
 static enum SensorStatus msGetStatus(const void *);
+static uint64_t msGetTimestamp(const void *);
 static void msSetCallbackArgument(void *, void *);
 static void msSetErrorCallback(void *, void (*)(void *, enum SensorResult));
 static void msSetResultCallback(void *,
@@ -100,6 +101,7 @@ const struct SensorClass * const MS56XX = &(const struct SensorClass){
 
     .getFormat = msGetFormat,
     .getStatus = msGetStatus,
+    .getTimestamp = msGetTimestamp,
     .setCallbackArgument = msSetCallbackArgument,
     .setErrorCallback = msSetErrorCallback,
     .setResultCallback = msSetResultCallback,
@@ -376,6 +378,9 @@ static void onBusEvent(void *object)
       break;
 
     case STATE_P_START_WAIT:
+      if (sensor->chrono != NULL)
+        sensor->timestamp = timerGetValue64(sensor->chrono);
+
       sensor->state = STATE_P_WAIT;
       timerSetOverflow(sensor->timer, oversamplingToTime(sensor));
 
@@ -552,9 +557,11 @@ static enum Result msInit(void *object, const void *configBase)
 
   sensor->thermometer = NULL;
   sensor->bus = config->bus;
+  sensor->chrono = config->chrono;
   sensor->timer = config->timer;
   sensor->rate = config->rate;
 
+  sensor->timestamp = 0;
   sensor->pressure = 0;
   sensor->temperature = 0;
   sensor->flags = 0;
@@ -634,6 +641,12 @@ static enum SensorStatus msGetStatus(const void *object)
   }
   else
     return SENSOR_ERROR;
+}
+/*----------------------------------------------------------------------------*/
+static uint64_t msGetTimestamp(const void *object)
+{
+  const struct MS56XX * const sensor = object;
+  return sensor->timestamp;
 }
 /*----------------------------------------------------------------------------*/
 static void msSetCallbackArgument(void *object, void *argument)
@@ -789,6 +802,7 @@ static bool msUpdate(void *object)
             atomicFetchOr(&sensor->flags, FLAG_READY);
           }
 
+          sensor->timestamp = 0;
           sensor->state = STATE_IDLE;
         }
         else
@@ -886,6 +900,7 @@ static bool msUpdate(void *object)
                   SENSOR_INTERFACE_ERROR : SENSOR_INTERFACE_TIMEOUT);
         }
 
+        sensor->timestamp = 0;
         sensor->state = STATE_IDLE;
         updated = true;
         break;

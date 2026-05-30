@@ -59,6 +59,8 @@ struct HMC5883Config
 {
   /** Mandatory: serial interface. */
   void *bus;
+  /** Optional: 64-bit timer for timestamp generation. */
+  void *chrono;
   /** Mandatory: external interrupt. */
   void *event;
   /** Mandatory: event timer. */
@@ -88,6 +90,8 @@ struct HMC5883
 
   /* Sensor bus */
   struct Interface *bus;
+  /* Chrono timer for timestamp generation */
+  struct Timer64 *chrono;
   /* External event */
   struct Interrupt *event;
   /* Timer for periodic events */
@@ -97,6 +101,8 @@ struct HMC5883
   /* Baud rate of the serial interface */
   uint32_t rate;
 
+  /* Timestamp of the last measurement */
+  uint64_t timestamp;
   /* Buffer for received data */
   uint8_t buffer[7];
   /* Calibration mode */

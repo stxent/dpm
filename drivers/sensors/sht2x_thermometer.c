@@ -13,6 +13,7 @@ static enum Result thermoInit(void *, const void *);
 static void thermoDeinit(void *);
 static const char *thermoGetFormat(const void *);
 static enum SensorStatus thermoGetStatus(const void *);
+static uint64_t thermoGetTimestamp(const void *);
 static void thermoSetCallbackArgument(void *, void *);
 static void thermoSetErrorCallback(void *, void (*)(void *, enum SensorResult));
 static void thermoSetResultCallback(void *,
@@ -32,6 +33,7 @@ const struct SensorClass * const SHT2XThermometer =
 
     .getFormat = thermoGetFormat,
     .getStatus = thermoGetStatus,
+    .getTimestamp = thermoGetTimestamp,
     .setCallbackArgument = thermoSetCallbackArgument,
     .setErrorCallback = thermoSetErrorCallback,
     .setResultCallback = thermoSetResultCallback,
@@ -72,6 +74,11 @@ static const char *thermoGetFormat(const void *)
 static enum SensorStatus thermoGetStatus(const void *)
 {
   return SENSOR_IDLE;
+}
+/*----------------------------------------------------------------------------*/
+static uint64_t thermoGetTimestamp(const void *)
+{
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
 static void thermoSetCallbackArgument(void *object, void *argument)

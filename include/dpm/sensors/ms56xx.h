@@ -38,6 +38,8 @@ struct MS56XXConfig
 {
   /** Mandatory: serial interface. */
   void *bus;
+  /** Optional: 64-bit timer for timestamp generation. */
+  void *chrono;
   /** Mandatory: event timer. */
   void *timer;
 
@@ -73,6 +75,8 @@ struct MS56XX
 
   /* Sensor bus */
   struct Interface *bus;
+  /* Chrono timer for timestamp generation */
+  struct Timer64 *chrono;
   /* Timer for periodic events */
   struct Timer *timer;
   /* Chip Select output */
@@ -82,6 +86,8 @@ struct MS56XX
   /* Baud rate of the serial interface */
   uint32_t rate;
 
+  /* Timestamp of the last measurement */
+  uint64_t timestamp;
   /* Raw pressure value */
   uint32_t pressure;
   /* Raw temperature value */

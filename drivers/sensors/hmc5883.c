@@ -60,6 +60,7 @@ static enum Result hmcInit(void *, const void *);
 static void hmcDeinit(void *);
 static const char *hmcGetFormat(const void *);
 static enum SensorStatus hmcGetStatus(const void *);
+static uint64_t hmcGetTimestamp(const void *);
 static void hmcSetCallbackArgument(void *, void *);
 static void hmcSetErrorCallback(void *, void (*)(void *, enum SensorResult));
 static void hmcSetResultCallback(void *,
@@ -79,6 +80,7 @@ const struct SensorClass * const HMC5883 = &(const struct SensorClass){
 
     .getFormat = hmcGetFormat,
     .getStatus = hmcGetStatus,
+    .getTimestamp = hmcGetTimestamp,
     .setCallbackArgument = hmcSetCallbackArgument,
     .setErrorCallback = hmcSetErrorCallback,
     .setResultCallback = hmcSetResultCallback,
@@ -225,6 +227,9 @@ static void onPinEvent(void *object)
 {
   struct HMC5883 * const sensor = object;
 
+  if (sensor->chrono != NULL)
+    sensor->timestamp = timerGetValue64(sensor->chrono);
+
   atomicFetchOr(&sensor->flags, FLAG_EVENT);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
@@ -295,11 +300,13 @@ static enum Result hmcInit(void *object, const void *configBase)
   sensor->onUpdateCallback = NULL;
 
   sensor->bus = config->bus;
+  sensor->chrono = config->chrono;
   sensor->event = config->event;
   sensor->timer = config->timer;
   sensor->address = config->address;
   sensor->rate = config->rate;
 
+  sensor->timestamp = 0;
   sensor->calibration = CAL_DISABLED;
   sensor->flags = 0;
   sensor->state = STATE_IDLE;
@@ -367,6 +374,12 @@ static enum SensorStatus hmcGetStatus(const void *object)
   }
   else
     return SENSOR_ERROR;
+}
+/*----------------------------------------------------------------------------*/
+static uint64_t hmcGetTimestamp(const void *object)
+{
+  const struct HMC5883 * const sensor = object;
+  return sensor->timestamp;
 }
 /*----------------------------------------------------------------------------*/
 static void hmcSetCallbackArgument(void *object, void *argument)
@@ -505,6 +518,7 @@ static bool hmcUpdate(void *object)
         break;
 
       case STATE_CONFIG_END:
+        sensor->timestamp = 0;
         sensor->state = STATE_IDLE;
         atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_EVENT));
         atomicFetchOr(&sensor->flags, FLAG_READY);
@@ -562,6 +576,9 @@ static bool hmcUpdate(void *object)
       }
 
       case STATE_REQUEST:
+        if (sensor->chrono != NULL)
+          sensor->timestamp = timerGetValue64(sensor->chrono);
+
         sensor->state = STATE_REQUEST_WAIT;
         startSampleRequest(sensor);
         busy = true;
@@ -603,6 +620,7 @@ static bool hmcUpdate(void *object)
                   SENSOR_INTERFACE_ERROR : SENSOR_INTERFACE_TIMEOUT);
         }
 
+        sensor->timestamp = 0;
         sensor->state = STATE_IDLE;
         updated = true;
         break;

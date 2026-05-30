@@ -21,7 +21,7 @@ static uint32_t unitGetFrequency(const void *);
 static void unitSetFrequency(void *, uint32_t);
 static uint32_t unitGetOverflow(const void *);
 static void unitSetOverflow(void *, uint32_t);
-/*----------------------------------------------------------------------------*/
+
 static enum Result channelInit(void *, const void *);
 static void channelDeinit(void *);
 static void channelEnable(void *);
@@ -142,6 +142,8 @@ static void unitSetOverflow(void *object, uint32_t overflow)
 static enum Result channelInit(void *object, const void *configBase)
 {
   const struct SoftwarePwmConfig * const config = configBase;
+  assert(config->parent != NULL);
+
   struct SoftwarePwm * const pwm = object;
   struct SoftwarePwmUnit * const unit = config->parent;
 
@@ -198,10 +200,18 @@ static void channelSetEdges(void *object, [[maybe_unused]] uint32_t leading,
 }
 /*----------------------------------------------------------------------------*/
 /**
- * Create single edge software PWM channel.
- * @param unit Pointer to a SoftwarePwmUnit object.
- * @param pin Pin used as a signal output.
- * @return Pointer to a new SoftwarePwm object on success or zero on error.
+ * Create a single‑edge software PWM channel.
+ *
+ * Initializes a new software PWM channel with single‑edge modulation.
+ * The channel generates a PWM signal where only one edge is actively
+ * controlled in software; the other edge is handled by timing logic.
+ *
+ * @param unit Pointer to a SoftwarePwmUnit object that manages
+ * the PWM channels. Must not be NULL.
+ * @param pin Pin used as the signal output for the PWM channel.
+ * The pin must be configurable for digital output.
+ * @return Pointer to a newly created SoftwarePwm object on success.
+ * Returns NULL if the operation fails.
  */
 void *softwarePwmCreate(void *unit, PinNumber pin)
 {

@@ -293,6 +293,9 @@ static void onPinEvent(void *object)
   struct MPU60XX * const sensor = object;
   struct MPU60XXProxy * const proxy = sensor->active;
 
+  if (sensor->chrono != NULL)
+    sensor->timestamp = timerGetValue64(sensor->chrono);
+
   atomicFetchOr(&sensor->flags, FLAG_EVENT);
   proxy->onUpdateCallback(proxy->callbackArgument);
 }
@@ -513,10 +516,12 @@ static enum Result mpuInit(void *object, const void *configBase)
   sensor->thermometer = NULL;
 
   sensor->bus = config->bus;
+  sensor->chrono = config->chrono;
   sensor->event = config->event;
   sensor->timer = config->timer;
   sensor->rate = config->rate;
 
+  sensor->timestamp = 0;
   sensor->flags = 0;
   sensor->state = STATE_IDLE;
   sensor->step = CONFIG_BEGIN;
@@ -603,6 +608,11 @@ enum SensorStatus mpu60xxGetStatus(const struct MPU60XX *sensor)
   }
   else
     return SENSOR_ERROR;
+}
+/*----------------------------------------------------------------------------*/
+uint64_t mpu60xxGetTimestamp(const struct MPU60XX *sensor)
+{
+  return sensor->timestamp;
 }
 /*----------------------------------------------------------------------------*/
 void mpu60xxReset(struct MPU60XX *sensor)
@@ -722,6 +732,7 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
       case STATE_CONFIG_END:
         if (++sensor->step == CONFIG_END)
         {
+          sensor->timestamp = 0;
           sensor->state = STATE_IDLE;
 
           atomicFetchAnd(&sensor->flags, ~(FLAG_RESET | FLAG_EVENT));
@@ -786,6 +797,9 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
       }
 
       case STATE_REQUEST:
+        if (sensor->chrono != NULL)
+          sensor->timestamp = timerGetValue64(sensor->chrono);
+
         sensor->state = STATE_REQUEST_WAIT;
         startSampleRequest(sensor);
         busy = true;
@@ -835,6 +849,7 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
               result);
         }
 
+        sensor->timestamp = 0;
         sensor->state = STATE_IDLE;
         updated = true;
         break;

@@ -70,11 +70,15 @@ static inline void codecCheck(void *codec)
 }
 
 /**
- * Get current input gain of a selected channel.
+ * Get the current input gain of a selected channel.
+ *
+ * The gain value is normalized to an 8‑bit range.
+ *
  * @param codec Pointer to a Codec object.
- * @param channel Input channel.
- * @return Input gain in the range from 0 to 255, where 0 means
- * that the channel is muted.
+ * @param channel Input channel identifier.
+ * @return Input gain in the range from 0 to 255, where:
+ *   - 0 means the channel is muted;
+ *   - 255 represents maximum gain.
  */
 static inline uint8_t codecGetInputGain(const void *codec,
     enum CodecChannel channel)
@@ -84,9 +88,11 @@ static inline uint8_t codecGetInputGain(const void *codec,
 }
 
 /**
- * Get current mute status of input channels.
+ * Get the current mute status of input channels.
+ *
  * @param codec Pointer to a Codec object.
- * @return Muted channels.
+ * @return Bitmask of muted input channels (each bit corresponds to a channel).
+ * A set bit indicates that the respective channel is muted.
  */
 static inline enum CodecChannel codecGetInputMute(const void *codec)
 {
@@ -94,11 +100,15 @@ static inline enum CodecChannel codecGetInputMute(const void *codec)
 }
 
 /**
- * Get output gain of a selected channel.
+ * Get the output gain of a selected channel.
+ *
+ * The gain value is normalized to an 8‑bit range.
+ *
  * @param codec Pointer to a Codec object.
- * @param channel Output channel.
- * @return Output gain in the range from 0 to 255, where 0 means
- * that the channel is muted.
+ * @param channel Output channel identifier.
+ * @return Output gain in the range from 0 to 255, where:
+ *   - 0 means the channel is muted;
+ *   - 255 represents maximum gain.
  */
 static inline uint8_t codecGetOutputGain(const void *codec,
     enum CodecChannel channel)
@@ -108,9 +118,11 @@ static inline uint8_t codecGetOutputGain(const void *codec,
 }
 
 /**
- * Get current mute status of output channels.
+ * Get the current mute status of output channels.
+ *
  * @param codec Pointer to a Codec object.
- * @return Muted channels.
+ * @return Bitmask of muted output channels (each bit corresponds to a channel).
+ * A set bit indicates that the respective channel is muted.
  */
 static inline enum CodecChannel codecGetOutputMute(const void *codec)
 {
@@ -118,9 +130,12 @@ static inline enum CodecChannel codecGetOutputMute(const void *codec)
 }
 
 /**
- * Get automatic gain control status for an input channel.
+ * Check whether automatic gain control (AGC) is enabled for an input channel.
+ *
  * @param codec Pointer to a Codec object.
- * @return AGC status.
+ * @return AGC status:
+ *   - @b true if AGC is enabled;
+ *   - @b false if AGC is disabled.
  */
 static inline bool codecIsAGCEnabled(const void *codec)
 {
@@ -128,9 +143,12 @@ static inline bool codecIsAGCEnabled(const void *codec)
 }
 
 /**
- * Get codec status.
+ * Get the overall codec status.
+ *
  * @param codec Pointer to a Codec object.
- * @return Codec status, @b true when the codec is ready.
+ * @return Codec status:
+ *   - @b true if the codec is ready and operational;
+ *   - @b false if the codec is not ready.
  */
 static inline bool codecIsReady(const void *codec)
 {
@@ -138,9 +156,12 @@ static inline bool codecIsReady(const void *codec)
 }
 
 /**
- * Enable or disable automatic gain control for an input channel.
+ * Enable or disable automatic gain control (AGC) for an input channel.
+ *
  * @param codec Pointer to a Codec object.
- * @param state AGC state.
+ * @param state AGC state:
+ *   - @b true to enable AGC;
+ *   - @b false to disable AGC.
  */
 static inline void codecSetAGCEnabled(void *codec, bool state)
 {
@@ -148,22 +169,30 @@ static inline void codecSetAGCEnabled(void *codec, bool state)
 }
 
 /**
- * Set input gain for a selected channel.
+ * Set the input gain for a selected channel.
+ *
+ * Gain is specified as an 8‑bit value for fine control.
+ *
  * @param codec Pointer to a Codec object.
- * @param channel Input channel.
- * @param gain Input gain in the range from 0 to 255.
+ * @param channel Input channel identifier.
+ * @param gain Input gain value in the range from 0 to 255:
+ *   - 0: channel is muted;
+ *   - 255: maximum gain (full volume).
  */
 static inline void codecSetInputGain(void *codec, enum CodecChannel channel,
     uint8_t gain)
 {
-  ((const struct CodecClass *)CLASS(codec))->setInputGain(codec, channel,
-      gain);
+  ((const struct CodecClass *)CLASS(codec))->setInputGain(codec, channel, gain);
 }
 
 /**
- * Mute or unmute input channels.
+ * Mute or unmute specific input channels.
+ *
+ * Uses a bitmask to control multiple channels simultaneously.
+ *
  * @param codec Pointer to a Codec object.
- * @param channels Input channels.
+ * @param channels Bitmask of input channels to mute/unmute.
+ * Set bits correspond to channels to be muted.
  */
 static inline void codecSetInputMute(void *codec, enum CodecChannel channels)
 {
@@ -171,10 +200,14 @@ static inline void codecSetInputMute(void *codec, enum CodecChannel channels)
 }
 
 /**
- * Set input path and input channels.
+ * Configure the input path and assign input channels.
+ *
+ * Defines the signal routing for input sources.
+ *
  * @param codec Pointer to a Codec object.
- * @param path Input path.
- * @param channels Input channels.
+ * @param path Input path identifier.
+ * @param channels Bitmask specifying which input channels are active
+ * on this path.
  */
 static inline void codecSetInputPath(void *codec, int path,
     enum CodecChannel channels)
@@ -184,10 +217,15 @@ static inline void codecSetInputPath(void *codec, int path,
 }
 
 /**
- * Set output gain for a selected channel.
+ * Set the output gain for a selected channel.
+ *
+ * Gain is specified as an 8‑bit value for precise control.
+ *
  * @param codec Pointer to a Codec object.
- * @param channel Output channel.
- * @param gain Output gain in the range from 0 to 255.
+ * @param channel Output channel identifier.
+ * @param gain Output gain value in the range from 0 to 255:
+ *   - 0: channel is muted;
+ *   - 255: maximum gain (full volume).
  */
 static inline void codecSetOutputGain(void *codec, enum CodecChannel channel,
     uint8_t gain)
@@ -197,9 +235,13 @@ static inline void codecSetOutputGain(void *codec, enum CodecChannel channel,
 }
 
 /**
- * Mute or unmute output channels.
+ * Mute or unmute specific output channels.
+ *
+ * Uses a bitmask to control multiple channels at once.
+ *
  * @param codec Pointer to a Codec object.
- * @param channels Output channels.
+ * @param channels Bitmask of output channels to mute/unmute.
+ * Set bits correspond to channels to be muted.
  */
 static inline void codecSetOutputMute(void *codec, enum CodecChannel channels)
 {
@@ -208,9 +250,10 @@ static inline void codecSetOutputMute(void *codec, enum CodecChannel channels)
 
 /**
  * Set output path and output channels.
+ *
  * @param codec Pointer to a Codec object.
- * @param path Output path.
- * @param channels Output channels.
+ * @param path Output path identifier.
+ * @param channels Output channels to be configured.
  */
 static inline void codecSetOutputPath(void *codec, int path,
     enum CodecChannel channels)
@@ -221,8 +264,9 @@ static inline void codecSetOutputPath(void *codec, int path,
 
 /**
  * Set sample rate for all input and output channels.
+ *
  * @param codec Pointer to a Codec object.
- * @param rate Sample rate.
+ * @param rate Sample rate in Hz.
  */
 static inline void codecSetSampleRate(void *codec, uint32_t rate)
 {
@@ -231,8 +275,10 @@ static inline void codecSetSampleRate(void *codec, uint32_t rate)
 
 /**
  * Reset the codec.
- * Perform a software or a hardware reset and reconfigure the codec.
- * All previously configured parameters will be preserved.
+ *
+ * Perform a software or hardware reset and reconfigure the codec.
+ * All previously configured parameters will be preserved after the reset.
+ *
  * @param codec Pointer to a Codec object.
  */
 static inline void codecReset(void *codec)
@@ -241,7 +287,11 @@ static inline void codecReset(void *codec)
 }
 
 /**
- * Put the codec in a power saving mode.
+ * Put the codec in a power‑saving mode.
+ *
+ * Suspends the codec operation to reduce power consumption.
+ * The codec may need to be reinitialized when resuming.
+ *
  * @param codec Pointer to a Codec object.
  */
 static inline void codecSuspend(void *codec)
@@ -251,9 +301,12 @@ static inline void codecSuspend(void *codec)
 
 /**
  * Update a codec state.
+ *
+ * Checks the current state of the codec and the associated bus.
+ *
  * @param codec Pointer to a Codec object.
- * @return Bus status, @b true when the bus is busy and @b false when the bus
- * is idle and may be used by another device.
+ * @return Bus status: @b true if the bus is busy this codec's operation,
+ * @b false if the bus is idle and available for use by other devices.
  */
 static inline bool codecUpdate(void *codec)
 {
@@ -261,10 +314,15 @@ static inline bool codecUpdate(void *codec)
 }
 
 /**
- * Set a callback which is called in case of errors.
+ * Set a callback function to be invoked in case of errors.
+ *
+ * Registers a function that will be called when an error occurs during
+ * codec operations. The callback can be disabled by passing NULL.
+ *
  * @param codec Pointer to a Codec object.
- * @param callback Callback function.
- * @param argument Callback argument.
+ * @param callback Callback function to handle errors.
+ * Pass NULL to disable error notifications.
+ * @param argument User‑defined argument passed to the callback function.
  */
 static inline void codecSetErrorCallback(void *codec, void (*callback)(void *),
     void *argument)
@@ -275,9 +333,14 @@ static inline void codecSetErrorCallback(void *codec, void (*callback)(void *),
 
 /**
  * Set a callback which is called when all operations are done successfully.
+ *
+ * Registers a function to be called when the codec completes its operations
+ * without errors and enters an idle state.
+ *
  * @param codec Pointer to a Codec object.
- * @param callback Callback function.
- * @param argument Callback argument.
+ * @param callback Callback function for idle notifications.
+ * Pass NULL to disable idle notifications.
+ * @param argument User‑defined argument passed to the callback function.
  */
 static inline void codecSetIdleCallback(void *codec, void (*callback)(void *),
     void *argument)
@@ -288,11 +351,15 @@ static inline void codecSetIdleCallback(void *codec, void (*callback)(void *),
 
 /**
  * Set a callback for update requests.
- * Update request callback is called when the codec needs a state update.
- * It is not possible to use both an update callback and a work queue.
+ *
+ * Registers a function to be called when the codec needs a state update.
+ * It is not possible to use both an update callback and
+ * a work queue simultaneously.
+ *
  * @param codec Pointer to a Codec object.
- * @param callback Callback function.
- * @param argument Callback argument.
+ * @param callback Callback function for update requests.
+ * Pass NULL to disable the update callback.
+ * @param argument User‑defined argument passed to the callback function.
  */
 static inline void codecSetUpdateCallback(void *codec,
     void (*callback)(void *), void *argument)
@@ -303,12 +370,13 @@ static inline void codecSetUpdateCallback(void *codec,
 
 /**
  * Set a work queue for update tasks.
- * An update task is added to the work queue is used when the codec needs
- * a state update. It is not possible to use both an update callback
- * and a work queue.
+ *
+ * Assigns a work queue where update tasks are added when the codec needs
+ * a state update. Using a work queue excludes the use of an update callback.
+ *
  * @param codec Pointer to a Codec object.
- * @param callback Callback function.
- * @param argument Callback argument.
+ * @param wq Pointer to the work queue structure.
+ * Pass NULL to disable the work queue.
  */
 static inline void codecSetUpdateWorkQueue(void *codec, struct WorkQueue *wq)
 {

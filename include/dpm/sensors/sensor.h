@@ -8,6 +8,7 @@
 #define DPM_SENSORS_SENSOR_H_
 /*----------------------------------------------------------------------------*/
 #include <xcore/entity.h>
+#include <stdint.h>
 /*----------------------------------------------------------------------------*/
 enum SensorResult
 {
@@ -33,6 +34,7 @@ struct SensorClass
 
   const char *(*getFormat)(const void *);
   enum SensorStatus (*getStatus)(const void *);
+  uint64_t (*getTimestamp)(const void *);
   void (*setCallbackArgument)(void *, void *);
   void (*setErrorCallback)(void *, void (*)(void *, enum SensorResult));
   void (*setResultCallback)(void *, void (*)(void *, const void *, size_t));
@@ -54,9 +56,10 @@ struct Sensor
 BEGIN_DECLS
 
 /**
- * Get format of a measurement results.
+ * Get the data format of measurement results.
+ *
  * @param sensor Pointer to a Sensor object.
- * @return Format of the output data.
+ * @return A null‑terminated string representing the data format.
  */
 static inline const char *sensorGetFormat(const void *sensor)
 {
@@ -64,9 +67,10 @@ static inline const char *sensorGetFormat(const void *sensor)
 }
 
 /**
- * Get a status of the sensor.
+ * Get the current status of the sensor.
+ *
  * @param sensor Pointer to a Sensor object.
- * @return Sensor status.
+ * @return The current sensor status as a value of the enum SensorStatus.
  */
 static inline enum SensorStatus sensorGetStatus(const void *sensor)
 {
@@ -74,9 +78,29 @@ static inline enum SensorStatus sensorGetStatus(const void *sensor)
 }
 
 /**
- * Set a callback argument for all sensor callbacks.
+ * Get the timestamp for the last measurement of the sensor.
+ *
+ * This function retrieves the timestamp associated with the most recent
+ * measurement taken by the sensor. The timestamp is typically represented
+ * as a 64‑bit value indicating the time in microseconds since system boot.
+ *
+ * @param sensor Pointer to a Sensor object. Must not be NULL.
+ * @return The timestamp for the last measurement, if timestamps are supported
+ * by the sensor. If the sensor does not support timestamps or an error occurs,
+ * the function returns 0.
+ */
+static inline uint64_t sensorGetTimestamp(const void *sensor)
+{
+  return ((const struct SensorClass *)CLASS(sensor))->getTimestamp(sensor);
+}
+
+/**
+ * Set a user-defined argument that will be passed to all callback functions
+ * associated with this sensor.
+ *
  * @param sensor Pointer to a Sensor object.
- * @param argument Callback function argument.
+ * @param argument User-defined argument (context data) to be passed
+ * to callbacks. Can be NULL.
  */
 static inline void sensorSetCallbackArgument(void *sensor, void *argument)
 {
@@ -85,9 +109,14 @@ static inline void sensorSetCallbackArgument(void *sensor, void *argument)
 }
 
 /**
- * Set a callback which is called in case of errors.
+ * Set the callback function that is invoked when a sensor error occurs.
+ *
+ * The callback is called asynchronously when an internal error is detected
+ * during operation.
+ *
  * @param sensor Pointer to a Sensor object.
- * @param callback Callback function.
+ * @param callback Function pointer to the error callback.
+ * Pass NULL to disable the error callback.
  */
 static inline void sensorSetErrorCallback(void *sensor,
     void (*callback)(void *, enum SensorResult))
@@ -97,9 +126,12 @@ static inline void sensorSetErrorCallback(void *sensor,
 }
 
 /**
- * Set a callback which is called in the end of a successful measurement.
+ * Set the callback function that is invoked upon successful completion
+ * of a measurement.
+ *
  * @param sensor Pointer to a Sensor object.
- * @param callback Callback function.
+ * @param callback Function pointer to the result callback. The 'data' pointer
+ * is valid only within the callback. Pass NULL to disable the result callback.
  */
 static inline void sensorSetResultCallback(void *sensor,
     void (*callback)(void *, const void *, size_t))
@@ -109,9 +141,10 @@ static inline void sensorSetResultCallback(void *sensor,
 }
 
 /**
- * Set an update request callback.
+ * Set the callback function that requests an update cycle from the system.
+ *
  * @param sensor Pointer to a Sensor object.
- * @param callback Callback function.
+ * @param callback Function pointer to the update request callback.
  */
 static inline void sensorSetUpdateCallback(void *sensor,
     void (*callback)(void *))
@@ -121,7 +154,11 @@ static inline void sensorSetUpdateCallback(void *sensor,
 }
 
 /**
- * Resets the sensor.
+ * Reset the sensor to its initial state.
+ *
+ * This function performs a hardware or software reset, clearing any internal
+ * state and errors.
+ *
  * @param sensor Pointer to a Sensor object.
  */
 static inline void sensorReset(void *sensor)
@@ -130,7 +167,11 @@ static inline void sensorReset(void *sensor)
 }
 
 /**
- * Make a single measurement.
+ * Trigger a single measurement cycle.
+ *
+ * This function initiates one shot measurement. The result will be delivered
+ * via the result callback.
+ *
  * @param sensor Pointer to a Sensor object.
  */
 static inline void sensorSample(void *sensor)
@@ -139,7 +180,11 @@ static inline void sensorSample(void *sensor)
 }
 
 /**
- * Starts an automatic measurements.
+ * Start continuous automatic measurements.
+ *
+ * The sensor will perform measurements at a predefined rate until stopped by
+ * sensorStop(). Results are delivered asynchronously via the result callback.
+ *
  * @param sensor Pointer to a Sensor object.
  */
 static inline void sensorStart(void *sensor)
@@ -148,7 +193,11 @@ static inline void sensorStart(void *sensor)
 }
 
 /**
- * Stops an automatic measurements.
+ * Stop continuous automatic measurements.
+ *
+ * Halts any ongoing measurement cycle initiated by sensorStart().
+ * Does nothing if the sensor is not in a running state.
+ *
  * @param sensor Pointer to a Sensor object.
  */
 static inline void sensorStop(void *sensor)
@@ -157,7 +206,10 @@ static inline void sensorStop(void *sensor)
 }
 
 /**
- * Puts the sensor in a power saving mode.
+ * Put the sensor into a low‑power (suspended) mode.
+ *
+ * All active operations are halted, and the sensor draws minimal power.
+ *
  * @param sensor Pointer to a Sensor object.
  */
 static inline void sensorSuspend(void *sensor)
@@ -166,10 +218,14 @@ static inline void sensorSuspend(void *sensor)
 }
 
 /**
- * Update a sensor state.
+ * Update the internal state of the sensor and check bus availability.
+ *
+ * This non‑blocking function processes any pending I/O and returns
+ * the current bus status.
+ *
  * @param sensor Pointer to a Sensor object.
- * @return Bus status, @b true when the bus is busy and @b false when the bus
- * is idle and may be used by another sensor.
+ * @return Bus status: @b true if the bus is busy with this sensor's operation,
+ * @b false if the bus is idle and available for use by other devices.
  */
 static inline bool sensorUpdate(void *sensor)
 {

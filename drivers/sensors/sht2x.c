@@ -60,6 +60,7 @@ static enum Result shtInit(void *, const void *);
 static void shtDeinit(void *);
 static const char *shtGetFormat(const void *);
 static enum SensorStatus shtGetStatus(const void *);
+static uint64_t shtGetTimestamp(const void *);
 static void shtSetCallbackArgument(void *, void *);
 static void shtSetErrorCallback(void *, void (*)(void *, enum SensorResult));
 static void shtSetResultCallback(void *,
@@ -79,6 +80,7 @@ const struct SensorClass * const SHT2X = &(const struct SensorClass){
 
     .getFormat = shtGetFormat,
     .getStatus = shtGetStatus,
+    .getTimestamp = shtGetTimestamp,
     .setCallbackArgument = shtSetCallbackArgument,
     .setErrorCallback = shtSetErrorCallback,
     .setResultCallback = shtSetResultCallback,
@@ -415,6 +417,11 @@ static enum SensorStatus shtGetStatus(const void *object)
   }
   else
     return SENSOR_ERROR;
+}
+/*----------------------------------------------------------------------------*/
+static uint64_t shtGetTimestamp(const void *)
+{
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
 static void shtSetCallbackArgument(void *object, void *argument)
