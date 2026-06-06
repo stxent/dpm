@@ -34,7 +34,7 @@ To build and use the DPM library, you need the following packages:
 * **CMake 3.21 or newer** — used for configuring and generating build
   systems across platforms.
 * **Xcore** and **HALM** — can be built separately or included as
-  CMake submodules in the project.
+  CMake submodules in the top-level project.
 
 ## Library Contents
 

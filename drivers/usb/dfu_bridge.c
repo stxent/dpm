@@ -232,7 +232,15 @@ static enum Result bridgeInit(void *object, const void *configBase)
       loader->writeChunkSize = size;
   }
 
-  if (loader->eraseType == OP_TYPE_UNDEFINED || !loader->writeChunkSize)
+  if (loader->eraseType == OP_TYPE_UNDEFINED)
+    return E_INTERFACE;
+
+  if (config->chunk)
+  {
+    if (!loader->writeChunkSize || loader->writeChunkSize > config->chunk)
+      loader->writeChunkSize = config->chunk;
+  }
+  else if (!loader->writeChunkSize)
     return E_INTERFACE;
 
   loader->buffer = malloc(loader->writeChunkSize);
