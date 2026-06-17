@@ -1,11 +1,11 @@
 # DPM
 
-![C21](https://img.shields.io/badge/C-21-blue)
+![C23](https://img.shields.io/badge/C-23-blue)
 ![CMake](https://img.shields.io/badge/CMake-3.21+-blue)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 DPM is a library of peripheral devices and additional drivers for
-microcontrollers. It is written using the C21 standard and built with CMake.
+microcontrollers. It is written using the C23 standard and built with CMake.
 
 ## Supported Platforms
 
