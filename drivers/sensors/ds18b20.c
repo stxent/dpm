@@ -7,10 +7,12 @@
 #include <dpm/sensors/ds18b20.h>
 #include <halm/timer.h>
 #include <xcore/atomic.h>
-#include <xcore/crc/crc8_dallas.h>
+#include <xcore/crc/crc8_maxim.h>
 #include <xcore/interface.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
+#define CRC8_INITIAL            0x00
+
 #define LENGTH_READ_SCRATCHPAD  1
 #define LENGTH_SCRATCHPAD       9
 #define LENGTH_START_CONVERSION 1
@@ -110,7 +112,7 @@ static void calcTemperature(void *object)
 {
   struct DS18B20 * const sensor = object;
 
-  const uint8_t checksum = crc8DallasUpdate(0x00,
+  const uint8_t checksum = crc8MaximUpdate(CRC8_INITIAL,
       sensor->buffer, sizeof(sensor->buffer) - 1);
 
   if (checksum == sensor->buffer[8])
