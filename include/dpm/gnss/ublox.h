@@ -37,6 +37,7 @@ BEGIN_DECLS
 void ubloxDisable(struct Ublox *);
 void ubloxEnable(struct Ublox *);
 void ubloxGetCounters(const struct Ublox *, uint32_t *, uint32_t *);
+uint64_t ubloxGetSolutionTime(const struct Ublox *);
 void ubloxReset(struct Ublox *, uint32_t);
 void ubloxSetCallbackArgument(struct Ublox *, void *);
 void ubloxSetConfigFinishedCallback(struct Ublox *,
@@ -44,13 +45,15 @@ void ubloxSetConfigFinishedCallback(struct Ublox *,
 void ubloxSetDataReceivedCallback(struct Ublox *,
     void (*)(void *, const uint8_t *, size_t));
 void ubloxSetPositionReceivedCallback(struct Ublox *,
-    void (*)(void *, int32_t, int32_t, int32_t));
+    void (*)(void *, int32_t, int32_t, int32_t, int32_t));
+void ubloxSetPrecisionReceivedCallback(struct Ublox *,
+    void (*)(void *, uint32_t, uint32_t, uint32_t));
 void ubloxSetSatelliteCountReceivedCallback(struct Ublox *,
     void (*)(void *, const struct SatelliteInfo *));
 void ubloxSetStatusReceivedCallback(struct Ublox *,
-    void (*)(void *, enum FixType));
+    void (*)(void *, enum FixType, uint16_t));
 void ubloxSetTimeReceivedCallback(struct Ublox *,
-    void (*)(void *, uint64_t));
+    void (*)(void *, uint64_t, int8_t));
 void ubloxSetVelocityReceivedCallback(struct Ublox *,
     void (*)(void *, int32_t, int32_t, int32_t));
 

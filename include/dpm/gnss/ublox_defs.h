@@ -49,6 +49,7 @@ enum UbloxMessageId
   UBX_CFG_MSG       = 0x01,
   UBX_CFG_RST       = 0x04,
   UBX_CFG_RATE      = 0x08,
+  UBX_CFG_ANT       = 0x13,
   UBX_CFG_ODO       = 0x1E,
   UBX_CFG_NAV5      = 0x24,
   UBX_CFG_TP5       = 0x31,
@@ -88,6 +89,12 @@ struct [[gnu::packed]] UbxAckNakPacket
 {
   uint8_t clsID;
   uint8_t msgID;
+};
+
+struct [[gnu::packed]] UbxCfgAntPacket
+{
+  uint16_t flags;
+  uint16_t pins;
 };
 
 struct [[gnu::packed]] UbxCfgMsgPacket
@@ -166,6 +173,42 @@ struct [[gnu::packed]] UbxNavPosLLHPacket
   uint32_t vAcc;
 };
 
+struct [[gnu::packed]] UbxNavPVTPacket
+{
+  uint32_t iTOW;
+  uint16_t year;
+  uint8_t month;
+  uint8_t day;
+  uint8_t hour;
+  uint8_t min;
+  uint8_t sec;
+  uint8_t valid;
+  uint32_t tAcc;
+  uint32_t nano; /* Signed */
+  uint8_t fixType;
+  uint8_t flags;
+  uint8_t flags2;
+  uint8_t numSV;
+  uint32_t lon; /* Signed */
+  uint32_t lat; /* Signed */
+  uint32_t height; /* Signed */
+  uint32_t hMSL; /* Signed */
+  uint32_t hAcc;
+  uint32_t vAcc;
+  uint32_t velN; /* Signed */
+  uint32_t velE; /* Signed */
+  uint32_t velD; /* Signed */
+  uint32_t gSpeed; /* Signed */
+  uint32_t headMot; /* Signed */
+  uint32_t sAcc;
+  uint32_t headAcc;
+  uint16_t pDOP;
+  uint8_t reserved[6];
+  uint32_t headVeh; /* Signed */
+  uint16_t magDec; /* Signed */
+  uint16_t magAcc;
+};
+
 struct [[gnu::packed]] UbxNavSatData
 {
   uint8_t gnssId;
@@ -188,6 +231,27 @@ struct [[gnu::packed]] UbxNavSatPacket
   ];
 };
 
+struct [[gnu::packed]] UbxNavSolPacket
+{
+  uint32_t iTOW;
+  uint32_t fTOW; /* Signed */
+  uint16_t week; /* Signed */
+  uint8_t gpsFix;
+  uint8_t flags;
+  uint32_t ecefX; /* Signed */
+  uint32_t ecefY; /* Signed */
+  uint32_t ecefZ; /* Signed */
+  uint32_t pAcc;
+  uint32_t ecefVX; /* Signed */
+  uint32_t ecefVY; /* Signed */
+  uint32_t ecefVZ; /* Signed */
+  uint32_t sAcc;
+  uint16_t pDOP;
+  uint8_t reserved1;
+  uint8_t numSV;
+  uint32_t reserved2;
+};
+
 struct [[gnu::packed]] UbxNavStatusPacket
 {
   uint32_t iTOW;
@@ -197,6 +261,16 @@ struct [[gnu::packed]] UbxNavStatusPacket
   uint8_t flags2;
   uint32_t ttff;
   uint32_t msss;
+};
+
+struct [[gnu::packed]] UbxNavTimeGPSPacket
+{
+  uint32_t iTOW;
+  uint32_t fTOW; /* Signed */
+  uint16_t week; /* Signed */
+  uint8_t leapS; /* Signed */
+  uint8_t valid;
+  uint32_t tAcc;
 };
 
 struct [[gnu::packed]] UbxNavVelNEDPacket

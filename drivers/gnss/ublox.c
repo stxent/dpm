@@ -21,13 +21,15 @@ enum ConfigState
   CONFIG_START,
   CONFIG_PORT = CONFIG_START,
   CONFIG_RATE,
+  CONFIG_ANT,
   CONFIG_NAV,
   CONFIG_TP,
+  CONFIG_RATE_PVT,
+  CONFIG_RATE_SAT,
   CONFIG_RATE_POSLLH,
   CONFIG_RATE_VELNED,
-  CONFIG_RATE_TP,
-  CONFIG_RATE_SAT,
-  CONFIG_RATE_STATUS,
+  CONFIG_RATE_SOL,
+  CONFIG_RATE_TIMEGPS,
   CONFIG_READY,
   CONFIG_ERROR
 };
@@ -62,17 +64,23 @@ struct Ublox
   } config;
 
   struct UbloxParser parser;
-  uint64_t timestamp;
-  uint64_t timedelta;
+  uint64_t heartbeat; /* Last message time in local time format */
+  uint64_t localtime; /* PPS edge time in local time format */
+  uint64_t timedelta; /* Difference between GPS time and local time */
+  uint64_t timestamp; /* Solution time in GPS time format */
+  uint16_t week; /* Week number without rollovers */
+  int8_t leaps; /* Leap seconds */
   bool queued;
+  bool solution; /* Solution available */
 
   void *callbackArgument;
   void (*onConfigFinished)(void *, bool);
   void (*onDataReceived)(void *, const uint8_t *, size_t);
-  void (*onPositionReceived)(void *, int32_t, int32_t, int32_t);
+  void (*onPositionReceived)(void *, int32_t, int32_t, int32_t, int32_t);
+  void (*onPrecisionReceived)(void *, uint32_t, uint32_t, uint32_t);
   void (*onSatelliteCountReceived)(void *, const struct SatelliteInfo *);
-  void (*onStatusReceived)(void *, enum FixType);
-  void (*onTimeReceived)(void *, uint64_t);
+  void (*onStatusReceived)(void *, enum FixType, uint16_t);
+  void (*onTimeReceived)(void *, uint64_t, int8_t);
   void (*onVelocityReceived)(void *, int32_t, int32_t, int32_t);
 };
 /*----------------------------------------------------------------------------*/
@@ -80,19 +88,23 @@ static void onMessageReceivedAckAck(struct Ublox *,
     const struct UbloxMessage *);
 static void onMessageReceivedAckNak(struct Ublox *,
     const struct UbloxMessage *);
+static void onMessageReceivedNavPosLLH(struct Ublox *,
+    const struct UbloxMessage *);
+static void onMessageReceivedNavPVT(struct Ublox *,
+    const struct UbloxMessage *);
 static void onMessageReceivedNavSat(struct Ublox *,
     const struct UbloxMessage *);
-static void onMessageReceivedNavStatus(struct Ublox *,
+static void onMessageReceivedNavSol(struct Ublox *,
     const struct UbloxMessage *);
-static void onMessageReceivedPosLLH(struct Ublox *,
+static void onMessageReceivedNavTimeGPS(struct Ublox *,
     const struct UbloxMessage *);
-static void onMessageReceivedTimTp(struct Ublox *,
-    const struct UbloxMessage *);
-static void onMessageReceivedVelNED(struct Ublox *,
+static void onMessageReceivedNavVelNED(struct Ublox *,
     const struct UbloxMessage *);
 
+static inline uint32_t calcCheckTimeout(const struct Timer *);
 static inline uint32_t calcConfigTimeout(const struct Timer *);
 static void configMessageRate(struct Ublox *, uint16_t, uint8_t);
+static void sendConfigAntMessage(struct Ublox *);
 static void sendConfigNavMessage(struct Ublox *, int8_t);
 static void sendConfigPortMessage(struct Ublox *, uint8_t, uint32_t);
 static void sendConfigRateMessage(struct Ublox *, uint16_t);
@@ -118,11 +130,12 @@ const struct EntityClass * const Ublox = &(const struct EntityClass){
 static const struct HandlerEntry handlers[] = {
     {onMessageReceivedAckAck, UBLOX_TYPE_PACK(UBX_ACK, UBX_ACK_ACK)},
     {onMessageReceivedAckNak, UBLOX_TYPE_PACK(UBX_ACK, UBX_ACK_NAK)},
-    {onMessageReceivedPosLLH, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_POSLLH)},
-    {onMessageReceivedNavStatus, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_STATUS)},
+    {onMessageReceivedNavPosLLH, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_POSLLH)},
+    {onMessageReceivedNavPVT, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_PVT)},
     {onMessageReceivedNavSat, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_SAT)},
-    {onMessageReceivedVelNED, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_VELNED)},
-    {onMessageReceivedTimTp, UBLOX_TYPE_PACK(UBX_TIM, UBX_TIM_TP)}
+    {onMessageReceivedNavSol, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_SOL)},
+    {onMessageReceivedNavTimeGPS, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_TIMEGPS)},
+    {onMessageReceivedNavVelNED, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_VELNED)}
 };
 /*----------------------------------------------------------------------------*/
 static void onMessageReceivedAckAck(struct Ublox *receiver,
@@ -135,7 +148,14 @@ static void onMessageReceivedAckAck(struct Ublox *receiver,
   {
     timerDisable(receiver->timer);
 
-    ++receiver->config.state;
+    if (receiver->config.state == CONFIG_RATE_SAT)
+    {
+      /* Skip old position messages */
+      receiver->config.state = CONFIG_RATE_TIMEGPS;
+    }
+    else
+      ++receiver->config.state;
+
     receiver->config.pending = 0;
     receiver->config.retries = MAX_RETRIES;
 
@@ -154,10 +174,149 @@ static void onMessageReceivedAckNak(struct Ublox *receiver,
   {
     timerDisable(receiver->timer);
 
-    receiver->config.pending = 0;
-    receiver->config.state = CONFIG_ERROR;
+    if (receiver->config.state == CONFIG_RATE_PVT)
+    {
+      /* Old receiver version, enable compatibility mode */
+      receiver->config.state = CONFIG_RATE_POSLLH;
+      receiver->config.retries = MAX_RETRIES;
+    }
+    else
+      receiver->config.state = CONFIG_ERROR;
 
-    wqAdd(receiver->wq, updateConfigState, receiver);
+    receiver->config.pending = 0;
+
+    if (wqAdd(receiver->wq, updateConfigState, receiver) != E_OK)
+      receiver->config.state = CONFIG_ERROR;
+  }
+}
+/*----------------------------------------------------------------------------*/
+static void onMessageReceivedNavPosLLH(struct Ublox *receiver,
+    const struct UbloxMessage *message)
+{
+  const struct UbxNavPosLLHPacket * const packet = &message->data.ubxNavPosLLH;
+
+  if (!receiver->solution)
+    return;
+  receiver->timestamp = makeGpsTime(receiver->week,
+      fromLittleEndian32(packet->iTOW));
+
+  if (receiver->onPrecisionReceived != NULL)
+  {
+    const uint32_t hAcc = packet->hAcc;
+    const uint32_t vAcc = packet->vAcc;
+
+    receiver->onPrecisionReceived(receiver->callbackArgument,
+        hAcc, vAcc, UINT32_MAX);
+  }
+
+  if (receiver->onPositionReceived != NULL)
+  {
+    const int32_t lat = (int32_t)fromLittleEndian32(packet->lat);
+    const int32_t lon = (int32_t)fromLittleEndian32(packet->lon);
+    const int32_t alt = (int32_t)fromLittleEndian32(packet->height);
+    const int32_t msl = (int32_t)fromLittleEndian32(packet->hMSL);
+
+    receiver->onPositionReceived(receiver->callbackArgument,
+        lat, lon, alt, msl);
+  }
+}
+/*----------------------------------------------------------------------------*/
+static void onMessageReceivedNavPVT(struct Ublox *receiver,
+    const struct UbloxMessage *message)
+{
+  enum GnssFix
+  {
+    GPSFIX_NOFIX,
+    GPSFIX_DEAD_RECKONING,
+    GPSFIX_2DFIX,
+    GPSFIX_3DFIX,
+    GPSFIX_COMBINED,
+    GPSFIX_TIME_ONLY
+  };
+
+  static const uint8_t navPVTFlagsGnssFixOK = 0x01;
+  static const uint8_t navPVTFlagsDiffSoln = 0x02;
+
+  const struct UbxNavPVTPacket * const packet = &message->data.ubxNavPVT;
+  enum FixType fix = FIX_NONE;
+
+  if (receiver->onStatusReceived != NULL)
+  {
+    uint32_t pdop = fromLittleEndian16(packet->pDOP) * 10;
+
+    if (pdop > UINT16_MAX)
+      pdop = UINT16_MAX;
+
+    switch (packet->fixType)
+    {
+      case GPSFIX_DEAD_RECKONING:
+        fix = FIX_DEAD_RECKONING;
+        break;
+
+      case GPSFIX_2DFIX:
+        fix = FIX_2D;
+        break;
+
+      case GPSFIX_3DFIX:
+        if (packet->flags & navPVTFlagsGnssFixOK)
+        {
+          if (packet->flags & navPVTFlagsDiffSoln)
+            fix = FIX_3D_CORRECTED;
+          else
+            fix = FIX_3D;
+        }
+        else
+          fix = FIX_2D;
+        break;
+
+      default:
+        break;
+    }
+
+    receiver->onStatusReceived(receiver->callbackArgument, fix, (uint16_t)pdop);
+  }
+
+  if (fix >= FIX_3D)
+  {
+    receiver->timestamp = makeGpsTime(receiver->week,
+        fromLittleEndian32(packet->iTOW));
+    receiver->solution = true;
+
+    if (receiver->onPrecisionReceived != NULL)
+    {
+      const uint32_t hAcc = (int32_t)fromLittleEndian32(packet->hAcc);
+      const uint32_t vAcc = (int32_t)fromLittleEndian32(packet->vAcc);
+      const uint32_t sAcc = (int32_t)fromLittleEndian32(packet->sAcc);
+
+      receiver->onPrecisionReceived(receiver->callbackArgument,
+          hAcc, vAcc, sAcc);
+    }
+
+    if (receiver->onVelocityReceived != NULL)
+    {
+      const int32_t velN = (int32_t)fromLittleEndian32(packet->velN);
+      const int32_t velE = (int32_t)fromLittleEndian32(packet->velE);
+      const int32_t velD = (int32_t)fromLittleEndian32(packet->velD);
+
+      receiver->onVelocityReceived(receiver->callbackArgument,
+          velN, velE, velD);
+    }
+
+    if (receiver->onPositionReceived != NULL)
+    {
+      const int32_t lat = (int32_t)fromLittleEndian32(packet->lat);
+      const int32_t lon = (int32_t)fromLittleEndian32(packet->lon);
+      const int32_t alt = (int32_t)fromLittleEndian32(packet->height);
+      const int32_t msl = (int32_t)fromLittleEndian32(packet->hMSL);
+
+      receiver->onPositionReceived(receiver->callbackArgument,
+          lat, lon, alt, msl);
+    }
+  }
+  else
+  {
+    receiver->solution = false;
+    receiver->timestamp = 0;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -223,7 +382,7 @@ static void onMessageReceivedNavSat(struct Ublox *receiver,
   receiver->onSatelliteCountReceived(receiver->callbackArgument, &satellites);
 }
 /*----------------------------------------------------------------------------*/
-static void onMessageReceivedNavStatus(struct Ublox *receiver,
+static void onMessageReceivedNavSol(struct Ublox *receiver,
     const struct UbloxMessage *message)
 {
   enum GPSFix
@@ -236,14 +395,11 @@ static void onMessageReceivedNavStatus(struct Ublox *receiver,
     GPSFIX_TIME_ONLY
   };
 
-  static const uint8_t navStatusFlagsGPSFixOk = 0x01;
-  static const uint8_t navStatusFlagsDiffSoln = 0x02;
+  static const uint8_t navSolFlagsGPSFixOk = 0x01;
+  static const uint8_t navSolFlagsDiffSoln = 0x02;
 
-  if (receiver->onStatusReceived == NULL)
-    return;
-
-  const struct UbxNavStatusPacket * const packet = &message->data.ubxNavStatus;
-  enum FixType fix;
+  const struct UbxNavSolPacket * const packet = &message->data.ubxNavSol;
+  enum FixType fix = FIX_NONE;
 
   switch (packet->gpsFix)
   {
@@ -256,9 +412,9 @@ static void onMessageReceivedNavStatus(struct Ublox *receiver,
       break;
 
     case GPSFIX_3DFIX:
-      if (packet->flags & navStatusFlagsGPSFixOk)
+      if (packet->flags & navSolFlagsGPSFixOk)
       {
-        if (packet->flags & navStatusFlagsDiffSoln)
+        if (packet->flags & navSolFlagsDiffSoln)
           fix = FIX_3D_CORRECTED;
         else
           fix = FIX_3D;
@@ -268,65 +424,102 @@ static void onMessageReceivedNavStatus(struct Ublox *receiver,
       break;
 
     default:
-      fix = FIX_NONE;
       break;
   }
 
-  receiver->onStatusReceived(receiver->callbackArgument, fix);
+  if (fix < FIX_3D)
+  {
+    receiver->solution = false;
+    receiver->timestamp = 0;
+  }
+  else
+    receiver->solution = true;
+
+  if (receiver->onStatusReceived != NULL)
+  {
+    uint32_t pdop = fromLittleEndian16(packet->pDOP) * 10;
+
+    if (pdop > UINT16_MAX)
+      pdop = UINT16_MAX;
+
+    receiver->onStatusReceived(receiver->callbackArgument, fix, (uint16_t)pdop);
+  }
+
+  if (receiver->onSatelliteCountReceived != NULL)
+  {
+    const struct SatelliteInfo satellites = {packet->numSV, 0, 0, 0, 0};
+    receiver->onSatelliteCountReceived(receiver->callbackArgument, &satellites);
+  }
 }
 /*----------------------------------------------------------------------------*/
-static void onMessageReceivedPosLLH(struct Ublox *receiver,
+static void onMessageReceivedNavTimeGPS(struct Ublox *receiver,
     const struct UbloxMessage *message)
 {
-  if (receiver->onPositionReceived == NULL)
+  /* Valid Time of Week and valid Week Number flags */
+  static const uint8_t navTimeGPSValidWeekTOW = 0x03;
+  /* Valid Leap Seconds flag */
+  static const uint8_t navTimeGPSValidUTC = 0x04;
+
+  if (receiver->chrono == NULL || !receiver->localtime)
+    return;
+  if (timerGetValue64(receiver->chrono) - receiver->localtime >= 1000000)
     return;
 
-  const struct UbxNavPosLLHPacket * const packet = &message->data.ubxPosLLH;
-  const int32_t lat = (int32_t)fromLittleEndian32(packet->lat);
-  const int32_t lon = (int32_t)fromLittleEndian32(packet->lon);
-  const int32_t alt = (int32_t)fromLittleEndian32(packet->height);
+  const struct UbxNavTimeGPSPacket * const packet =
+      &message->data.ubxNavTimeGPS;
 
-  receiver->onPositionReceived(receiver->callbackArgument, lat, lon, alt);
+  if ((packet->valid & navTimeGPSValidWeekTOW) == navTimeGPSValidWeekTOW)
+  {
+    const uint32_t tow = fromLittleEndian32(packet->iTOW);
+    const uint16_t week = fromLittleEndian16(packet->week);
+    const uint64_t timestamp = makeGpsTime(week, tow - (tow % 1000));
+
+    receiver->timedelta = timestamp - receiver->localtime;
+    receiver->week = week;
+    receiver->localtime = 0;
+  }
+
+  if (packet->valid & navTimeGPSValidUTC)
+    receiver->leaps = packet->leapS;
 }
 /*----------------------------------------------------------------------------*/
-static void onMessageReceivedTimTp(struct Ublox *receiver,
+static void onMessageReceivedNavVelNED(struct Ublox *receiver,
     const struct UbloxMessage *message)
 {
-  if (receiver->chrono == NULL || !receiver->timestamp)
+  const struct UbxNavVelNEDPacket * const packet = &message->data.ubxNavVelNED;
+
+  if (!receiver->solution)
     return;
+  receiver->timestamp = makeGpsTime(receiver->week,
+      fromLittleEndian32(packet->iTOW));
 
-  if (timerGetValue64(receiver->chrono) - receiver->timestamp >= 1000000)
-    return;
+  if (receiver->onPrecisionReceived != NULL)
+  {
+    const uint32_t sAcc = packet->sAcc;
 
-  const struct UbxTimTpPacket * const packet = &message->data.ubxTimTp;
-  const uint32_t towMS = fromLittleEndian32(packet->towMS);
-  const uint32_t towSubMS = fromLittleEndian32(packet->towSubMS);
-  const uint16_t week = fromLittleEndian16(packet->week);
+    receiver->onPrecisionReceived(receiver->callbackArgument,
+        UINT32_MAX, UINT32_MAX, sAcc);
+  }
 
-  const uint64_t gpsTime = makeGpsTime(week, towMS)
-      + ((uint64_t)towSubMS * 1000 / (1ULL << 32)) - 1000000;
+  if (receiver->onVelocityReceived != NULL)
+  {
+    const int32_t velN = (int32_t)fromLittleEndian32(packet->velN);
+    const int32_t velE = (int32_t)fromLittleEndian32(packet->velE);
+    const int32_t velD = (int32_t)fromLittleEndian32(packet->velD);
 
-  receiver->timedelta = gpsTime - receiver->timestamp;
-  receiver->timestamp = 0;
+    receiver->onVelocityReceived(receiver->callbackArgument, velN, velE, velD);
+  }
 }
 /*----------------------------------------------------------------------------*/
-static void onMessageReceivedVelNED(struct Ublox *receiver,
-    const struct UbloxMessage *message)
+static inline uint32_t calcCheckTimeout(const struct Timer *timer)
 {
-  if (receiver->onVelocityReceived == NULL)
-    return;
-
-  const struct UbxNavVelNEDPacket * const packet = &message->data.ubxVelNED;
-  const int32_t velN = (int32_t)fromLittleEndian32(packet->velN);
-  const int32_t velE = (int32_t)fromLittleEndian32(packet->velE);
-  const int32_t velD = (int32_t)fromLittleEndian32(packet->velD);
-
-  receiver->onVelocityReceived(receiver->callbackArgument, velN, velE, velD);
+  static const uint32_t receptionCheckPeriod = 1; /* Seconds */
+  return timerGetFrequency(timer) * receptionCheckPeriod;
 }
 /*----------------------------------------------------------------------------*/
 static inline uint32_t calcConfigTimeout(const struct Timer *timer)
 {
-  static const uint32_t configRequestFreq = 100;
+  static const uint32_t configRequestFreq = 100; /* Hz */
   return (timerGetFrequency(timer) + configRequestFreq - 1) / configRequestFreq;
 }
 /*----------------------------------------------------------------------------*/
@@ -340,6 +533,23 @@ static void configMessageRate(struct Ublox *receiver, uint16_t type,
   };
 
   receiver->config.pending = UBLOX_TYPE_PACK(UBX_CFG, UBX_CFG_MSG);
+
+  const size_t length = ubloxParserPrepare(receiver->config.buffer,
+      receiver->config.pending, &packet, sizeof(packet));
+
+  ifWrite(receiver->serial, receiver->config.buffer, length);
+}
+/*----------------------------------------------------------------------------*/
+static void sendConfigAntMessage(struct Ublox *receiver)
+{
+  static const uint16_t cfgAntFlags = 0x0001;
+
+  const struct UbxCfgAntPacket packet = {
+      .flags = toLittleEndian16(cfgAntFlags),
+      .pins = toLittleEndian16(0)
+  };
+
+  receiver->config.pending = UBLOX_TYPE_PACK(UBX_CFG, UBX_CFG_ANT);
 
   const size_t length = ubloxParserPrepare(receiver->config.buffer,
       receiver->config.pending, &packet, sizeof(packet));
@@ -464,7 +674,10 @@ static void sendConfigTpMessage(struct Ublox *receiver, uint32_t period)
 /*----------------------------------------------------------------------------*/
 static uint64_t makeGpsTime(uint16_t week, uint32_t ms)
 {
-  return (uint64_t)ms * 1000 + (uint64_t)week * 7 * 24 * 3600 * 1000000;
+  if (!week)
+    return 0;
+
+  return ((uint64_t)week * (1000 * 3600 * 24 * 7) + ms) * 1000;
 }
 /*----------------------------------------------------------------------------*/
 static void onMessageReceived(struct Ublox *receiver,
@@ -483,8 +696,10 @@ static void onMessageReceived(struct Ublox *receiver,
 static void onSerialEvent(void *argument)
 {
   struct Ublox * const receiver = argument;
+  uint32_t available;
 
-  if (!receiver->queued)
+  ifGetParam(receiver->serial, IF_RX_AVAILABLE, &available);
+  if (available && !receiver->queued)
   {
     if (wqAdd(receiver->wq, parseSerialDataTask, receiver) == E_OK)
       receiver->queued = true;
@@ -494,32 +709,47 @@ static void onSerialEvent(void *argument)
 static void onTimePulseEvent(void *argument)
 {
   struct Ublox * const receiver = argument;
-  receiver->timestamp = timerGetValue64(receiver->chrono);
+  receiver->localtime = timerGetValue64(receiver->chrono);
 
   if (receiver->timedelta && receiver->onTimeReceived != NULL)
   {
     receiver->onTimeReceived(receiver->callbackArgument,
-        timerGetValue64(receiver->chrono) + receiver->timedelta);
+        receiver->localtime + receiver->timedelta, receiver->leaps);
   }
 }
 /*----------------------------------------------------------------------------*/
 static void onTimerEvent(void *argument)
 {
+  static const uint64_t maxInactiveTime = 5000000; /* Microseconds */
   struct Ublox * const receiver = argument;
 
-  if (receiver->config.retries > 0)
+  if (receiver->config.state == CONFIG_READY)
   {
-    --receiver->config.retries;
+    const uint64_t localtime = timerGetValue64(receiver->chrono);
 
-    if (wqAdd(receiver->wq, updateConfigState, receiver) != E_OK)
+    if (localtime - receiver->heartbeat < maxInactiveTime)
+    {
+      timerSetValue(receiver->timer, 0);
+      timerEnable(receiver->timer);
+    }
+    else
+    {
       receiver->config.state = CONFIG_ERROR;
+      wqAdd(receiver->wq, updateConfigState, receiver);
+    }
   }
   else
   {
-    receiver->config.pending = 0;
-    receiver->config.state = CONFIG_ERROR;
+    if (!receiver->config.retries)
+    {
+      receiver->config.pending = 0;
+      receiver->config.state = CONFIG_ERROR;
+    }
+    else
+      --receiver->config.retries;
 
-    wqAdd(receiver->wq, updateConfigState, receiver);
+    if (wqAdd(receiver->wq, updateConfigState, receiver) != E_OK)
+      receiver->config.state = CONFIG_ERROR;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -546,6 +776,7 @@ static void parseSerialDataTask(void *argument)
 
       if (ubloxParserReady(&receiver->parser))
       {
+        receiver->heartbeat = timerGetValue64(receiver->chrono);
         onMessageReceived(receiver, ubloxParserData(&receiver->parser));
       }
     }
@@ -559,6 +790,17 @@ static void updateConfigState(void *argument)
 {
   struct Ublox * const receiver = argument;
 
+  if (receiver->config.state == CONFIG_START)
+  {
+    /* Synchronously reset the internal state */
+    receiver->heartbeat = 0;
+    receiver->timedelta = 0;
+    receiver->timestamp = 0;
+    receiver->week = 0;
+    receiver->leaps = 0;
+    receiver->solution = false;
+  }
+
   switch (receiver->config.state)
   {
     case CONFIG_PORT:
@@ -570,6 +812,10 @@ static void updateConfigState(void *argument)
       sendConfigRateMessage(receiver, receiver->config.measurements);
       break;
 
+    case CONFIG_ANT:
+      sendConfigAntMessage(receiver);
+      break;
+
     case CONFIG_NAV:
       sendConfigNavMessage(receiver, receiver->config.elevation);
       break;
@@ -577,6 +823,15 @@ static void updateConfigState(void *argument)
     case CONFIG_TP:
       /* Set PPS period to 1 second */
       sendConfigTpMessage(receiver, 1000000);
+      break;
+
+    case CONFIG_RATE_PVT:
+      configMessageRate(receiver, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_PVT), 1);
+      break;
+
+    case CONFIG_RATE_SAT:
+      configMessageRate(receiver, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_SAT),
+          receiver->config.measurements);
       break;
 
     case CONFIG_RATE_POSLLH:
@@ -587,34 +842,34 @@ static void updateConfigState(void *argument)
       configMessageRate(receiver, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_VELNED), 1);
       break;
 
-    case CONFIG_RATE_TP:
-      configMessageRate(receiver, UBLOX_TYPE_PACK(UBX_TIM, UBX_TIM_TP),
+    case CONFIG_RATE_SOL:
+      configMessageRate(receiver, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_SOL),
           receiver->config.measurements);
       break;
 
-    case CONFIG_RATE_SAT:
-      configMessageRate(receiver, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_SAT),
-          receiver->config.measurements);
-      break;
-
-    case CONFIG_RATE_STATUS:
-      configMessageRate(receiver, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_STATUS),
+    case CONFIG_RATE_TIMEGPS:
+      configMessageRate(receiver, UBLOX_TYPE_PACK(UBX_NAV, UBX_NAV_TIMEGPS),
           receiver->config.measurements);
       break;
 
     case CONFIG_READY:
       if (receiver->onConfigFinished != NULL)
         receiver->onConfigFinished(receiver->callbackArgument, true);
-      return;
+
+      timerSetOverflow(receiver->timer, calcCheckTimeout(receiver->timer));
+      break;
 
     case CONFIG_ERROR:
       if (receiver->onConfigFinished != NULL)
         receiver->onConfigFinished(receiver->callbackArgument, false);
-      return;
+      break;
   }
 
-  timerSetValue(receiver->timer, 0);
-  timerEnable(receiver->timer);
+  if (receiver->config.state != CONFIG_ERROR)
+  {
+    timerSetValue(receiver->timer, 0);
+    timerEnable(receiver->timer);
+  }
 }
 /*----------------------------------------------------------------------------*/
 void ubloxDisable(struct Ublox *receiver)
@@ -637,10 +892,7 @@ void ubloxDisable(struct Ublox *receiver)
 void ubloxEnable(struct Ublox *receiver)
 {
   if (receiver->pps != NULL)
-  {
     ubloxParserReset(&receiver->parser);
-    receiver->timedelta = 0;
-  }
 
   ifSetCallback(receiver->serial, onSerialEvent, receiver);
 
@@ -648,7 +900,6 @@ void ubloxEnable(struct Ublox *receiver)
   {
     timerSetAutostop(receiver->timer, true);
     timerSetCallback(receiver->timer, onTimerEvent, receiver);
-    timerSetOverflow(receiver->timer, calcConfigTimeout(receiver->timer));
   }
 
   if (receiver->chrono != NULL && receiver->pps != NULL)
@@ -661,10 +912,15 @@ void ubloxEnable(struct Ublox *receiver)
 void ubloxGetCounters(const struct Ublox *receiver, uint32_t *received,
     uint32_t *errors)
 {
-  if (received)
+  if (received != NULL)
     *received = receiver->parser.received;
-  if (errors)
+  if (errors != NULL)
     *errors = receiver->parser.errors;
+}
+/*----------------------------------------------------------------------------*/
+uint64_t ubloxGetSolutionTime(const struct Ublox *receiver)
+{
+  return receiver->timestamp;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result ubloxInit(void *object, const void *configBase)
@@ -673,9 +929,14 @@ static enum Result ubloxInit(void *object, const void *configBase)
   struct Ublox * const receiver = object;
 
   ubloxParserInit(&receiver->parser);
-  receiver->timestamp = 0;
+  receiver->heartbeat = 0;
+  receiver->localtime = 0;
   receiver->timedelta = 0;
+  receiver->timestamp = 0;
+  receiver->week = 0;
+  receiver->leaps = 0;
   receiver->queued = false;
+  receiver->solution = false;
 
   receiver->chrono = config->chrono;
   receiver->serial = config->serial;
@@ -687,6 +948,7 @@ static enum Result ubloxInit(void *object, const void *configBase)
   receiver->onConfigFinished = NULL;
   receiver->onDataReceived = NULL;
   receiver->onPositionReceived = NULL;
+  receiver->onPrecisionReceived = NULL;
   receiver->onSatelliteCountReceived = NULL;
   receiver->onStatusReceived = NULL;
   receiver->onTimeReceived = NULL;
@@ -711,6 +973,9 @@ static void ubloxDeinit(void *object)
 /*----------------------------------------------------------------------------*/
 void ubloxReset(struct Ublox *receiver, uint32_t rate)
 {
+  timerDisable(receiver->timer);
+  timerSetOverflow(receiver->timer, calcConfigTimeout(receiver->timer));
+
   receiver->config.pending = 0;
   receiver->config.retries = MAX_RETRIES;
   receiver->config.rate = rate;
@@ -738,9 +1003,15 @@ void ubloxSetDataReceivedCallback(struct Ublox *receiver,
 }
 /*----------------------------------------------------------------------------*/
 void ubloxSetPositionReceivedCallback(struct Ublox *receiver,
-    void (*callback)(void *, int32_t, int32_t, int32_t))
+    void (*callback)(void *, int32_t, int32_t, int32_t, int32_t))
 {
   receiver->onPositionReceived = callback;
+}
+/*----------------------------------------------------------------------------*/
+void ubloxSetPrecisionReceivedCallback(struct Ublox *receiver,
+    void (*callback)(void *, uint32_t, uint32_t, uint32_t))
+{
+  receiver->onPrecisionReceived = callback;
 }
 /*----------------------------------------------------------------------------*/
 void ubloxSetSatelliteCountReceivedCallback(struct Ublox *receiver,
@@ -750,13 +1021,13 @@ void ubloxSetSatelliteCountReceivedCallback(struct Ublox *receiver,
 }
 /*----------------------------------------------------------------------------*/
 void ubloxSetStatusReceivedCallback(struct Ublox *receiver,
-    void (*callback)(void *, enum FixType))
+    void (*callback)(void *, enum FixType, uint16_t))
 {
   receiver->onStatusReceived = callback;
 }
 /*----------------------------------------------------------------------------*/
 void ubloxSetTimeReceivedCallback(struct Ublox *receiver,
-    void (*callback)(void *, uint64_t))
+    void (*callback)(void *, uint64_t, int8_t))
 {
   assert(receiver->chrono != NULL);
   assert(receiver->pps != NULL);

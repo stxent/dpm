@@ -34,11 +34,12 @@ struct UbloxMessage
 
     struct UbxAckAckPacket ubxAckAck;
     struct UbxAckNakPacket ubxAckNak;
-    struct UbxNavPosLLHPacket ubxPosLLH;
+    struct UbxNavPVTPacket ubxNavPVT;
+    struct UbxNavPosLLHPacket ubxNavPosLLH;
     struct UbxNavSatPacket ubxNavSat;
-    struct UbxNavStatusPacket ubxNavStatus;
-    struct UbxTimTpPacket ubxTimTp;
-    struct UbxNavVelNEDPacket ubxVelNED;
+    struct UbxNavSolPacket ubxNavSol;
+    struct UbxNavTimeGPSPacket ubxNavTimeGPS;
+    struct UbxNavVelNEDPacket ubxNavVelNED;
   } data;
 };
 
