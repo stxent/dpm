@@ -41,11 +41,11 @@ To build and use the DPM library, you need the following packages:
 The DPM library includes the following drivers and components:
 
 * NAND and NOR serial memory drivers — for interfacing with
-  non‑volatile memory chips using SPI, QSPI and platform-specific
+  non-volatile memory chips using SPI, QSPI and platform-specific
   interfaces with XIP
 * EEPROM serial memory drivers — for interfacing with
-  non‑volatile memory chips using I2C
-* Hardware-accelerated 1‑Wire interface drivers
+  non-volatile memory chips using I2C
+* Hardware-accelerated 1-Wire interface drivers
 * IrDA interface drivers
 * Audio codec drivers
 * Button drivers

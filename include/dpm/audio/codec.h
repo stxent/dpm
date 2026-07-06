@@ -72,7 +72,7 @@ static inline void codecCheck(void *codec)
 /**
  * Get the current input gain of a selected channel.
  *
- * The gain value is normalized to an 8‑bit range.
+ * The gain value is normalized to an 8-bit range.
  *
  * @param codec Pointer to a Codec object.
  * @param channel Input channel identifier.
@@ -102,7 +102,7 @@ static inline enum CodecChannel codecGetInputMute(const void *codec)
 /**
  * Get the output gain of a selected channel.
  *
- * The gain value is normalized to an 8‑bit range.
+ * The gain value is normalized to an 8-bit range.
  *
  * @param codec Pointer to a Codec object.
  * @param channel Output channel identifier.
@@ -171,7 +171,7 @@ static inline void codecSetAGCEnabled(void *codec, bool state)
 /**
  * Set the input gain for a selected channel.
  *
- * Gain is specified as an 8‑bit value for fine control.
+ * Gain is specified as an 8-bit value for fine control.
  *
  * @param codec Pointer to a Codec object.
  * @param channel Input channel identifier.
@@ -219,7 +219,7 @@ static inline void codecSetInputPath(void *codec, int path,
 /**
  * Set the output gain for a selected channel.
  *
- * Gain is specified as an 8‑bit value for precise control.
+ * Gain is specified as an 8-bit value for precise control.
  *
  * @param codec Pointer to a Codec object.
  * @param channel Output channel identifier.
@@ -287,7 +287,7 @@ static inline void codecReset(void *codec)
 }
 
 /**
- * Put the codec in a power‑saving mode.
+ * Put the codec in a power-saving mode.
  *
  * Suspends the codec operation to reduce power consumption.
  * The codec may need to be reinitialized when resuming.
@@ -322,7 +322,7 @@ static inline bool codecUpdate(void *codec)
  * @param codec Pointer to a Codec object.
  * @param callback Callback function to handle errors.
  * Pass NULL to disable error notifications.
- * @param argument User‑defined argument passed to the callback function.
+ * @param argument User-defined argument passed to the callback function.
  */
 static inline void codecSetErrorCallback(void *codec, void (*callback)(void *),
     void *argument)
@@ -340,7 +340,7 @@ static inline void codecSetErrorCallback(void *codec, void (*callback)(void *),
  * @param codec Pointer to a Codec object.
  * @param callback Callback function for idle notifications.
  * Pass NULL to disable idle notifications.
- * @param argument User‑defined argument passed to the callback function.
+ * @param argument User-defined argument passed to the callback function.
  */
 static inline void codecSetIdleCallback(void *codec, void (*callback)(void *),
     void *argument)
@@ -359,7 +359,7 @@ static inline void codecSetIdleCallback(void *codec, void (*callback)(void *),
  * @param codec Pointer to a Codec object.
  * @param callback Callback function for update requests.
  * Pass NULL to disable the update callback.
- * @param argument User‑defined argument passed to the callback function.
+ * @param argument User-defined argument passed to the callback function.
  */
 static inline void codecSetUpdateCallback(void *codec,
     void (*callback)(void *), void *argument)

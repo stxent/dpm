@@ -200,9 +200,9 @@ static void channelSetEdges(void *object, [[maybe_unused]] uint32_t leading,
 }
 /*----------------------------------------------------------------------------*/
 /**
- * Create a single‑edge software PWM channel.
+ * Create a single-edge software PWM channel.
  *
- * Initializes a new software PWM channel with single‑edge modulation.
+ * Initializes a new software PWM channel with single-edge modulation.
  * The channel generates a PWM signal where only one edge is actively
  * controlled in software; the other edge is handled by timing logic.
  *

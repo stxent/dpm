@@ -59,7 +59,7 @@ BEGIN_DECLS
  * Get the data format of measurement results.
  *
  * @param sensor Pointer to a Sensor object.
- * @return A null‑terminated string representing the data format.
+ * @return A null-terminated string representing the data format.
  */
 static inline const char *sensorGetFormat(const void *sensor)
 {
@@ -82,7 +82,7 @@ static inline enum SensorStatus sensorGetStatus(const void *sensor)
  *
  * This function retrieves the timestamp associated with the most recent
  * measurement taken by the sensor. The timestamp is typically represented
- * as a 64‑bit value indicating the time in microseconds since system boot.
+ * as a 64-bit value indicating the time in microseconds since system boot.
  *
  * @param sensor Pointer to a Sensor object. Must not be NULL.
  * @return The timestamp for the last measurement, if timestamps are supported
@@ -206,7 +206,7 @@ static inline void sensorStop(void *sensor)
 }
 
 /**
- * Put the sensor into a low‑power (suspended) mode.
+ * Put the sensor into a low-power (suspended) mode.
  *
  * All active operations are halted, and the sensor draws minimal power.
  *
@@ -220,7 +220,7 @@ static inline void sensorSuspend(void *sensor)
 /**
  * Update the internal state of the sensor and check bus availability.
  *
- * This non‑blocking function processes any pending I/O and returns
+ * This non-blocking function processes any pending I/O and returns
  * the current bus status.
  *
  * @param sensor Pointer to a Sensor object.
