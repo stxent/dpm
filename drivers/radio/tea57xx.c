@@ -178,7 +178,10 @@ static void onTimerEvent(void *object)
 /*----------------------------------------------------------------------------*/
 static void startBusTimeout(struct Timer *timer)
 {
-  timerSetOverflow(timer, timerGetFrequency(timer) / 10);
+  static const uint32_t rate = 10; /* Hz */
+  const uint32_t timeout = (timerGetFrequency(timer) + (rate - 1)) / rate;
+
+  timerSetOverflow(timer, timeout);
   timerSetValue(timer, 0);
   timerEnable(timer);
 }

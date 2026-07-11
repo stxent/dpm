@@ -118,8 +118,8 @@ static void busInit(struct HMC5883 *sensor, bool read)
 /*----------------------------------------------------------------------------*/
 static inline uint32_t calcResetTimeout(const struct Timer *timer)
 {
-  static const uint32_t resetRequestFreq = 10;
-  return (timerGetFrequency(timer) + resetRequestFreq - 1) / resetRequestFreq;
+  static const uint32_t resetRequestFreq = 10; /* Hz */
+  return (timerGetFrequency(timer) + (resetRequestFreq - 1)) / resetRequestFreq;
 }
 /*----------------------------------------------------------------------------*/
 static void calcValues(struct HMC5883 *sensor)

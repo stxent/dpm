@@ -22,7 +22,7 @@ struct ButtonConfig
   struct Timer *timer;
   /** Mandatory: input pin. */
   PinNumber pin;
-  /** Optional: debouncing delay in timer ticks. */
+  /** Optional: debouncing delay in milliseconds. */
   unsigned short delay;
   /** Mandatory: active level. */
   bool level;

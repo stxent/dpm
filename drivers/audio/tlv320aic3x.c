@@ -851,14 +851,14 @@ static void busInitRead(struct TLV320AIC3x *codec)
 /*----------------------------------------------------------------------------*/
 static inline uint32_t calcBusTimeout(const struct Timer *timer)
 {
-  static const uint32_t busTimeoutFreq = 10;
-  return (timerGetFrequency(timer) + busTimeoutFreq - 1) / busTimeoutFreq;
+  static const uint32_t busTimeoutFreq = 10; /* Hz */
+  return (timerGetFrequency(timer) + (busTimeoutFreq - 1)) / busTimeoutFreq;
 }
 /*----------------------------------------------------------------------------*/
 static inline uint32_t calcResetTimeout(const struct Timer *timer)
 {
-  static const uint32_t resetRequestFreq = 100;
-  return (timerGetFrequency(timer) + resetRequestFreq - 1) / resetRequestFreq;
+  static const uint32_t resetRequestFreq = 100; /* Hz */
+  return (timerGetFrequency(timer) + (resetRequestFreq - 1)) / resetRequestFreq;
 }
 /*----------------------------------------------------------------------------*/
 static void changeRateConfig(struct TLV320AIC3x *codec, unsigned int rate)

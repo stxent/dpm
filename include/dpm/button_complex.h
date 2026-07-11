@@ -23,9 +23,9 @@ struct ButtonComplexConfig
   struct Timer *timer;
   /** Mandatory: input pin. */
   PinNumber pin;
-  /** Optional: debouncing delay in timer ticks. */
+  /** Optional: debouncing delay in milliseconds. */
   unsigned short delay;
-  /** Optional: long press delay in timer ticks. */
+  /** Optional: long press delay in milliseconds. */
   unsigned short hold;
   /** Mandatory: active level. */
   bool level;

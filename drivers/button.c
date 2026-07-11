@@ -9,7 +9,8 @@
 #include <assert.h>
 #include <limits.h>
 /*----------------------------------------------------------------------------*/
-#define DEBOUNCE_FREQUENCY 100
+#define DEBOUNCE_FREQUENCY  100
+#define DEBOUNCE_PERIOD     (1000 / DEBOUNCE_FREQUENCY)
 /*----------------------------------------------------------------------------*/
 static void onPinInterrupt(void *);
 static void onTimerOverflow(void *);
@@ -93,7 +94,7 @@ static enum Result buttonInit(void *object, const void *configBase)
   button->interrupt = config->interrupt;
   button->timer = config->timer;
   button->counter = 0;
-  button->delay = config->delay;
+  button->delay = (config->delay + (DEBOUNCE_PERIOD - 1)) / DEBOUNCE_PERIOD;
   button->level = config->level;
 
   const uint32_t overflow =

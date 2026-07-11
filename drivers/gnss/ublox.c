@@ -102,7 +102,7 @@ static void onMessageReceivedNavVelNED(struct Ublox *,
     const struct UbloxMessage *);
 
 static inline uint32_t calcCheckTimeout(const struct Timer *);
-static inline uint32_t calcConfigTimeout(const struct Timer *);
+static inline uint32_t calcRetryTimeout(const struct Timer *);
 static void configMessageRate(struct Ublox *, uint16_t, uint8_t);
 static void sendConfigAntMessage(struct Ublox *);
 static void sendConfigNavMessage(struct Ublox *, int8_t);
@@ -517,10 +517,10 @@ static inline uint32_t calcCheckTimeout(const struct Timer *timer)
   return timerGetFrequency(timer) * receptionCheckPeriod;
 }
 /*----------------------------------------------------------------------------*/
-static inline uint32_t calcConfigTimeout(const struct Timer *timer)
+static inline uint32_t calcRetryTimeout(const struct Timer *timer)
 {
-  static const uint32_t configRequestFreq = 100; /* Hz */
-  return (timerGetFrequency(timer) + configRequestFreq - 1) / configRequestFreq;
+  static const uint32_t retryRequestFreq = 100; /* Hz */
+  return (timerGetFrequency(timer) + (retryRequestFreq - 1)) / retryRequestFreq;
 }
 /*----------------------------------------------------------------------------*/
 static void configMessageRate(struct Ublox *receiver, uint16_t type,
@@ -974,7 +974,7 @@ static void ubloxDeinit(void *object)
 void ubloxReset(struct Ublox *receiver, uint32_t rate)
 {
   timerDisable(receiver->timer);
-  timerSetOverflow(receiver->timer, calcConfigTimeout(receiver->timer));
+  timerSetOverflow(receiver->timer, calcRetryTimeout(receiver->timer));
 
   receiver->config.pending = 0;
   receiver->config.retries = MAX_RETRIES;

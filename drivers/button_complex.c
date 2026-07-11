@@ -10,7 +10,8 @@
 #include <assert.h>
 #include <limits.h>
 /*----------------------------------------------------------------------------*/
-#define DEBOUNCE_FREQUENCY 100
+#define DEBOUNCE_FREQUENCY  100
+#define DEBOUNCE_PERIOD     (1000 / DEBOUNCE_FREQUENCY)
 /*----------------------------------------------------------------------------*/
 static void onPinInterrupt(void *);
 static void onTimerOverflow(void *);
@@ -104,15 +105,17 @@ static enum Result buttonInit(void *object, const void *configBase)
   button->releaseCallback = NULL;
   button->releaseCallbackArgument = NULL;
 
+  /* Convert to debounce ticks */
+  button->delayHold = (config->hold + (DEBOUNCE_PERIOD - 1)) / DEBOUNCE_PERIOD;
+  button->delayWait = (config->delay + (DEBOUNCE_PERIOD - 1)) / DEBOUNCE_PERIOD;
+
   button->interrupt = config->interrupt;
   button->timer = config->timer;
   button->counter = 0;
-  button->delayHold = config->hold;
-  button->delayWait = config->delay;
   button->level = config->level;
 
   const uint32_t overflow =
-      (timerGetFrequency(button->timer) + DEBOUNCE_FREQUENCY - 1)
+      (timerGetFrequency(button->timer) + (DEBOUNCE_FREQUENCY - 1))
           / DEBOUNCE_FREQUENCY;
 
   interruptSetCallback(button->interrupt, onPinInterrupt, button);

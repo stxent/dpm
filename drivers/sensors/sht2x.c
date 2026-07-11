@@ -130,8 +130,8 @@ static void calcHumidity(struct SHT2X *sensor)
 /*----------------------------------------------------------------------------*/
 static inline uint32_t calcResetTimeout(const struct Timer *timer)
 {
-  static const uint32_t resetRequestFreq = 10;
-  return (timerGetFrequency(timer) + resetRequestFreq - 1) / resetRequestFreq;
+  static const uint32_t resetRequestFreq = 10; /* Hz */
+  return (timerGetFrequency(timer) + (resetRequestFreq - 1)) / resetRequestFreq;
 }
 /*----------------------------------------------------------------------------*/
 static uint16_t fetchSample(const struct SHT2X *sensor)
