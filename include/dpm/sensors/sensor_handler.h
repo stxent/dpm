@@ -8,7 +8,6 @@
 #define DPM_SENSORS_SENSOR_HANDLER_H_
 /*----------------------------------------------------------------------------*/
 #include <dpm/sensors/sensor.h>
-#include <stdint.h>
 /*----------------------------------------------------------------------------*/
 struct WorkQueue;
 

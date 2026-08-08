@@ -8,7 +8,6 @@
 #include <halm/generic/flash.h>
 #include <halm/generic/work_queue.h>
 #include <halm/irq.h>
-#include <halm/usb/dfu.h>
 #include <halm/usb/usb_trace.h>
 #include <assert.h>
 #include <stdlib.h>

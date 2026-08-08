@@ -224,12 +224,16 @@ static void oneWireSetCallback(void *object, void (*callback)(void *),
   interface->callback = callback;
 }
 /*----------------------------------------------------------------------------*/
-static enum Result oneWireGetParam(void *object, int parameter, void *)
+static enum Result oneWireGetParam(void *object, int parameter, void *data)
 {
   struct OneWireUart * const interface = object;
 
   switch ((enum IfParameter)parameter)
   {
+    case IF_ADDRESS_64:
+      *(uint64_t *)data = fromLittleEndian64(interface->address);
+      return E_OK;
+
     case IF_STATUS:
       if (interface->blocking || interface->state != STATE_ERROR)
         return interface->state != STATE_IDLE ? E_BUSY : E_OK;

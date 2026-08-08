@@ -27,15 +27,15 @@ enum [[gnu::packed]] DisplayParameter
   IF_DISPLAY_UPDATE = IF_PARAMETER_END,
 
   /**
-   * Display orientation. Parameter type is \a uint8_t. Possible values
-   * are described in the \a DisplayOrientation enumeration.
+   * Display orientation. Parameter type is \p uint8_t. Possible values
+   * are described in the \p enum \p DisplayOrientation.
    */
   IF_DISPLAY_ORIENTATION,
-  /** Display resolution. Parameter type is \a DisplayResolution structure. */
+  /** Display resolution. Parameter type is \p struct \p DisplayResolution. */
   IF_DISPLAY_RESOLUTION,
   /**
    * First and last addresses of the current display window.
-   * Parameter type is \a DisplayWindow structure.
+   * Parameter type is \p struct \p DisplayWindow.
    */
   IF_DISPLAY_WINDOW
 };

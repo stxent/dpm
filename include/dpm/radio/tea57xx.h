@@ -8,8 +8,6 @@
 #define DPM_RADIO_TEA57XX_H_
 /*----------------------------------------------------------------------------*/
 #include <dpm/audio/codec.h>
-#include <xcore/entity.h>
-#include <stdint.h>
 /*----------------------------------------------------------------------------*/
 extern const struct EntityClass * const TEA57XX;
 

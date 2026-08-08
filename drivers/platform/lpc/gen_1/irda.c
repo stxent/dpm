@@ -7,7 +7,6 @@
 #include <dpm/platform/lpc/irda.h>
 #include <dpm/platform/lpc/irda_timer.h>
 #include <halm/platform/lpc/gen_1/uart_defs.h>
-#include <xcore/containers/byte_queue.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
 #define FRAME_WIDTH  10

@@ -6,6 +6,7 @@
 
 #include <dpm/platform/lpc/memory_bus_dma_timer.h>
 #include <halm/platform/lpc/gptimer_defs.h>
+#include <xcore/asm.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *);

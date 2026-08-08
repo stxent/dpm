@@ -5,7 +5,6 @@
  */
 
 #include <dpm/software_pwm.h>
-#include <halm/generic/pointer_list.h>
 #include <halm/irq.h>
 #include <assert.h>
 /*----------------------------------------------------------------------------*/

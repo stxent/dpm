@@ -98,7 +98,7 @@ static enum Result buttonInit(void *object, const void *configBase)
   button->level = config->level;
 
   const uint32_t overflow =
-      (timerGetFrequency(button->timer) + DEBOUNCE_FREQUENCY - 1)
+      (timerGetFrequency(button->timer) + (DEBOUNCE_FREQUENCY - 1))
           / DEBOUNCE_FREQUENCY;
 
   interruptSetCallback(button->interrupt, onPinInterrupt, button);

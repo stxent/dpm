@@ -7,7 +7,6 @@
 #include <dpm/platform/stm32/irda.h>
 #include <halm/platform/stm32/gptimer.h>
 #include <halm/platform/stm32/uart_defs.h>
-#include <xcore/containers/byte_queue.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
 #define FRAME_WIDTH 10

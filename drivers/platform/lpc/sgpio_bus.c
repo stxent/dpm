@@ -8,7 +8,6 @@
 #include <dpm/platform/lpc/sgpio_bus_dma.h>
 #include <dpm/platform/lpc/sgpio_bus_timer.h>
 #include <halm/platform/lpc/lpc43xx/gima_defs.h>
-#include <halm/platform/lpc/sgpio_base.h>
 #include <halm/platform/lpc/sgpio_defs.h>
 #include <xcore/accel.h>
 #include <assert.h>

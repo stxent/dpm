@@ -10,7 +10,6 @@
 #include <halm/interrupt.h>
 #include <halm/timer.h>
 #include <xcore/atomic.h>
-#include <xcore/bits.h>
 #include <xcore/interface.h>
 #include <assert.h>
 #include <string.h>
