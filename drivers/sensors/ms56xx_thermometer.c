@@ -50,15 +50,15 @@ const struct SensorClass * const MS56XXThermometer =
 static enum Result thermoInit(void *object, const void *configBase)
 {
   const struct MS56XXThermometerConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->parent != NULL);
+  assert(config != nullptr);
+  assert(config->parent != nullptr);
 
   struct MS56XXThermometer * const sensor = object;
 
-  sensor->callbackArgument = NULL;
-  sensor->onErrorCallback = NULL;
-  sensor->onResultCallback = NULL;
-  sensor->onUpdateCallback = NULL;
+  sensor->callbackArgument = nullptr;
+  sensor->onErrorCallback = nullptr;
+  sensor->onResultCallback = nullptr;
+  sensor->onUpdateCallback = nullptr;
   sensor->parent = config->parent;
 
   return E_OK;
@@ -117,8 +117,8 @@ static void thermoSample(void *object)
 {
   struct MS56XXThermometer * const sensor = object;
 
-  assert(sensor->onResultCallback != NULL);
-  assert(sensor->onUpdateCallback != NULL);
+  assert(sensor->onResultCallback != nullptr);
+  assert(sensor->onUpdateCallback != nullptr);
 
   atomicFetchOr(&sensor->parent->flags, FLAG_THERMO_SAMPLE);
 }
@@ -127,8 +127,8 @@ static void thermoStart(void *object)
 {
   struct MS56XXThermometer * const sensor = object;
 
-  assert(sensor->onResultCallback != NULL);
-  assert(sensor->onUpdateCallback != NULL);
+  assert(sensor->onResultCallback != nullptr);
+  assert(sensor->onUpdateCallback != nullptr);
 
   atomicFetchOr(&sensor->parent->flags, FLAG_THERMO_LOOP);
 }

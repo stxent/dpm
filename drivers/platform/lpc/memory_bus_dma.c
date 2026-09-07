@@ -44,14 +44,14 @@ static void interruptHandler(void *object)
 
   interface->busy = false;
 
-  if (interface->callback != NULL)
+  if (interface->callback != nullptr)
     interface->callback(interface->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static void setupGpio(struct MemoryBusDma *interface,
     const struct MemoryBusDmaConfig *config)
 {
-  assert(config->pins != NULL);
+  assert(config->pins != nullptr);
 
   /* First pin number should be aligned along byte boundary */
   assert(!(PIN_TO_OFFSET(config->pins[0]) & 0x07));
@@ -133,7 +133,7 @@ static bool setupDma(struct MemoryBusDma *interface,
     interface->dma = init(GpDmaCircular, &dmaConfig);
   }
 
-  if (interface->dma != NULL)
+  if (interface->dma != nullptr)
   {
     dmaConfigure(interface->dma, &dmaSettings);
     return true;
@@ -145,7 +145,7 @@ static bool setupDma(struct MemoryBusDma *interface,
 static enum Result busInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaConfig * const config = configPtr;
-  assert(config != NULL);
+  assert(config != nullptr);
 
   const struct MemoryBusDmaClockConfig clockConfig = {
       .cycle = config->cycle,
@@ -167,11 +167,11 @@ static enum Result busInit(void *object, const void *configPtr)
   setupGpio(interface, config);
 
   interface->clock = init(MemoryBusDmaClock, &clockConfig);
-  if (interface->clock == NULL)
+  if (interface->clock == nullptr)
     return E_ERROR;
 
   interface->control = init(MemoryBusDmaControl, &controlConfig);
-  if (interface->control == NULL)
+  if (interface->control == nullptr)
     return E_ERROR;
 
   struct MemoryBusDmaFinalizerConfig finalizerConfig = {
@@ -181,7 +181,7 @@ static enum Result busInit(void *object, const void *configPtr)
   };
 
   interface->finalizer = init(MemoryBusDmaFinalizer, &finalizerConfig);
-  if (interface->finalizer == NULL)
+  if (interface->finalizer == nullptr)
     return E_ERROR;
 
   const uint8_t dmaEvent = config->clock.swap ?
@@ -193,7 +193,7 @@ static enum Result busInit(void *object, const void *configPtr)
 
     interface->blocking = true;
     interface->busy = false;
-    interface->callback = NULL;
+    interface->callback = nullptr;
 
     return E_OK;
   }

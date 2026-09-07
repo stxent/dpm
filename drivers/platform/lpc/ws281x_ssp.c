@@ -39,7 +39,7 @@ const struct InterfaceClass * const WS281xSsp = &(const struct InterfaceClass){
     .setCallback = busSetCallback,
     .getParam = busGetParam,
     .setParam = busSetParam,
-    .read = NULL,
+    .read = nullptr,
     .write = busWrite
 };
 /*----------------------------------------------------------------------------*/
@@ -102,7 +102,7 @@ static void interruptHandler(void *object)
       /* Disable all interrupts */
       reg->IMSC = 0;
 
-      if (interface->callback != NULL)
+      if (interface->callback != nullptr)
         interface->callback(interface->callbackArgument);
     }
   }
@@ -120,7 +120,7 @@ static uint32_t packSingleColor(uint8_t color)
 static enum Result busInit(void *object, const void *configBase)
 {
   const struct WS281xSspConfig * const config = configBase;
-  assert(config != NULL);
+  assert(config != nullptr);
   assert(config->size > 0);
 
   const struct SspBaseConfig baseConfig = {
@@ -138,11 +138,11 @@ static enum Result busInit(void *object, const void *configBase)
     return res;
 
   interface->buffer = malloc(config->size * 3 * 2 * sizeof(uint16_t));
-  if (interface->buffer == NULL)
+  if (interface->buffer == nullptr)
     return E_MEMORY;
 
   interface->base.handler = interruptHandler;
-  interface->callback = NULL;
+  interface->callback = nullptr;
   interface->blocking = true;
   interface->size = config->size;
   interface->state = STATE_IDLE;

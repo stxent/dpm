@@ -18,7 +18,7 @@ struct DfuBridgeConfig
   /**
    * Optional: software reset handler function. If provided, this function
    * will be called to perform a software reset of the device during
-   * the DFU process. Can be set to @b NULL.
+   * the DFU process. Can be set to @b nullptr.
    */
   void (*reset)(void);
   /** Mandatory: pointer to the flash memory interface. */

@@ -113,29 +113,29 @@ static void deselectChip(struct ST7735 *display)
 {
   pinSet(display->cs);
 
-  ifSetCallback(display->bus, NULL, NULL);
-  ifSetParam(display->bus, IF_RELEASE, NULL);
+  ifSetCallback(display->bus, nullptr, nullptr);
+  ifSetParam(display->bus, IF_RELEASE, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static void selectChip(struct ST7735 *display, bool blocking)
 {
   /* Lock the interface */
-  ifSetParam(display->bus, IF_ACQUIRE, NULL);
+  ifSetParam(display->bus, IF_ACQUIRE, nullptr);
 
   if (display->rate)
     ifSetParam(display->bus, IF_RATE, &display->rate);
 
   ifSetParam(display->bus, IF_SPI_MODE, &(uint8_t){0});
-  ifSetParam(display->bus, IF_SPI_UNIDIRECTIONAL, NULL);
+  ifSetParam(display->bus, IF_SPI_UNIDIRECTIONAL, nullptr);
 
   if (blocking)
   {
-    ifSetParam(display->bus, IF_BLOCKING, NULL);
-    ifSetCallback(display->bus, NULL, NULL);
+    ifSetParam(display->bus, IF_BLOCKING, nullptr);
+    ifSetCallback(display->bus, nullptr, nullptr);
   }
   else
   {
-    ifSetParam(display->bus, IF_ZEROCOPY, NULL);
+    ifSetParam(display->bus, IF_ZEROCOPY, nullptr);
     ifSetCallback(display->bus, interruptHandler, display);
   }
 
@@ -159,7 +159,7 @@ static void interruptHandler(void *object)
   /* Release the interface */
   deselectChip(display);
 
-  if (display->callback != NULL)
+  if (display->callback != nullptr)
     display->callback(display->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -234,8 +234,8 @@ static void setWindow(struct ST7735 *display,
 static enum Result displayInit(void *object, const void *configPtr)
 {
   const struct ST7735Config * const config = configPtr;
-  assert(config != NULL);
-  assert(config->bus != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr);
 
   struct ST7735 * const display = object;
 
@@ -254,7 +254,7 @@ static enum Result displayInit(void *object, const void *configPtr)
     return E_VALUE;
   pinOutput(display->rs, false);
 
-  display->callback = NULL;
+  display->callback = nullptr;
   display->bus = config->bus;
   display->blocking = true;
 
@@ -372,7 +372,7 @@ static enum Result displayGetParam(void *object, int parameter, void *data)
       return E_OK;
 
     case IF_STATUS:
-      return ifGetParam(display->bus, IF_STATUS, NULL);
+      return ifGetParam(display->bus, IF_STATUS, nullptr);
 
     default:
       return E_INVALID;

@@ -53,11 +53,11 @@ static const struct NandCapabilityEntry *findCapabilityEntry(
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 /*----------------------------------------------------------------------------*/
 uint16_t nandGetCapabilitiesByJedecInfo(const struct JedecInfo *info)
 {
   const struct NandCapabilityEntry * const entry = findCapabilityEntry(info);
-  return entry != NULL ? entry->capabilities : 0;
+  return entry != nullptr ? entry->capabilities : 0;
 }

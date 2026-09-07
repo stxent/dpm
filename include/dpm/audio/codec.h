@@ -317,11 +317,11 @@ static inline bool codecUpdate(void *codec)
  * Set a callback function to be invoked in case of errors.
  *
  * Registers a function that will be called when an error occurs during
- * codec operations. The callback can be disabled by passing @b NULL.
+ * codec operations. The callback can be disabled by passing @b nullptr.
  *
  * @param codec Pointer to a Codec object.
  * @param callback Callback function to handle errors.
- * Pass @b NULL to disable error notifications.
+ * Pass @b nullptr to disable error notifications.
  * @param argument User-defined argument passed to the callback function.
  */
 static inline void codecSetErrorCallback(void *codec, void (*callback)(void *),
@@ -339,7 +339,7 @@ static inline void codecSetErrorCallback(void *codec, void (*callback)(void *),
  *
  * @param codec Pointer to a Codec object.
  * @param callback Callback function for idle notifications.
- * Pass @b NULL to disable idle notifications.
+ * Pass @b nullptr to disable idle notifications.
  * @param argument User-defined argument passed to the callback function.
  */
 static inline void codecSetIdleCallback(void *codec, void (*callback)(void *),
@@ -358,7 +358,7 @@ static inline void codecSetIdleCallback(void *codec, void (*callback)(void *),
  *
  * @param codec Pointer to a Codec object.
  * @param callback Callback function for update requests.
- * Pass @b NULL to disable the update callback.
+ * Pass @b nullptr to disable the update callback.
  * @param argument User-defined argument passed to the callback function.
  */
 static inline void codecSetUpdateCallback(void *codec,
@@ -376,7 +376,7 @@ static inline void codecSetUpdateCallback(void *codec,
  *
  * @param codec Pointer to a Codec object.
  * @param wq Pointer to the work queue structure.
- * Pass @b NULL to disable the work queue.
+ * Pass @b nullptr to disable the work queue.
  */
 static inline void codecSetUpdateWorkQueue(void *codec, struct WorkQueue *wq)
 {

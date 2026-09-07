@@ -96,10 +96,10 @@ const struct SensorClass * const SHT2X = &(const struct SensorClass){
 static void busInit(struct SHT2X *sensor)
 {
   /* Lock the interface */
-  ifSetParam(sensor->bus, IF_ACQUIRE, NULL);
+  ifSetParam(sensor->bus, IF_ACQUIRE, nullptr);
 
   ifSetParam(sensor->bus, IF_ADDRESS, &sensor->address);
-  ifSetParam(sensor->bus, IF_ZEROCOPY, NULL);
+  ifSetParam(sensor->bus, IF_ZEROCOPY, nullptr);
   ifSetCallback(sensor->bus, onBusEvent, sensor);
 
   if (sensor->rate)
@@ -149,7 +149,7 @@ static void onBusEvent(void *object)
 
   timerDisable(sensor->timer);
 
-  if (ifGetParam(sensor->bus, IF_STATUS, NULL) != E_OK)
+  if (ifGetParam(sensor->bus, IF_STATUS, nullptr) != E_OK)
   {
     sensor->state = STATE_ERROR_WAIT;
     timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
@@ -197,8 +197,8 @@ static void onBusEvent(void *object)
     timerEnable(sensor->timer);
   }
 
-  ifSetCallback(sensor->bus, NULL, NULL);
-  ifSetParam(sensor->bus, IF_RELEASE, NULL);
+  ifSetCallback(sensor->bus, nullptr, nullptr);
+  ifSetParam(sensor->bus, IF_RELEASE, nullptr);
   sensor->onUpdateCallback(sensor->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -221,8 +221,8 @@ static void onTimerEvent(void *object)
       break;
 
     default:
-      ifSetCallback(sensor->bus, NULL, NULL);
-      ifSetParam(sensor->bus, IF_RELEASE, NULL);
+      ifSetCallback(sensor->bus, nullptr, nullptr);
+      ifSetParam(sensor->bus, IF_RELEASE, nullptr);
       sensor->state = STATE_ERROR_TIMEOUT;
       break;
   }
@@ -351,18 +351,18 @@ static void startTemperatureConversion(struct SHT2X *sensor)
 static enum Result shtInit(void *object, const void *configBase)
 {
   const struct SHT2XConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->bus != NULL);
-  assert(config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr);
+  assert(config->timer != nullptr);
 
   struct SHT2X * const sensor = object;
 
-  sensor->callbackArgument = NULL;
-  sensor->onErrorCallback = NULL;
-  sensor->onResultCallback = NULL;
-  sensor->onUpdateCallback = NULL;
+  sensor->callbackArgument = nullptr;
+  sensor->onErrorCallback = nullptr;
+  sensor->onResultCallback = nullptr;
+  sensor->onUpdateCallback = nullptr;
 
-  sensor->thermometer = NULL;
+  sensor->thermometer = nullptr;
   sensor->bus = config->bus;
   sensor->timer = config->timer;
   sensor->address = config->address;
@@ -393,9 +393,9 @@ static void shtDeinit(void *object)
   struct SHT2X * const sensor = object;
 
   timerDisable(sensor->timer);
-  timerSetCallback(sensor->timer, NULL, NULL);
+  timerSetCallback(sensor->timer, nullptr, nullptr);
 
-  if (sensor->thermometer != NULL)
+  if (sensor->thermometer != nullptr)
     deinit(sensor->thermometer);
 }
 /*----------------------------------------------------------------------------*/
@@ -462,8 +462,8 @@ static void shtSample(void *object)
 {
   struct SHT2X * const sensor = object;
 
-  assert(sensor->onResultCallback != NULL);
-  assert(sensor->onUpdateCallback != NULL);
+  assert(sensor->onResultCallback != nullptr);
+  assert(sensor->onUpdateCallback != nullptr);
 
   atomicFetchOr(&sensor->flags, FLAG_SAMPLE);
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -473,8 +473,8 @@ static void shtStart(void *object)
 {
   struct SHT2X * const sensor = object;
 
-  assert(sensor->onResultCallback != NULL);
-  assert(sensor->onUpdateCallback != NULL);
+  assert(sensor->onResultCallback != nullptr);
+  assert(sensor->onUpdateCallback != nullptr);
 
   atomicFetchOr(&sensor->flags, FLAG_LOOP);
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -601,7 +601,7 @@ static bool shtUpdate(void *object)
 
       case STATE_ERROR_INTERFACE:
       case STATE_ERROR_TIMEOUT:
-        if (sensor->onErrorCallback != NULL)
+        if (sensor->onErrorCallback != nullptr)
         {
           sensor->onErrorCallback(sensor->callbackArgument,
               sensor->state == STATE_ERROR_INTERFACE ?
@@ -620,7 +620,7 @@ static bool shtUpdate(void *object)
 /*----------------------------------------------------------------------------*/
 struct SHT2XThermometer *sht2xMakeThermometer(struct SHT2X *sensor)
 {
-  if (sensor->thermometer == NULL)
+  if (sensor->thermometer == nullptr)
   {
     const struct SHT2XThermometerConfig config = {
         .parent = sensor

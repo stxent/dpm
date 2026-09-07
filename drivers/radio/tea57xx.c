@@ -77,17 +77,17 @@ static inline uint16_t frequencyToMultiplier(const struct TEA57XX *radio,
 static void busInit(struct TEA57XX *radio, bool read)
 {
   /* Lock the interface */
-  ifSetParam(radio->bus, IF_ACQUIRE, NULL);
+  ifSetParam(radio->bus, IF_ACQUIRE, nullptr);
 
   ifSetParam(radio->bus, IF_ADDRESS, &radio->address);
-  ifSetParam(radio->bus, IF_ZEROCOPY, NULL);
+  ifSetParam(radio->bus, IF_ZEROCOPY, nullptr);
   ifSetCallback(radio->bus, onBusEvent, radio);
 
   if (radio->rate)
     ifSetParam(radio->bus, IF_RATE, &radio->rate);
 
   if (read)
-    ifSetParam(radio->bus, IF_I2C_REPEATED_START, NULL);
+    ifSetParam(radio->bus, IF_I2C_REPEATED_START, nullptr);
 
   /* Start bus watchdog */
   startBusTimeout(radio->timer);
@@ -95,9 +95,9 @@ static void busInit(struct TEA57XX *radio, bool read)
 /*----------------------------------------------------------------------------*/
 static void invokeUpdate(struct TEA57XX *radio)
 {
-  assert(radio->updateCallback != NULL || radio->wq != NULL);
+  assert(radio->updateCallback != nullptr || radio->wq != nullptr);
 
-  if (radio->updateCallback != NULL)
+  if (radio->updateCallback != nullptr)
   {
     radio->updateCallback(radio->updateCallbackArgument);
   }
@@ -145,14 +145,14 @@ static void onBusEvent(void *object)
 
   timerDisable(radio->timer);
 
-  if (ifGetParam(radio->bus, IF_STATUS, NULL) != E_OK)
+  if (ifGetParam(radio->bus, IF_STATUS, nullptr) != E_OK)
   {
     radio->state = STATE_ERROR_WAIT;
     startBusTimeout(radio->timer);
   }
 
-  ifSetCallback(radio->bus, NULL, NULL);
-  ifSetParam(radio->bus, IF_RELEASE, NULL);
+  ifSetCallback(radio->bus, nullptr, nullptr);
+  ifSetParam(radio->bus, IF_RELEASE, nullptr);
   invokeUpdate(radio);
 }
 /*----------------------------------------------------------------------------*/
@@ -167,8 +167,8 @@ static void onTimerEvent(void *object)
       break;
 
     default:
-      ifSetCallback(radio->bus, NULL, NULL);
-      ifSetParam(radio->bus, IF_RELEASE, NULL);
+      ifSetCallback(radio->bus, nullptr, nullptr);
+      ifSetParam(radio->bus, IF_RELEASE, nullptr);
       radio->state = STATE_ERROR_TIMEOUT;
       break;
   }
@@ -212,19 +212,19 @@ static void updateTask(void *argument)
 static enum Result teaInit(void *object, const void *configBase)
 {
   const struct TEA57XXConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->bus != NULL && config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr && config->timer != nullptr);
 
   struct TEA57XX * const radio = object;
 
-  radio->callback = NULL;
-  radio->errorCallback = NULL;
-  radio->idleCallback = NULL;
-  radio->updateCallback = NULL;
+  radio->callback = nullptr;
+  radio->errorCallback = nullptr;
+  radio->idleCallback = nullptr;
+  radio->updateCallback = nullptr;
 
   radio->bus = config->bus;
   radio->timer = config->timer;
-  radio->wq = NULL;
+  radio->wq = nullptr;
   radio->address = config->address;
   radio->rate = config->rate;
 
@@ -264,7 +264,7 @@ static void teaDeinit(void *object)
   struct TEA57XX * const radio = object;
 
   timerDisable(radio->timer);
-  timerSetCallback(radio->timer, NULL, NULL);
+  timerSetCallback(radio->timer, nullptr, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 void tea57xxSetCallback(void *object, void (*callback)(void *),
@@ -272,7 +272,7 @@ void tea57xxSetCallback(void *object, void (*callback)(void *),
 {
   struct TEA57XX * const radio = object;
 
-  assert(callback != NULL);
+  assert(callback != nullptr);
 
   radio->callbackArgument = argument;
   radio->callback = callback;
@@ -283,7 +283,7 @@ void tea57xxSetErrorCallback(void *object, void (*callback)(void *),
 {
   struct TEA57XX * const radio = object;
 
-  assert(callback != NULL);
+  assert(callback != nullptr);
 
   radio->errorCallbackArgument = argument;
   radio->errorCallback = callback;
@@ -294,7 +294,7 @@ void tea57xxSetIdleCallback(void *object, void (*callback)(void *),
 {
   struct TEA57XX * const radio = object;
 
-  assert(callback != NULL);
+  assert(callback != nullptr);
 
   radio->idleCallbackArgument = argument;
   radio->idleCallback = callback;
@@ -305,8 +305,8 @@ void tea57xxSetUpdateCallback(void *object, void (*callback)(void *),
 {
   struct TEA57XX * const radio = object;
 
-  assert(callback != NULL);
-  assert(radio->wq == NULL);
+  assert(callback != nullptr);
+  assert(radio->wq == nullptr);
 
   radio->updateCallbackArgument = argument;
   radio->updateCallback = callback;
@@ -316,8 +316,8 @@ void tea57xxSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct TEA57XX * const radio = object;
 
-  assert(wq != NULL);
-  assert(radio->updateCallback == NULL);
+  assert(wq != nullptr);
+  assert(radio->updateCallback == nullptr);
 
   radio->wq = wq;
 }
@@ -394,10 +394,10 @@ bool tea57xxUpdate(void *object)
           radio->config[0] &= ~WDB1_SM;
 
         /* Idle callback for Bus Handlers */
-        if (radio->idleCallback != NULL)
+        if (radio->idleCallback != nullptr)
           radio->idleCallback(radio->idleCallbackArgument);
         /* User callback for Interface class */
-        if (!radio->flags && radio->callback != NULL)
+        if (!radio->flags && radio->callback != nullptr)
           radio->callback(radio->callbackArgument);
 
         updated = true;
@@ -429,10 +429,10 @@ bool tea57xxUpdate(void *object)
         }
 
         /* Idle callback for Bus Handlers */
-        if (radio->idleCallback != NULL)
+        if (radio->idleCallback != nullptr)
           radio->idleCallback(radio->idleCallbackArgument);
         /* User callback for Interface class */
-        if (!radio->flags && radio->callback != NULL)
+        if (!radio->flags && radio->callback != nullptr)
           radio->callback(radio->callbackArgument);
 
         updated = true;
@@ -457,10 +457,10 @@ bool tea57xxUpdate(void *object)
         radio->state = STATE_IDLE;
 
         /* Idle callback for Bus Handlers */
-        if (radio->idleCallback != NULL)
+        if (radio->idleCallback != nullptr)
           radio->idleCallback(radio->idleCallbackArgument);
         /* User callback for Interface class */
-        if (!radio->flags && radio->callback != NULL)
+        if (!radio->flags && radio->callback != nullptr)
           radio->callback(radio->callbackArgument);
 
         updated = true;
@@ -474,10 +474,10 @@ bool tea57xxUpdate(void *object)
         radio->state = STATE_IDLE;
 
         /* Error callback for Bus Handlers */
-        if (radio->errorCallback != NULL)
+        if (radio->errorCallback != nullptr)
           radio->errorCallback(radio->errorCallbackArgument);
         /* User callback for Interface class */
-        if (radio->callback != NULL)
+        if (radio->callback != nullptr)
           radio->callback(radio->callbackArgument);
 
         updated = true;

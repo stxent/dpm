@@ -77,22 +77,22 @@ const struct InterfaceClass * const W25QSerial = &(const struct InterfaceClass){
 /*----------------------------------------------------------------------------*/
 static void busAcquire(struct W25QSerial *memory)
 {
-  ifSetParam(memory->spi, IF_ACQUIRE, NULL);
+  ifSetParam(memory->spi, IF_ACQUIRE, nullptr);
 
   if (memory->rate)
     ifSetParam(memory->spi, IF_RATE, &memory->rate);
 
   ifSetParam(memory->spi, IF_SPI_MODE, &(uint8_t){0});
-  ifSetParam(memory->spi, IF_SPI_UNIDIRECTIONAL, NULL);
+  ifSetParam(memory->spi, IF_SPI_UNIDIRECTIONAL, nullptr);
 
   if (memory->blocking)
   {
-    ifSetParam(memory->spi, IF_BLOCKING, NULL);
-    ifSetCallback(memory->spi, NULL, NULL);
+    ifSetParam(memory->spi, IF_BLOCKING, nullptr);
+    ifSetCallback(memory->spi, nullptr, nullptr);
   }
   else
   {
-    ifSetParam(memory->spi, IF_ZEROCOPY, NULL);
+    ifSetParam(memory->spi, IF_ZEROCOPY, nullptr);
     ifSetCallback(memory->spi, interruptHandler, memory);
   }
 }
@@ -100,8 +100,8 @@ static void busAcquire(struct W25QSerial *memory)
 static void busRelease(struct W25QSerial *memory)
 {
   if (!memory->blocking)
-    ifSetCallback(memory->spi, NULL, NULL);
-  ifSetParam(memory->spi, IF_RELEASE, NULL);
+    ifSetCallback(memory->spi, nullptr, nullptr);
+  ifSetParam(memory->spi, IF_RELEASE, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static bool changeDriverStrength(struct W25QSerial *memory,
@@ -234,7 +234,7 @@ static uint32_t getCapacityFromInfo(uint8_t capacity)
 static void interruptHandler(void *argument)
 {
   struct W25QSerial * const memory = argument;
-  const enum Result status = ifGetParam(memory->spi, IF_STATUS, NULL);
+  const enum Result status = ifGetParam(memory->spi, IF_STATUS, nullptr);
   bool event = false;
 
   assert(memory->context.state != STATE_IDLE
@@ -407,7 +407,7 @@ static void interruptHandler(void *argument)
       break;
   }
 
-  if (event && memory->callback != NULL)
+  if (event && memory->callback != nullptr)
     memory->callback(memory->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -575,8 +575,8 @@ static void writeStatusRegister(struct W25QSerial *memory, uint8_t command,
 static enum Result memoryInit(void *object, const void *configBase)
 {
   const struct W25QSerialConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->spi != NULL);
+  assert(config != nullptr);
+  assert(config->spi != nullptr);
   assert(config->strength < W25_DRV_END);
 
   struct W25QSerial * const memory = object;
@@ -588,7 +588,7 @@ static enum Result memoryInit(void *object, const void *configBase)
     return E_VALUE;
   pinOutput(memory->cs, true);
 
-  memory->callback = NULL;
+  memory->callback = nullptr;
   memory->spi = config->spi;
   memory->timer = config->timer;
   memory->position = 0;
@@ -605,7 +605,7 @@ static enum Result memoryInit(void *object, const void *configBase)
   else
     memory->rate = config->rate;
 
-  if (memory->timer != NULL)
+  if (memory->timer != nullptr)
   {
     /* Configure polling timer */
     const uint32_t frequency = !config->poll ? DEFAULT_POLL_RATE : config->poll;
@@ -670,10 +670,10 @@ static void memoryDeinit(void *object)
 {
   struct W25QSerial * const memory = object;
 
-  if (memory->timer != NULL)
+  if (memory->timer != nullptr)
   {
     timerDisable(memory->timer);
-    timerSetCallback(memory->timer, NULL, NULL);
+    timerSetCallback(memory->timer, nullptr, nullptr);
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -892,7 +892,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
       return E_OK;
 
     case IF_ZEROCOPY:
-      assert(memory->timer != NULL);
+      assert(memory->timer != nullptr);
       memory->blocking = false;
       return E_OK;
 

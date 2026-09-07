@@ -20,9 +20,9 @@ static void updateTask(void *);
 /*----------------------------------------------------------------------------*/
 static void invokeUpdate(struct SensorHandler *handler)
 {
-  assert(handler->updateCallback != NULL || handler->wq != NULL);
+  assert(handler->updateCallback != nullptr || handler->wq != nullptr);
 
-  if (handler->updateCallback != NULL)
+  if (handler->updateCallback != nullptr)
   {
     handler->updateCallback(handler->updateCallbackArgument);
   }
@@ -40,12 +40,12 @@ static void shOnError(void *argument, enum SensorResult error)
   struct SHEntry * const entry = argument;
   struct SensorHandler * const handler = entry->handler;
 
-  if (handler->errorCallback != NULL)
+  if (handler->errorCallback != nullptr)
   {
     handler->errorCallback(handler->errorCallbackArgument);
   }
 
-  if (handler->failureCallback != NULL)
+  if (handler->failureCallback != nullptr)
   {
     handler->failureCallback(handler->failureCallbackArgument,
         entry->tag, error);
@@ -57,7 +57,7 @@ static void shOnResult(void *argument, const void *buffer, size_t length)
   struct SHEntry * const entry = argument;
   struct SensorHandler * const handler = entry->handler;
 
-  if (handler->dataCallback != NULL)
+  if (handler->dataCallback != nullptr)
   {
     handler->dataCallback(handler->dataCallbackArgument,
         entry->tag, buffer, length);
@@ -91,13 +91,13 @@ static void shUpdate(void *argument)
 {
   struct SensorHandler * const handler = argument;
 
-  if (handler->current != NULL)
+  if (handler->current != nullptr)
   {
     atomicFetchAnd(&handler->updating, ~handler->current->mask);
     handler->busy = sensorUpdate(handler->current->sensor);
 
     if (!handler->busy)
-      handler->current = NULL;
+      handler->current = nullptr;
   }
 
   if (!handler->busy)
@@ -107,11 +107,11 @@ static void shUpdate(void *argument)
       const uint32_t index = 31 - countLeadingZeros32(handler->detaching);
       struct SHEntry * const entry = &handler->sensors[index];
 
-      sensorSetErrorCallback(entry->sensor, NULL);
-      sensorSetResultCallback(entry->sensor, NULL);
-      sensorSetUpdateCallback(entry->sensor, NULL);
-      sensorSetCallbackArgument(entry->sensor, NULL);
-      entry->sensor = NULL;
+      sensorSetErrorCallback(entry->sensor, nullptr);
+      sensorSetResultCallback(entry->sensor, nullptr);
+      sensorSetUpdateCallback(entry->sensor, nullptr);
+      sensorSetCallbackArgument(entry->sensor, nullptr);
+      entry->sensor = nullptr;
 
       atomicFetchAnd(&handler->detaching, ~entry->mask);
       atomicFetchAnd(&handler->updating, ~entry->mask);
@@ -130,10 +130,10 @@ static void shUpdate(void *argument)
     if (handler->busy)
       handler->current = entry;
     else
-      handler->current = NULL;
+      handler->current = nullptr;
   }
 
-  if (!handler->busy && handler->idleCallback != NULL)
+  if (!handler->busy && handler->idleCallback != nullptr)
     handler->idleCallback(handler->idleCallbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -148,13 +148,13 @@ static void updateTask(void *argument)
 bool shInit(struct SensorHandler *handler, size_t capacity)
 {
   handler->sensors = malloc(sizeof(struct SHEntry) * capacity);
-  if (handler->sensors == NULL)
+  if (handler->sensors == nullptr)
     return false;
 
   for (size_t index = 0; index < capacity; ++index)
   {
     handler->sensors[index].handler = handler;
-    handler->sensors[index].sensor = NULL;
+    handler->sensors[index].sensor = nullptr;
     handler->sensors[index].mask = 1UL << index;
   }
 
@@ -165,20 +165,20 @@ bool shInit(struct SensorHandler *handler, size_t capacity)
   handler->busy = false;
   handler->pending = false;
 
-  handler->current = NULL;
-  handler->wq = NULL;
+  handler->current = nullptr;
+  handler->wq = nullptr;
 
-  handler->dataCallback = NULL;
-  handler->dataCallbackArgument = NULL;
-  handler->failureCallback = NULL;
-  handler->failureCallbackArgument = NULL;
+  handler->dataCallback = nullptr;
+  handler->dataCallbackArgument = nullptr;
+  handler->failureCallback = nullptr;
+  handler->failureCallbackArgument = nullptr;
 
-  handler->errorCallback = NULL;
-  handler->errorCallbackArgument = NULL;
-  handler->idleCallback = NULL;
-  handler->idleCallbackArgument = NULL;
-  handler->updateCallback = NULL;
-  handler->updateCallbackArgument = NULL;
+  handler->errorCallback = nullptr;
+  handler->errorCallbackArgument = nullptr;
+  handler->idleCallback = nullptr;
+  handler->idleCallbackArgument = nullptr;
+  handler->updateCallback = nullptr;
+  handler->updateCallbackArgument = nullptr;
 
   return true;
 }
@@ -253,8 +253,8 @@ void shSetErrorCallback(void *object, void (*callback)(void *), void *argument)
 {
   struct SensorHandler * const handler = object;
 
-  assert(callback != NULL);
-  assert(handler->wq == NULL);
+  assert(callback != nullptr);
+  assert(handler->wq == nullptr);
 
   handler->errorCallbackArgument = argument;
   handler->errorCallback = callback;
@@ -264,8 +264,8 @@ void shSetIdleCallback(void *object, void (*callback)(void *), void *argument)
 {
   struct SensorHandler * const handler = object;
 
-  assert(callback != NULL);
-  assert(handler->wq == NULL);
+  assert(callback != nullptr);
+  assert(handler->wq == nullptr);
 
   handler->idleCallbackArgument = argument;
   handler->idleCallback = callback;
@@ -275,8 +275,8 @@ void shSetUpdateCallback(void *object, void (*callback)(void *), void *argument)
 {
   struct SensorHandler * const handler = object;
 
-  assert(callback != NULL);
-  assert(handler->wq == NULL);
+  assert(callback != nullptr);
+  assert(handler->wq == nullptr);
 
   handler->updateCallbackArgument = argument;
   handler->updateCallback = callback;
@@ -286,8 +286,8 @@ void shSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct SensorHandler * const handler = object;
 
-  assert(wq != NULL);
-  assert(handler->updateCallback == NULL);
+  assert(wq != nullptr);
+  assert(handler->updateCallback == nullptr);
 
   handler->wq = wq;
 }

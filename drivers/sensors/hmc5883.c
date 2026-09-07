@@ -95,9 +95,9 @@ const struct SensorClass * const HMC5883 = &(const struct SensorClass){
 static void busInit(struct HMC5883 *sensor, bool read)
 {
   /* Lock the interface */
-  ifSetParam(sensor->bus, IF_ACQUIRE, NULL);
+  ifSetParam(sensor->bus, IF_ACQUIRE, nullptr);
 
-  ifSetParam(sensor->bus, IF_ZEROCOPY, NULL);
+  ifSetParam(sensor->bus, IF_ZEROCOPY, nullptr);
   ifSetCallback(sensor->bus, onBusEvent, sensor);
 
   if (sensor->rate)
@@ -107,7 +107,7 @@ static void busInit(struct HMC5883 *sensor, bool read)
   ifSetParam(sensor->bus, IF_ADDRESS, &sensor->address);
 
   if (read)
-    ifSetParam(sensor->bus, IF_I2C_REPEATED_START, NULL);
+    ifSetParam(sensor->bus, IF_I2C_REPEATED_START, nullptr);
 
   /* Start bus watchdog */
   timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
@@ -180,7 +180,7 @@ static void onBusEvent(void *object)
 
   timerDisable(sensor->timer);
 
-  if (ifGetParam(sensor->bus, IF_STATUS, NULL) != E_OK)
+  if (ifGetParam(sensor->bus, IF_STATUS, nullptr) != E_OK)
   {
     /* I2C bus */
     sensor->state = STATE_ERROR_WAIT;
@@ -215,8 +215,8 @@ static void onBusEvent(void *object)
 
   if (release)
   {
-    ifSetCallback(sensor->bus, NULL, NULL);
-    ifSetParam(sensor->bus, IF_RELEASE, NULL);
+    ifSetCallback(sensor->bus, nullptr, nullptr);
+    ifSetParam(sensor->bus, IF_RELEASE, nullptr);
   }
 
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -226,7 +226,7 @@ static void onPinEvent(void *object)
 {
   struct HMC5883 * const sensor = object;
 
-  if (sensor->chrono != NULL)
+  if (sensor->chrono != nullptr)
     sensor->timestamp = timerGetValue64(sensor->chrono);
 
   atomicFetchOr(&sensor->flags, FLAG_EVENT);
@@ -244,8 +244,8 @@ static void onTimerEvent(void *object)
       break;
 
     default:
-      ifSetCallback(sensor->bus, NULL, NULL);
-      ifSetParam(sensor->bus, IF_RELEASE, NULL);
+      ifSetCallback(sensor->bus, nullptr, nullptr);
+      ifSetParam(sensor->bus, IF_RELEASE, nullptr);
       sensor->state = STATE_ERROR_TIMEOUT;
       break;
   }
@@ -287,16 +287,16 @@ static void startSuspendSequence(struct HMC5883 *sensor)
 static enum Result hmcInit(void *object, const void *configBase)
 {
   const struct HMC5883Config * const config = configBase;
-  assert(config != NULL);
-  assert(config->bus != NULL);
-  assert(config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr);
+  assert(config->timer != nullptr);
 
   struct HMC5883 * const sensor = object;
 
-  sensor->callbackArgument = NULL;
-  sensor->onErrorCallback = NULL;
-  sensor->onResultCallback = NULL;
-  sensor->onUpdateCallback = NULL;
+  sensor->callbackArgument = nullptr;
+  sensor->onErrorCallback = nullptr;
+  sensor->onResultCallback = nullptr;
+  sensor->onUpdateCallback = nullptr;
 
   sensor->bus = config->bus;
   sensor->chrono = config->chrono;
@@ -349,10 +349,10 @@ static void hmcDeinit(void *object)
   struct HMC5883 * const sensor = object;
 
   timerDisable(sensor->timer);
-  timerSetCallback(sensor->timer, NULL, NULL);
+  timerSetCallback(sensor->timer, nullptr, nullptr);
 
   interruptDisable(sensor->event);
-  interruptSetCallback(sensor->event, NULL, NULL);
+  interruptSetCallback(sensor->event, nullptr, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static const char *hmcGetFormat(const void *)
@@ -419,8 +419,8 @@ static void hmcSample(void *object)
 {
   struct HMC5883 * const sensor = object;
 
-  assert(sensor->onResultCallback != NULL);
-  assert(sensor->onUpdateCallback != NULL);
+  assert(sensor->onResultCallback != nullptr);
+  assert(sensor->onUpdateCallback != nullptr);
 
   atomicFetchOr(&sensor->flags, FLAG_SAMPLE);
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -430,8 +430,8 @@ static void hmcStart(void *object)
 {
   struct HMC5883 * const sensor = object;
 
-  assert(sensor->onResultCallback != NULL);
-  assert(sensor->onUpdateCallback != NULL);
+  assert(sensor->onResultCallback != nullptr);
+  assert(sensor->onUpdateCallback != nullptr);
 
   atomicFetchOr(&sensor->flags, FLAG_LOOP);
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -575,7 +575,7 @@ static bool hmcUpdate(void *object)
       }
 
       case STATE_REQUEST:
-        if (sensor->chrono != NULL)
+        if (sensor->chrono != nullptr)
           sensor->timestamp = timerGetValue64(sensor->chrono);
 
         sensor->state = STATE_REQUEST_WAIT;
@@ -612,7 +612,7 @@ static bool hmcUpdate(void *object)
       case STATE_ERROR_DEVICE:
       case STATE_ERROR_INTERFACE:
       case STATE_ERROR_TIMEOUT:
-        if (sensor->onErrorCallback != NULL)
+        if (sensor->onErrorCallback != nullptr)
         {
           sensor->onErrorCallback(sensor->callbackArgument,
               sensor->state == STATE_ERROR_INTERFACE ?

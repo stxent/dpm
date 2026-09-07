@@ -35,14 +35,14 @@ const struct TimerClass * const SoftwarePwmUnit = &(const struct TimerClass){
 
     .enable = unitEnable,
     .disable = unitDisable,
-    .setAutostop = NULL,
-    .setCallback = NULL,
+    .setAutostop = nullptr,
+    .setCallback = nullptr,
     .getFrequency = unitGetFrequency,
     .setFrequency = unitSetFrequency,
     .getOverflow = unitGetOverflow,
     .setOverflow = unitSetOverflow,
-    .getValue = NULL,
-    .setValue = NULL
+    .getValue = nullptr,
+    .setValue = nullptr
 };
 
 const struct PwmClass * const SoftwarePwm = &(const struct PwmClass){
@@ -65,7 +65,7 @@ static void interruptHandler(void *object)
   if (++unit->iteration >= unit->resolution)
     unit->iteration = 0;
 
-  while (current != NULL)
+  while (current != nullptr)
   {
     const struct SoftwarePwm * const pwm = *pointerListData(current);
 
@@ -98,7 +98,7 @@ static void unitDeinit(void *object)
   struct SoftwarePwmUnit * const unit = object;
 
   timerDisable(unit->timer);
-  timerSetCallback(unit->timer, NULL, NULL);
+  timerSetCallback(unit->timer, nullptr, nullptr);
   pointerListDeinit(&unit->channels);
 }
 /*----------------------------------------------------------------------------*/
@@ -141,7 +141,7 @@ static void unitSetOverflow(void *object, uint32_t overflow)
 static enum Result channelInit(void *object, const void *configBase)
 {
   const struct SoftwarePwmConfig * const config = configBase;
-  assert(config->parent != NULL);
+  assert(config->parent != nullptr);
 
   struct SoftwarePwm * const pwm = object;
   struct SoftwarePwmUnit * const unit = config->parent;
@@ -206,11 +206,11 @@ static void channelSetEdges(void *object, [[maybe_unused]] uint32_t leading,
  * controlled in software; the other edge is handled by timing logic.
  *
  * @param unit Pointer to a SoftwarePwmUnit object that manages
- * the PWM channels. Must not be @b NULL.
+ * the PWM channels. Must not be @b nullptr.
  * @param pin Pin used as the signal output for the PWM channel.
  * The pin must be configurable for digital output.
  * @return Pointer to a newly created SoftwarePwm object on success.
- * Returns @b NULL if the operation fails.
+ * Returns @b nullptr if the operation fails.
  */
 void *softwarePwmCreate(void *unit, PinNumber pin)
 {

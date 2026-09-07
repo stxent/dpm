@@ -110,17 +110,17 @@ static void busInit(struct M24 *memory, uint32_t position, bool read)
       makeSlaveAddress(memory, position) : 0;
 
   /* Lock the interface */
-  ifSetParam(memory->bus, IF_ACQUIRE, NULL);
+  ifSetParam(memory->bus, IF_ACQUIRE, nullptr);
 
   ifSetParam(memory->bus, IF_ADDRESS, &address);
-  ifSetParam(memory->bus, IF_ZEROCOPY, NULL);
+  ifSetParam(memory->bus, IF_ZEROCOPY, nullptr);
   ifSetCallback(memory->bus, onBusEvent, memory);
 
   if (memory->rate)
     ifSetParam(memory->bus, IF_RATE, &memory->rate);
 
   if (read)
-    ifSetParam(memory->bus, IF_I2C_REPEATED_START, NULL);
+    ifSetParam(memory->bus, IF_I2C_REPEATED_START, nullptr);
 
   /* Start bus watchdog */
   startBusTimeout(memory->timer);
@@ -128,9 +128,9 @@ static void busInit(struct M24 *memory, uint32_t position, bool read)
 /*----------------------------------------------------------------------------*/
 static void invokeUpdate(struct M24 *memory)
 {
-  assert(memory->updateCallback != NULL || memory->wq != NULL);
+  assert(memory->updateCallback != nullptr || memory->wq != nullptr);
 
-  if (memory->updateCallback != NULL)
+  if (memory->updateCallback != nullptr)
   {
     memory->updateCallback(memory->updateCallbackArgument);
   }
@@ -150,7 +150,7 @@ static void onBusEvent(void *object)
 
   timerDisable(memory->timer);
 
-  if (ifGetParam(memory->bus, IF_STATUS, NULL) != E_OK)
+  if (ifGetParam(memory->bus, IF_STATUS, nullptr) != E_OK)
   {
     memory->transfer.state = STATE_ERROR_WAIT;
 
@@ -189,8 +189,8 @@ static void onBusEvent(void *object)
 
   if (!busy)
   {
-    ifSetCallback(memory->bus, NULL, NULL);
-    ifSetParam(memory->bus, IF_RELEASE, NULL);
+    ifSetCallback(memory->bus, nullptr, nullptr);
+    ifSetParam(memory->bus, IF_RELEASE, nullptr);
   }
 
   invokeUpdate(memory);
@@ -211,8 +211,8 @@ static void onTimerEvent(void *object)
       break;
 
     default:
-      ifSetCallback(memory->bus, NULL, NULL);
-      ifSetParam(memory->bus, IF_RELEASE, NULL);
+      ifSetCallback(memory->bus, nullptr, nullptr);
+      ifSetParam(memory->bus, IF_RELEASE, nullptr);
       memory->transfer.state = STATE_ERROR_TIMEOUT;
       break;
   }
@@ -259,22 +259,22 @@ static enum Result memoryInitGeneric(void *object, const void *configBase,
     uint32_t delay)
 {
   const struct M24Config * const config = configBase;
-  assert(config != NULL);
-  assert(config->bus != NULL && config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr && config->timer != nullptr);
   assert(config->blocks && config->chipSize && config->pageSize);
   assert((config->chipSize & (config->chipSize - 1)) == 0);
   assert((config->pageSize & (config->pageSize - 1)) == 0);
 
   struct M24 * const memory = object;
 
-  memory->callback = NULL;
-  memory->errorCallback = NULL;
-  memory->idleCallback = NULL;
-  memory->updateCallback = NULL;
+  memory->callback = nullptr;
+  memory->errorCallback = nullptr;
+  memory->idleCallback = nullptr;
+  memory->updateCallback = nullptr;
 
   memory->bus = config->bus;
   memory->timer = config->timer;
-  memory->wq = NULL;
+  memory->wq = nullptr;
   memory->blocking = true;
   memory->pending = false;
 
@@ -302,11 +302,11 @@ static enum Result memoryInitGeneric(void *object, const void *configBase,
   memory->width = (width + 7) >> 3;
 
   memory->transfer.buffer = malloc(config->pageSize + memory->width);
-  if (memory->transfer.buffer == NULL)
+  if (memory->transfer.buffer == nullptr)
     return E_MEMORY;
 
-  memory->transfer.rxBuffer = NULL;
-  memory->transfer.txBuffer = NULL;
+  memory->transfer.rxBuffer = nullptr;
+  memory->transfer.txBuffer = nullptr;
   memory->transfer.chunk = 0;
   memory->transfer.count = 0;
   memory->transfer.position = 0;
@@ -324,7 +324,7 @@ static void memoryDeinit(void *object)
   struct M24 * const memory = object;
 
   timerDisable(memory->timer);
-  timerSetCallback(memory->timer, NULL, NULL);
+  timerSetCallback(memory->timer, nullptr, nullptr);
 
   free(memory->transfer.buffer);
 }
@@ -468,7 +468,7 @@ void m24SetErrorCallback(void *object, void (*callback)(void *),
 {
   struct M24 * const memory = object;
 
-  assert(callback != NULL);
+  assert(callback != nullptr);
 
   memory->errorCallbackArgument = argument;
   memory->errorCallback = callback;
@@ -479,7 +479,7 @@ void m24SetIdleCallback(void *object, void (*callback)(void *),
 {
   struct M24 * const memory = object;
 
-  assert(callback != NULL);
+  assert(callback != nullptr);
 
   memory->idleCallbackArgument = argument;
   memory->idleCallback = callback;
@@ -490,8 +490,8 @@ void m24SetUpdateCallback(void *object, void (*callback)(void *),
 {
   struct M24 * const memory = object;
 
-  assert(callback != NULL);
-  assert(memory->wq == NULL);
+  assert(callback != nullptr);
+  assert(memory->wq == nullptr);
 
   memory->updateCallbackArgument = argument;
   memory->updateCallback = callback;
@@ -501,8 +501,8 @@ void m24SetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct M24 * const memory = object;
 
-  assert(wq != NULL);
-  assert(memory->updateCallback == NULL);
+  assert(wq != nullptr);
+  assert(memory->updateCallback == nullptr);
 
   memory->wq = wq;
 }
@@ -521,13 +521,13 @@ bool m24Update(void *object)
     switch (memory->transfer.state)
     {
       case STATE_IDLE:
-        if (memory->transfer.rxBuffer != NULL)
+        if (memory->transfer.rxBuffer != nullptr)
         {
           memory->transfer.status = STATUS_BUSY;
           memory->transfer.state = STATE_READ_SETUP;
           updated = true;
         }
-        else if (memory->transfer.txBuffer != NULL)
+        else if (memory->transfer.txBuffer != nullptr)
         {
           memory->transfer.status = STATUS_BUSY;
           memory->transfer.state = STATE_WRITE_DATA;
@@ -556,15 +556,15 @@ bool m24Update(void *object)
         }
         else
         {
-          memory->transfer.rxBuffer = NULL;
+          memory->transfer.rxBuffer = nullptr;
           memory->transfer.status = STATUS_DONE;
           memory->transfer.state = STATE_IDLE;
 
           /* Idle callback for Bus Handlers */
-          if (memory->idleCallback != NULL)
+          if (memory->idleCallback != nullptr)
             memory->idleCallback(memory->idleCallbackArgument);
           /* User callback for Interface class */
-          if (memory->callback != NULL)
+          if (memory->callback != nullptr)
             memory->callback(memory->callbackArgument);
         }
         break;
@@ -600,15 +600,15 @@ bool m24Update(void *object)
         }
         else
         {
-          memory->transfer.txBuffer = NULL;
+          memory->transfer.txBuffer = nullptr;
           memory->transfer.status = STATUS_DONE;
           memory->transfer.state = STATE_IDLE;
 
           /* Idle callback for Bus Handlers */
-          if (memory->idleCallback != NULL)
+          if (memory->idleCallback != nullptr)
             memory->idleCallback(memory->idleCallbackArgument);
           /* User callback for Interface class */
-          if (memory->callback != NULL)
+          if (memory->callback != nullptr)
             memory->callback(memory->callbackArgument);
         }
         break;
@@ -621,8 +621,8 @@ bool m24Update(void *object)
       case STATE_ERROR_INTERFACE:
       case STATE_ERROR_TIMEOUT:
         memory->transfer.count = 0;
-        memory->transfer.rxBuffer = NULL;
-        memory->transfer.txBuffer = NULL;
+        memory->transfer.rxBuffer = nullptr;
+        memory->transfer.txBuffer = nullptr;
 
         memory->transfer.status =
             (memory->transfer.state == STATE_ERROR_INTERFACE) ?
@@ -630,10 +630,10 @@ bool m24Update(void *object)
         memory->transfer.state = STATE_IDLE;
 
         /* Error callback for Bus Handlers */
-        if (memory->errorCallback != NULL)
+        if (memory->errorCallback != nullptr)
           memory->errorCallback(memory->errorCallbackArgument);
         /* User callback for Interface class */
-        if (memory->callback != NULL)
+        if (memory->callback != nullptr)
           memory->callback(memory->callbackArgument);
 
         updated = true;

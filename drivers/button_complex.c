@@ -36,8 +36,8 @@ static void onPinInterrupt(void *argument)
 static void onTimerOverflow(void *argument)
 {
   struct ButtonComplex * const button = argument;
-  void (*callback)(void *) = NULL;
-  void *callbackArgument = NULL;
+  void (*callback)(void *) = nullptr;
+  void *callbackArgument = nullptr;
   bool stop = false;
 
   if (pinRead(button->pin) == button->level)
@@ -82,15 +82,15 @@ static void onTimerOverflow(void *argument)
     interruptEnable(button->interrupt);
   }
 
-  if (callback != NULL)
+  if (callback != nullptr)
     callback(callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result buttonInit(void *object, const void *configBase)
 {
   const struct ButtonComplexConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->interrupt != NULL && config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->interrupt != nullptr && config->timer != nullptr);
   assert(!config->hold || config->hold > config->delay);
 
   struct ButtonComplex * const button = object;
@@ -98,12 +98,12 @@ static enum Result buttonInit(void *object, const void *configBase)
   button->pin = pinInit(config->pin);
   assert(pinValid(button->pin));
 
-  button->longPressCallback = NULL;
-  button->longPressCallbackArgument = NULL;
-  button->pressCallback = NULL;
-  button->pressCallbackArgument = NULL;
-  button->releaseCallback = NULL;
-  button->releaseCallbackArgument = NULL;
+  button->longPressCallback = nullptr;
+  button->longPressCallbackArgument = nullptr;
+  button->pressCallback = nullptr;
+  button->pressCallbackArgument = nullptr;
+  button->releaseCallback = nullptr;
+  button->releaseCallbackArgument = nullptr;
 
   /* Convert to debounce ticks */
   button->delayHold = (config->hold + (DEBOUNCE_PERIOD - 1)) / DEBOUNCE_PERIOD;
@@ -131,8 +131,8 @@ static void buttonDeinit(void *object)
 
   buttonComplexDisable(button);
 
-  timerSetCallback(button->timer, NULL, NULL);
-  interruptSetCallback(button->interrupt, NULL, NULL);
+  timerSetCallback(button->timer, nullptr, nullptr);
+  interruptSetCallback(button->interrupt, nullptr, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 void buttonComplexDisable(struct ButtonComplex *button)

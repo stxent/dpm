@@ -145,14 +145,14 @@ static void interruptHandler(void *object)
       sendWord(interface, byteQueuePopFront(&interface->txQueue));
   }
 
-  if (event && interface->callback != NULL)
+  if (event && interface->callback != nullptr)
     interface->callback(interface->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result oneWireInit(void *object, const void *configBase)
 {
   const struct OneWireUartConfig * const config = configBase;
-  assert(config != NULL);
+  assert(config != nullptr);
 
   const struct UartBaseConfig baseConfig = {
       .channel = config->channel,
@@ -178,10 +178,10 @@ static enum Result oneWireInit(void *object, const void *configBase)
 
   interface->base.handler = interruptHandler;
 
-  interface->callback = NULL;
-  interface->callbackArgument = NULL;
+  interface->callback = nullptr;
+  interface->callbackArgument = nullptr;
   interface->address = 0;
-  interface->rxBuffer = NULL;
+  interface->rxBuffer = nullptr;
   interface->left = 0;
   interface->bit = 0;
   interface->word = 0;;

@@ -97,9 +97,9 @@ const struct EntityClass * const MPU60XX = &(const struct EntityClass){
 static void busInit(struct MPU60XX *sensor, bool read)
 {
   /* Lock the interface */
-  ifSetParam(sensor->bus, IF_ACQUIRE, NULL);
+  ifSetParam(sensor->bus, IF_ACQUIRE, nullptr);
 
-  ifSetParam(sensor->bus, IF_ZEROCOPY, NULL);
+  ifSetParam(sensor->bus, IF_ZEROCOPY, nullptr);
   ifSetCallback(sensor->bus, onBusEvent, sensor);
 
   if (sensor->rate)
@@ -109,7 +109,7 @@ static void busInit(struct MPU60XX *sensor, bool read)
   {
     /* SPI bus */
     ifSetParam(sensor->bus, IF_SPI_MODE, &(uint8_t){0});
-    ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, NULL);
+    ifSetParam(sensor->bus, IF_SPI_UNIDIRECTIONAL, nullptr);
     pinReset(sensor->gpio);
   }
   else
@@ -118,7 +118,7 @@ static void busInit(struct MPU60XX *sensor, bool read)
     ifSetParam(sensor->bus, IF_ADDRESS, &sensor->address);
 
     if (read)
-      ifSetParam(sensor->bus, IF_I2C_REPEATED_START, NULL);
+      ifSetParam(sensor->bus, IF_I2C_REPEATED_START, nullptr);
 
     /* Start bus watchdog */
     timerSetOverflow(sensor->timer, calcResetTimeout(sensor->timer));
@@ -240,7 +240,7 @@ static void onBusEvent(void *object)
   timerDisable(sensor->timer);
 
   if (!pinValid(sensor->gpio)
-      && ifGetParam(sensor->bus, IF_STATUS, NULL) != E_OK)
+      && ifGetParam(sensor->bus, IF_STATUS, nullptr) != E_OK)
   {
     /* I2C bus */
     sensor->state = STATE_ERROR_WAIT;
@@ -281,8 +281,8 @@ static void onBusEvent(void *object)
     if (pinValid(sensor->gpio))
       pinSet(sensor->gpio);
 
-    ifSetCallback(sensor->bus, NULL, NULL);
-    ifSetParam(sensor->bus, IF_RELEASE, NULL);
+    ifSetCallback(sensor->bus, nullptr, nullptr);
+    ifSetParam(sensor->bus, IF_RELEASE, nullptr);
   }
 
   proxy->onUpdateCallback(proxy->callbackArgument);
@@ -293,7 +293,7 @@ static void onPinEvent(void *object)
   struct MPU60XX * const sensor = object;
   struct MPU60XXProxy * const proxy = sensor->active;
 
-  if (sensor->chrono != NULL)
+  if (sensor->chrono != nullptr)
     sensor->timestamp = timerGetValue64(sensor->chrono);
 
   atomicFetchOr(&sensor->flags, FLAG_EVENT);
@@ -319,8 +319,8 @@ static void onTimerEvent(void *object)
       if (pinValid(sensor->gpio))
         pinSet(sensor->gpio);
 
-      ifSetCallback(sensor->bus, NULL, NULL);
-      ifSetParam(sensor->bus, IF_RELEASE, NULL);
+      ifSetCallback(sensor->bus, nullptr, nullptr);
+      ifSetParam(sensor->bus, IF_RELEASE, nullptr);
       sensor->state = STATE_ERROR_TIMEOUT;
       break;
   }
@@ -503,17 +503,17 @@ static void startSuspendSequence(struct MPU60XX *sensor)
 static enum Result mpuInit(void *object, const void *configBase)
 {
   const struct MPU60XXConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->bus != NULL);
-  assert(config->event != NULL);
-  assert(config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr);
+  assert(config->event != nullptr);
+  assert(config->timer != nullptr);
 
   struct MPU60XX * const sensor = object;
 
-  sensor->active = NULL;
-  sensor->accelerometer = NULL;
-  sensor->gyroscope = NULL;
-  sensor->thermometer = NULL;
+  sensor->active = nullptr;
+  sensor->accelerometer = nullptr;
+  sensor->gyroscope = nullptr;
+  sensor->thermometer = nullptr;
 
   sensor->bus = config->bus;
   sensor->chrono = config->chrono;
@@ -582,18 +582,18 @@ static void mpuDeinit(void *object)
   struct MPU60XX * const sensor = object;
 
   timerDisable(sensor->timer);
-  timerSetCallback(sensor->timer, NULL, NULL);
+  timerSetCallback(sensor->timer, nullptr, nullptr);
 
   interruptDisable(sensor->event);
-  interruptSetCallback(sensor->event, NULL, NULL);
+  interruptSetCallback(sensor->event, nullptr, nullptr);
 
-  if (sensor->accelerometer != NULL)
+  if (sensor->accelerometer != nullptr)
     deinit(sensor->accelerometer);
 
-  if (sensor->gyroscope != NULL)
+  if (sensor->gyroscope != nullptr)
     deinit(sensor->gyroscope);
 
-  if (sensor->thermometer != NULL)
+  if (sensor->thermometer != nullptr)
     deinit(sensor->thermometer);
 }
 /*----------------------------------------------------------------------------*/
@@ -618,7 +618,7 @@ uint64_t mpu60xxGetTimestamp(const struct MPU60XX *sensor)
 void mpu60xxReset(struct MPU60XX *sensor)
 {
   struct MPU60XXProxy * const proxy = sensor->active;
-  assert(proxy != NULL);
+  assert(proxy != nullptr);
 
   atomicFetchOr(&sensor->flags, FLAG_RESET);
   proxy->onUpdateCallback(proxy->callbackArgument);
@@ -627,7 +627,7 @@ void mpu60xxReset(struct MPU60XX *sensor)
 void mpu60xxSample(struct MPU60XX *sensor)
 {
   struct MPU60XXProxy * const proxy = sensor->active;
-  assert(proxy != NULL);
+  assert(proxy != nullptr);
 
   proxy->onUpdateCallback(proxy->callbackArgument);
 }
@@ -635,7 +635,7 @@ void mpu60xxSample(struct MPU60XX *sensor)
 void mpu60xxStart(struct MPU60XX *sensor)
 {
   struct MPU60XXProxy * const proxy = sensor->active;
-  assert(proxy != NULL);
+  assert(proxy != nullptr);
 
   proxy->onUpdateCallback(proxy->callbackArgument);
 }
@@ -643,7 +643,7 @@ void mpu60xxStart(struct MPU60XX *sensor)
 void mpu60xxStop(struct MPU60XX *sensor)
 {
   struct MPU60XXProxy * const proxy = sensor->active;
-  assert(proxy != NULL);
+  assert(proxy != nullptr);
 
   proxy->onUpdateCallback(proxy->callbackArgument);
 }
@@ -651,7 +651,7 @@ void mpu60xxStop(struct MPU60XX *sensor)
 void mpu60xxSuspend(struct MPU60XX *sensor)
 {
   struct MPU60XXProxy * const proxy = sensor->active;
-  assert(proxy != NULL);
+  assert(proxy != nullptr);
 
   atomicFetchOr(&sensor->flags, FLAG_SUSPEND);
   proxy->onUpdateCallback(proxy->callbackArgument);
@@ -797,7 +797,7 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
       }
 
       case STATE_REQUEST:
-        if (sensor->chrono != NULL)
+        if (sensor->chrono != nullptr)
           sensor->timestamp = timerGetValue64(sensor->chrono);
 
         sensor->state = STATE_REQUEST_WAIT;
@@ -834,7 +834,7 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
       case STATE_ERROR_DEVICE:
       case STATE_ERROR_INTERFACE:
       case STATE_ERROR_TIMEOUT:
-        if (sensor->active->onErrorCallback != NULL)
+        if (sensor->active->onErrorCallback != nullptr)
         {
           enum SensorResult result;
 
@@ -862,14 +862,14 @@ bool mpu60xxUpdate(struct MPU60XX *sensor)
 /*----------------------------------------------------------------------------*/
 struct MPU60XXProxy *mpu60xxMakeAccelerometer(struct MPU60XX *sensor)
 {
-  if (sensor->accelerometer == NULL)
+  if (sensor->accelerometer == nullptr)
   {
     const struct MPU60XXProxyConfig config = {
         .parent = sensor
     };
 
     sensor->accelerometer = init(MPU60XXAccelerometer, &config);
-    if (sensor->active == NULL)
+    if (sensor->active == nullptr)
       sensor->active = sensor->accelerometer;
   }
 
@@ -878,14 +878,14 @@ struct MPU60XXProxy *mpu60xxMakeAccelerometer(struct MPU60XX *sensor)
 /*----------------------------------------------------------------------------*/
 struct MPU60XXProxy *mpu60xxMakeGyroscope(struct MPU60XX *sensor)
 {
-  if (sensor->gyroscope == NULL)
+  if (sensor->gyroscope == nullptr)
   {
     const struct MPU60XXProxyConfig config = {
         .parent = sensor
     };
 
     sensor->gyroscope = init(MPU60XXGyroscope, &config);
-    if (sensor->active == NULL)
+    if (sensor->active == nullptr)
       sensor->active = sensor->gyroscope;
   }
 
@@ -894,14 +894,14 @@ struct MPU60XXProxy *mpu60xxMakeGyroscope(struct MPU60XX *sensor)
 /*----------------------------------------------------------------------------*/
 struct MPU60XXProxy *mpu60xxMakeThermometer(struct MPU60XX *sensor)
 {
-  if (sensor->thermometer == NULL)
+  if (sensor->thermometer == nullptr)
   {
     const struct MPU60XXProxyConfig config = {
         .parent = sensor
     };
 
     sensor->thermometer = init(MPU60XXThermometer, &config);
-    if (sensor->active == NULL)
+    if (sensor->active == nullptr)
       sensor->active = sensor->thermometer;
   }
 

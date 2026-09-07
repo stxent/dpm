@@ -827,10 +827,10 @@ static size_t makeOutputVolTransfer(const struct TLV320AIC3x *codec,
 static void busInit(struct TLV320AIC3x *codec)
 {
   /* Lock the interface */
-  ifSetParam(codec->bus, IF_ACQUIRE, NULL);
+  ifSetParam(codec->bus, IF_ACQUIRE, nullptr);
 
   ifSetParam(codec->bus, IF_ADDRESS, &codec->address);
-  ifSetParam(codec->bus, IF_ZEROCOPY, NULL);
+  ifSetParam(codec->bus, IF_ZEROCOPY, nullptr);
   ifSetCallback(codec->bus, onBusEvent, codec);
 
   if (codec->rate)
@@ -843,7 +843,7 @@ static void busInit(struct TLV320AIC3x *codec)
 static void busInitRead(struct TLV320AIC3x *codec)
 {
   /* Interface is already locked, just enable repeated start */
-  ifSetParam(codec->bus, IF_I2C_REPEATED_START, NULL);
+  ifSetParam(codec->bus, IF_I2C_REPEATED_START, nullptr);
 
   /* Start bus watchdog */
   startBusTimeout(codec->timer);
@@ -910,9 +910,9 @@ static void invokeAction(struct TLV320AIC3x *codec, uint16_t actions)
 /*----------------------------------------------------------------------------*/
 static void invokeUpdate(struct TLV320AIC3x *codec)
 {
-  assert(codec->updateCallback != NULL || codec->wq != NULL);
+  assert(codec->updateCallback != nullptr || codec->wq != nullptr);
 
-  if (codec->updateCallback != NULL)
+  if (codec->updateCallback != nullptr)
   {
     codec->updateCallback(codec->updateCallbackArgument);
   }
@@ -932,7 +932,7 @@ static void onBusEvent(void *object)
 
   timerDisable(codec->timer);
 
-  if (ifGetParam(codec->bus, IF_STATUS, NULL) != E_OK)
+  if (ifGetParam(codec->bus, IF_STATUS, nullptr) != E_OK)
   {
     codec->transfer.state = STATE_ERROR_WAIT;
 
@@ -989,8 +989,8 @@ static void onBusEvent(void *object)
 
   if (!busy)
   {
-    ifSetCallback(codec->bus, NULL, NULL);
-    ifSetParam(codec->bus, IF_RELEASE, NULL);
+    ifSetCallback(codec->bus, nullptr, nullptr);
+    ifSetParam(codec->bus, IF_RELEASE, nullptr);
 
     invokeUpdate(codec);
   }
@@ -1011,8 +1011,8 @@ static void onTimerEvent(void *object)
       break;
 
     default:
-      ifSetCallback(codec->bus, NULL, NULL);
-      ifSetParam(codec->bus, IF_RELEASE, NULL);
+      ifSetCallback(codec->bus, nullptr, nullptr);
+      ifSetParam(codec->bus, IF_RELEASE, nullptr);
       codec->transfer.state = STATE_ERROR_TIMEOUT;
       break;
   }
@@ -1452,8 +1452,8 @@ static void updateTask(void *argument)
 static enum Result aic3xInit(void *object, const void *arguments)
 {
   const struct TLV320AIC3xConfig * const config = arguments;
-  assert(config != NULL);
-  assert(config->bus != NULL && config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr && config->timer != nullptr);
   assert((config->prescaler >= 128 * 2 && config->prescaler <= 128 * 17
       && !(config->prescaler & 0xFF)) || !config->prescaler);
   assert(config->type < AIC3X_TYPE_END);
@@ -1468,16 +1468,16 @@ static enum Result aic3xInit(void *object, const void *arguments)
   assert(pinValid(codec->reset));
   pinOutput(codec->reset, true);
 
-  codec->errorCallback = NULL;
-  codec->errorCallbackArgument = NULL;
-  codec->idleCallback = NULL;
-  codec->idleCallbackArgument = NULL;
-  codec->updateCallback = NULL;
-  codec->updateCallbackArgument = NULL;
+  codec->errorCallback = nullptr;
+  codec->errorCallbackArgument = nullptr;
+  codec->idleCallback = nullptr;
+  codec->idleCallbackArgument = nullptr;
+  codec->updateCallback = nullptr;
+  codec->updateCallbackArgument = nullptr;
 
   codec->bus = config->bus;
   codec->timer = config->timer;
-  codec->wq = NULL;
+  codec->wq = nullptr;
 
   codec->address = config->address;
   codec->rate = config->rate;
@@ -1524,7 +1524,7 @@ static void aic3xDeinit(void *object)
   struct TLV320AIC3x * const codec = object;
 
   timerDisable(codec->timer);
-  timerSetCallback(codec->timer, NULL, NULL);
+  timerSetCallback(codec->timer, nullptr, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static void aic3xCheck(void *object)
@@ -1735,7 +1735,7 @@ static void aic3xSetErrorCallback(void *object, void (*callback)(void *),
 {
   struct TLV320AIC3x * const codec = object;
 
-  assert(callback != NULL);
+  assert(callback != nullptr);
 
   codec->errorCallbackArgument = argument;
   codec->errorCallback = callback;
@@ -1746,7 +1746,7 @@ static void aic3xSetIdleCallback(void *object, void (*callback)(void *),
 {
   struct TLV320AIC3x * const codec = object;
 
-  assert(callback != NULL);
+  assert(callback != nullptr);
 
   codec->idleCallbackArgument = argument;
   codec->idleCallback = callback;
@@ -1757,8 +1757,8 @@ static void aic3xSetUpdateCallback(void *object, void (*callback)(void *),
 {
   struct TLV320AIC3x * const codec = object;
 
-  assert(callback != NULL);
-  assert(codec->wq == NULL);
+  assert(callback != nullptr);
+  assert(codec->wq == nullptr);
 
   codec->updateCallbackArgument = argument;
   codec->updateCallback = callback;
@@ -1768,8 +1768,8 @@ static void aic3xSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct TLV320AIC3x * const codec = object;
 
-  assert(wq != NULL);
-  assert(codec->updateCallback == NULL);
+  assert(wq != nullptr);
+  assert(codec->updateCallback == nullptr);
 
   codec->wq = wq;
 }
@@ -1852,7 +1852,7 @@ static bool aic3xUpdate(void *object)
             codec->ready = true;
           codec->transfer.state = STATE_IDLE;
 
-          if (!codec->transfer.groups && codec->idleCallback != NULL)
+          if (!codec->transfer.groups && codec->idleCallback != nullptr)
             codec->idleCallback(codec->idleCallbackArgument);
         }
         else
@@ -1891,7 +1891,7 @@ static bool aic3xUpdate(void *object)
           codec->transfer.groups = 0;
           codec->transfer.state = STATE_IDLE;
 
-          if (codec->errorCallback != NULL)
+          if (codec->errorCallback != nullptr)
             codec->errorCallback(codec->errorCallbackArgument);
         }
 
@@ -1901,7 +1901,7 @@ static bool aic3xUpdate(void *object)
       case STATE_CHECK_END:
         codec->transfer.state = STATE_IDLE;
 
-        if (!codec->transfer.groups && codec->idleCallback != NULL)
+        if (!codec->transfer.groups && codec->idleCallback != nullptr)
           codec->idleCallback(codec->idleCallbackArgument);
 
         updated = true;
@@ -1912,7 +1912,7 @@ static bool aic3xUpdate(void *object)
         codec->transfer.groups = 0;
         codec->transfer.state = STATE_IDLE;
 
-        if (codec->errorCallback != NULL)
+        if (codec->errorCallback != nullptr)
           codec->errorCallback(codec->errorCallbackArgument);
 
         updated = true;

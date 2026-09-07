@@ -30,7 +30,7 @@ static void bhOnDetach(void *argument)
     atomicFetchAnd(&handler->updating, ~entry->mask);
     atomicFetchOr(&handler->pool, entry->mask);
 
-    entry->device = NULL;
+    entry->device = nullptr;
   }
 }
 /*----------------------------------------------------------------------------*/
@@ -39,7 +39,7 @@ static void bhOnError(void *argument)
   struct BHEntry * const entry = argument;
   struct BusHandler * const handler = entry->handler;
 
-  if (handler->errorCallback != NULL)
+  if (handler->errorCallback != nullptr)
     handler->errorCallback(handler->errorCallbackArgument, entry->device);
 }
 /*----------------------------------------------------------------------------*/
@@ -48,7 +48,7 @@ static void bhOnIdle(void *argument)
   struct BHEntry * const entry = argument;
   struct BusHandler * const handler = entry->handler;
 
-  if (handler->idleCallback != NULL)
+  if (handler->idleCallback != nullptr)
     handler->idleCallback(handler->idleCallbackArgument, entry->device);
 }
 /*----------------------------------------------------------------------------*/
@@ -75,13 +75,13 @@ static void bhUpdate(void *argument)
 {
   struct BusHandler * const handler = argument;
 
-  if (handler->current != NULL)
+  if (handler->current != nullptr)
   {
     atomicFetchAnd(&handler->updating, ~handler->current->mask);
     handler->busy = handler->current->updateCallback(handler->current->device);
 
     if (!handler->busy)
-      handler->current = NULL;
+      handler->current = nullptr;
   }
 
   while (!handler->busy && handler->updating)
@@ -95,20 +95,20 @@ static void bhUpdate(void *argument)
     if (handler->busy)
       handler->current = entry;
     else
-      handler->current = NULL;
+      handler->current = nullptr;
   }
 }
 /*----------------------------------------------------------------------------*/
 bool bhInit(struct BusHandler *handler, size_t capacity, void *wq)
 {
   handler->devices = malloc(sizeof(struct BHEntry) * capacity);
-  if (handler->devices == NULL)
+  if (handler->devices == nullptr)
     return false;
 
   for (size_t index = 0; index < capacity; ++index)
   {
     handler->devices[index].handler = handler;
-    handler->devices[index].device = NULL;
+    handler->devices[index].device = nullptr;
     handler->devices[index].mask = 1UL << index;
   }
 
@@ -118,10 +118,10 @@ bool bhInit(struct BusHandler *handler, size_t capacity, void *wq)
   handler->updating = 0;
   handler->busy = false;
 
-  handler->current = NULL;
+  handler->current = nullptr;
   handler->wq = wq ? wq : WQ_DEFAULT;
-  handler->errorCallback = NULL;
-  handler->idleCallback = NULL;
+  handler->errorCallback = nullptr;
+  handler->idleCallback = nullptr;
 
   return true;
 }
@@ -137,9 +137,9 @@ bool bhAttach(struct BusHandler *handler, void *device,
     BHDeviceCallbackSetter updateCallbackSetter,
     BHDeviceCallback updateCallback)
 {
-  assert(device != NULL);
-  assert(updateCallbackSetter != NULL);
-  assert(updateCallback != NULL);
+  assert(device != nullptr);
+  assert(updateCallbackSetter != nullptr);
+  assert(updateCallback != nullptr);
 
   while (handler->pool)
   {
@@ -158,9 +158,9 @@ bool bhAttach(struct BusHandler *handler, void *device,
     entry->updateCallbackSetter = updateCallbackSetter;
     entry->updateCallback = updateCallback;
 
-    if (entry->errorCallbackSetter != NULL)
+    if (entry->errorCallbackSetter != nullptr)
       entry->errorCallbackSetter(device, bhOnError, entry);
-    if (entry->idleCallbackSetter != NULL)
+    if (entry->idleCallbackSetter != nullptr)
       entry->idleCallbackSetter(device, bhOnIdle, entry);
     entry->updateCallbackSetter(device, bhOnUpdate, entry);
 
@@ -178,11 +178,11 @@ void bhDetach(struct BusHandler *handler, void *device)
 
     if (entry->device == device)
     {
-      if (entry->errorCallbackSetter != NULL)
-        entry->errorCallbackSetter(device, NULL, NULL);
-      if (entry->idleCallbackSetter != NULL)
-        entry->idleCallbackSetter(device, NULL, NULL);
-      entry->updateCallbackSetter(device, NULL, NULL);
+      if (entry->errorCallbackSetter != nullptr)
+        entry->errorCallbackSetter(device, nullptr, nullptr);
+      if (entry->idleCallbackSetter != nullptr)
+        entry->idleCallbackSetter(device, nullptr, nullptr);
+      entry->updateCallbackSetter(device, nullptr, nullptr);
 
       atomicFetchOr(&handler->detaching, entry->mask);
       wqAdd(handler->wq, bhOnDetach, handler);

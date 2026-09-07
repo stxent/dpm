@@ -24,14 +24,14 @@ const struct TimerClass * const SgpioBusTimer =
 
     .enable = tmrEnable,
     .disable = tmrDisable,
-    .setAutostop = NULL,
-    .setCallback = NULL,
-    .getFrequency = NULL,
-    .setFrequency = NULL,
-    .getOverflow = NULL,
+    .setAutostop = nullptr,
+    .setCallback = nullptr,
+    .getFrequency = nullptr,
+    .setFrequency = nullptr,
+    .getOverflow = nullptr,
     .setOverflow = tmrSetOverflow,
-    .getValue = NULL,
-    .setValue = NULL
+    .getValue = nullptr,
+    .setValue = nullptr
 };
 /*----------------------------------------------------------------------------*/
 static void setupChannels(struct SgpioBusTimer *timer, uint8_t match)

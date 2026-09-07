@@ -51,7 +51,7 @@ static void interruptHandler(void *object)
   {
     interface->busy = false;
 
-    if (interface->callback != NULL)
+    if (interface->callback != nullptr)
       interface->callback(interface->callbackArgument);
   }
 }
@@ -59,8 +59,8 @@ static void interruptHandler(void *object)
 static enum Result busInit(void *object, const void *configPtr)
 {
   const struct MemoryBusGpioConfig * const config = configPtr;
-  assert(config != NULL);
-  assert(config->bus != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr);
 
   const struct MemoryBusGpioTimerConfig timerConfig = {
       .frequency = config->frequency,
@@ -73,14 +73,14 @@ static enum Result busInit(void *object, const void *configPtr)
   struct MemoryBusGpio *interface = object;
 
   interface->timer = init(MemoryBusGpioTimer, &timerConfig);
-  if (interface->timer == NULL)
+  if (interface->timer == nullptr)
     return E_ERROR;
   timerSetCallback(interface->timer, interruptHandler, interface);
 
   interface->blocking = true;
   interface->busy = false;
   interface->bus = config->bus;
-  interface->callback = NULL;
+  interface->callback = nullptr;
 
   return E_OK;
 }

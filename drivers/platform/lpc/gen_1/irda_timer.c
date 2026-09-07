@@ -26,14 +26,14 @@ const struct TimerClass * const IrdaTimer = &(const struct TimerClass){
 
     .enable = tmrEnable,
     .disable = tmrDisable,
-    .setAutostop = NULL,
+    .setAutostop = nullptr,
     .setCallback = tmrSetCallback,
-    .getFrequency = NULL,
+    .getFrequency = nullptr,
     .setFrequency = tmrSetFrequency,
-    .getOverflow = NULL,
+    .getOverflow = nullptr,
     .setOverflow = tmrSetOverflow,
-    .getValue = NULL,
-    .setValue = NULL
+    .getValue = nullptr,
+    .setValue = nullptr
 };
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
@@ -66,7 +66,7 @@ static void setupChannels(struct IrdaTimer *timer)
 static enum Result tmrInit(void *object, const void *configPtr)
 {
   const struct IrdaTimerConfig * const config = configPtr;
-  assert(config != NULL);
+  assert(config != nullptr);
   assert(config->frequency);
 
   const struct GpTimerBaseConfig baseConfig = {
@@ -80,7 +80,7 @@ static enum Result tmrInit(void *object, const void *configPtr)
     return res;
 
   timer->base.handler = interruptHandler;
-  timer->callback = NULL;
+  timer->callback = nullptr;
   timer->sync = config->sync;
 
   setupChannels(timer);
@@ -150,7 +150,7 @@ static void tmrSetCallback(void *object, void (*callback)(void *),
   timer->callbackArgument = argument;
   timer->callback = callback;
 
-  if (timer->callback != NULL)
+  if (timer->callback != nullptr)
   {
     reg->IR = IR_MATCH_MASK;
     reg->MCR |= mask;

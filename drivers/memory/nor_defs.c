@@ -77,11 +77,11 @@ static const struct NorCapabilityEntry *findCapabilityEntry(
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 /*----------------------------------------------------------------------------*/
 uint16_t norGetCapabilitiesByJedecInfo(const struct JedecInfo *info)
 {
   const struct NorCapabilityEntry * const entry = findCapabilityEntry(info);
-  return entry != NULL ? entry->capabilities : 0;
+  return entry != nullptr ? entry->capabilities : 0;
 }

@@ -31,7 +31,7 @@ const struct InterfaceClass * const SgpioBus = &(const struct InterfaceClass){
     .setCallback = busSetCallback,
     .getParam = busGetParam,
     .setParam = busSetParam,
-    .read = NULL,
+    .read = nullptr,
     .write = busWrite
 };
 /*----------------------------------------------------------------------------*/
@@ -162,7 +162,7 @@ static void interruptHandler(void *object)
   {
     interface->busy = false;
 
-    if (interface->callback != NULL)
+    if (interface->callback != nullptr)
       interface->callback(interface->callbackArgument);
   }
 }
@@ -196,7 +196,7 @@ static bool setupDma(struct SgpioBus *interface, uint8_t dmaChannel,
 
   interface->dma = init(SgpioBusDma, &dmaConfig);
 
-  if (interface->dma != NULL)
+  if (interface->dma != nullptr)
   {
     dmaConfigure(interface->dma, &dmaSettings);
     return true;
@@ -208,14 +208,14 @@ static bool setupDma(struct SgpioBus *interface, uint8_t dmaChannel,
 static enum Result busInit(void *object, const void *configBase)
 {
   const struct SgpioBusConfig * const config = configBase;
-  assert(config != NULL);
+  assert(config != nullptr);
   assert(config->prescaler <= (1 << 5));
 
   struct SgpioBus * const interface = object;
   enum Result res;
 
   /* Call base class constructor */
-  if ((res = SgpioBase->init(interface, NULL)) != E_OK)
+  if ((res = SgpioBase->init(interface, nullptr)) != E_OK)
     return res;
 
   const enum SgpioPin pinClock = sgpioConfigPin(config->pins.clock, PIN_NOPULL);
@@ -231,7 +231,7 @@ static enum Result busInit(void *object, const void *configBase)
   };
 
   interface->timer = init(SgpioBusTimer, &timerConfig);
-  if (interface->timer == NULL)
+  if (interface->timer == nullptr)
     return E_ERROR;
   if (!setupDma(interface, config->dma, timerConfig.channel, 0))
     return E_ERROR;
@@ -262,7 +262,7 @@ static enum Result busInit(void *object, const void *configBase)
   interface->slices.qualifier = config->slices.qualifier;
 
   interface->base.handler = interruptHandler;
-  interface->callback = NULL;
+  interface->callback = nullptr;
 
   interface->buffer = 0;
   interface->length = 0;

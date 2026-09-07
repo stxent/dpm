@@ -30,14 +30,14 @@ const struct TimerClass * const MemoryBusDmaClock =
 
     .enable = tmrEnable,
     .disable = tmrDisable,
-    .setAutostop = NULL,
+    .setAutostop = nullptr,
     .setCallback = tmrSetCallback,
-    .getFrequency = NULL,
-    .setFrequency = NULL,
-    .getOverflow = NULL,
+    .getFrequency = nullptr,
+    .setFrequency = nullptr,
+    .getOverflow = nullptr,
     .setOverflow = tmrClockSetOverflow,
-    .getValue = NULL,
-    .setValue = NULL
+    .getValue = nullptr,
+    .setValue = nullptr
 };
 
 const struct TimerClass * const MemoryBusDmaControl =
@@ -48,13 +48,13 @@ const struct TimerClass * const MemoryBusDmaControl =
 
     .enable = tmrEnable,
     .disable = tmrDisable,
-    .setCallback = NULL,
-    .getFrequency = NULL,
-    .setFrequency = NULL,
-    .getOverflow = NULL,
+    .setCallback = nullptr,
+    .getFrequency = nullptr,
+    .setFrequency = nullptr,
+    .getOverflow = nullptr,
     .setOverflow = tmrControlSetOverflow,
-    .getValue = NULL,
-    .setValue = NULL
+    .getValue = nullptr,
+    .setValue = nullptr
 };
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *object)
@@ -70,7 +70,7 @@ static void interruptHandler(void *object)
    */
   reg->IR = IR_MATCH_MASK;
 
-  if (timer->callback != NULL)
+  if (timer->callback != nullptr)
     timer->callback(timer->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -91,7 +91,7 @@ static void setupChannels(struct MemoryBusDmaTimer *timer,
 static enum Result tmrClockInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaClockConfig * const config = configPtr;
-  assert(config != NULL);
+  assert(config != nullptr);
 
   const struct GpTimerBaseConfig baseConfig = {
       .channel = config->channel
@@ -107,7 +107,7 @@ static enum Result tmrClockInit(void *object, const void *configPtr)
   setupChannels(timer, config->channel, config->leading, config->trailing);
 
   timer->base.handler = interruptHandler;
-  timer->callback = NULL;
+  timer->callback = nullptr;
   timer->match = MCR_RESET(timer->reset);
 
   LPC_TIMER_Type * const reg = timer->base.reg;
@@ -139,7 +139,7 @@ static enum Result tmrClockInit(void *object, const void *configPtr)
 static enum Result tmrControlInit(void *object, const void *configPtr)
 {
   const struct MemoryBusDmaControlConfig * const config = configPtr;
-  assert(config != NULL);
+  assert(config != nullptr);
 
   const struct GpTimerBaseConfig baseConfig = {
       .channel = config->channel
@@ -158,7 +158,7 @@ static enum Result tmrControlInit(void *object, const void *configPtr)
   /* Configure timer channels */
   setupChannels(timer, config->channel, config->leading, config->trailing);
 
-  timer->callback = NULL;
+  timer->callback = nullptr;
   timer->match = 0;
 
   LPC_TIMER_Type * const reg = timer->base.reg;

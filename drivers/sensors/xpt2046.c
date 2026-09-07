@@ -115,8 +115,8 @@ static void onBusEvent(void *object)
   struct XPT2046 * const sensor = object;
 
   pinSet(sensor->cs);
-  ifSetCallback(sensor->bus, NULL, NULL);
-  ifSetParam(sensor->bus, IF_RELEASE, NULL);
+  ifSetCallback(sensor->bus, nullptr, nullptr);
+  ifSetParam(sensor->bus, IF_RELEASE, nullptr);
 
   sensor->state = STATE_PROCESS;
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -148,11 +148,11 @@ static void startReading(struct XPT2046 *sensor)
       "Incorrect buffer configuartion");
 
   /* Lock the interface */
-  ifSetParam(sensor->bus, IF_ACQUIRE, NULL);
+  ifSetParam(sensor->bus, IF_ACQUIRE, nullptr);
 
   ifSetParam(sensor->bus, IF_SPI_MODE, &(uint8_t){0});
-  ifSetParam(sensor->bus, IF_SPI_BIDIRECTIONAL, NULL);
-  ifSetParam(sensor->bus, IF_ZEROCOPY, NULL);
+  ifSetParam(sensor->bus, IF_SPI_BIDIRECTIONAL, nullptr);
+  ifSetParam(sensor->bus, IF_ZEROCOPY, nullptr);
   ifSetCallback(sensor->bus, onBusEvent, sensor);
 
   if (sensor->rate)
@@ -169,10 +169,10 @@ static enum Result tsInit(void *object, const void *configBase)
   static const uint32_t dataUpdateFreq = 100;
 
   const struct XPT2046Config * const config = configBase;
-  assert(config != NULL);
-  assert(config->bus != NULL);
-  assert(config->event != NULL);
-  assert(config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->bus != nullptr);
+  assert(config->event != nullptr);
+  assert(config->timer != nullptr);
   assert(config->x && config->y);
 
   struct XPT2046 * const sensor = object;
@@ -187,10 +187,10 @@ static enum Result tsInit(void *object, const void *configBase)
   sensor->timer = config->timer;
   sensor->rate = config->rate;
 
-  sensor->callbackArgument = NULL;
-  sensor->onErrorCallback = NULL;
-  sensor->onResultCallback = NULL;
-  sensor->onUpdateCallback = NULL;
+  sensor->callbackArgument = nullptr;
+  sensor->onErrorCallback = nullptr;
+  sensor->onResultCallback = nullptr;
+  sensor->onUpdateCallback = nullptr;
 
   sensor->flags = 0;
   sensor->state = STATE_IDLE;
@@ -228,10 +228,10 @@ static void tsDeinit(void *object)
   struct XPT2046 * const sensor = object;
 
   timerDisable(sensor->timer);
-  timerSetCallback(sensor->timer, NULL, NULL);
+  timerSetCallback(sensor->timer, nullptr, nullptr);
 
   interruptDisable(sensor->event);
-  interruptSetCallback(sensor->event, NULL, NULL);
+  interruptSetCallback(sensor->event, nullptr, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static const char *tsGetFormat(const void *)
@@ -284,8 +284,8 @@ static void tsSample(void *object)
 {
   struct XPT2046 * const sensor = object;
 
-  assert(sensor->onResultCallback != NULL);
-  assert(sensor->onUpdateCallback != NULL);
+  assert(sensor->onResultCallback != nullptr);
+  assert(sensor->onUpdateCallback != nullptr);
 
   atomicFetchOr(&sensor->flags, FLAG_SAMPLE);
   sensor->onUpdateCallback(sensor->callbackArgument);
@@ -295,8 +295,8 @@ static void tsStart(void *object)
 {
   struct XPT2046 * const sensor = object;
 
-  assert(sensor->onResultCallback != NULL);
-  assert(sensor->onUpdateCallback != NULL);
+  assert(sensor->onResultCallback != nullptr);
+  assert(sensor->onUpdateCallback != nullptr);
 
   atomicFetchOr(&sensor->flags, FLAG_LOOP);
   sensor->onUpdateCallback(sensor->callbackArgument);

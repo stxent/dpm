@@ -90,19 +90,19 @@ static inline uint32_t addressToRow(const struct MX35Quad *memory,
 /*----------------------------------------------------------------------------*/
 static void busAcquire(struct MX35Quad *memory)
 {
-  ifSetParam(memory->spim, IF_ACQUIRE, NULL);
+  ifSetParam(memory->spim, IF_ACQUIRE, nullptr);
 
   ifSetParam(memory->spim, IF_SPIM_MODE, &((uint8_t){0}));
-  ifSetParam(memory->spim, memory->quad ? IF_SPIM_QUAD : IF_SPIM_DUAL, NULL);
+  ifSetParam(memory->spim, memory->quad ? IF_SPIM_QUAD : IF_SPIM_DUAL, nullptr);
 
   if (memory->blocking)
   {
-    ifSetParam(memory->spim, IF_BLOCKING, NULL);
-    ifSetCallback(memory->spim, NULL, NULL);
+    ifSetParam(memory->spim, IF_BLOCKING, nullptr);
+    ifSetCallback(memory->spim, nullptr, nullptr);
   }
   else
   {
-    ifSetParam(memory->spim, IF_ZEROCOPY, NULL);
+    ifSetParam(memory->spim, IF_ZEROCOPY, nullptr);
     ifSetCallback(memory->spim, interruptHandler, memory);
   }
 }
@@ -110,8 +110,8 @@ static void busAcquire(struct MX35Quad *memory)
 static void busRelease(struct MX35Quad *memory)
 {
   if (!memory->blocking)
-    ifSetCallback(memory->spim, NULL, NULL);
-  ifSetParam(memory->spim, IF_RELEASE, NULL);
+    ifSetCallback(memory->spim, nullptr, nullptr);
+  ifSetParam(memory->spim, IF_RELEASE, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static void cacheRead(struct MX35Quad *memory, uint32_t position,
@@ -161,17 +161,17 @@ static void cacheRead(struct MX35Quad *memory, uint32_t position,
 
   if (memory->qio)
   {
-    ifSetParam(memory->spim, IF_SPIM_ADDRESS_PARALLEL, NULL);
-    ifSetParam(memory->spim, IF_SPIM_DELAY_PARALLEL, NULL);
+    ifSetParam(memory->spim, IF_SPIM_ADDRESS_PARALLEL, nullptr);
+    ifSetParam(memory->spim, IF_SPIM_DELAY_PARALLEL, nullptr);
   }
   else
   {
-    ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
-    ifSetParam(memory->spim, IF_SPIM_DELAY_SERIAL, NULL);
+    ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, nullptr);
+    ifSetParam(memory->spim, IF_SPIM_DELAY_SERIAL, nullptr);
   }
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, nullptr);
 
   ifRead(memory->spim, buffer, length);
 }
@@ -197,13 +197,13 @@ static void cacheWrite(struct MX35Quad *memory, uint32_t position,
   ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH, &count);
 
   if (memory->quad)
-    ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, NULL);
+    ifSetParam(memory->spim, IF_SPIM_DATA_PARALLEL, nullptr);
   else
-    ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
+    ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, nullptr);
 
   ifWrite(memory->spim, buffer, length);
 }
@@ -267,19 +267,19 @@ static void eraseBlock(struct MX35Quad *memory, uint32_t position)
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &((uint8_t){CMD_BLOCK_ERASE}));
   ifSetParam(memory->spim, IF_SPIM_ADDRESS_24, &row);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, nullptr);
 
-  ifWrite(memory->spim, NULL, 0);
+  ifWrite(memory->spim, nullptr, 0);
 }
 /*----------------------------------------------------------------------------*/
 static void interruptHandler(void *argument)
 {
   struct MX35Quad * const memory = argument;
-  const enum Result status = ifGetParam(memory->spim, IF_STATUS, NULL);
+  const enum Result status = ifGetParam(memory->spim, IF_STATUS, nullptr);
   bool event = false;
 
   assert(memory->context.state != STATE_IDLE
@@ -421,7 +421,7 @@ static void interruptHandler(void *argument)
       break;
   }
 
-  if (event && memory->callback != NULL)
+  if (event && memory->callback != nullptr)
     memory->callback(memory->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -432,13 +432,13 @@ static void pageProgram(struct MX35Quad *memory, uint32_t position)
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &((uint8_t){CMD_PROGRAM_EXECUTE}));
   ifSetParam(memory->spim, IF_SPIM_ADDRESS_24, &row);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, nullptr);
 
-  ifWrite(memory->spim, NULL, 0);
+  ifWrite(memory->spim, nullptr, 0);
 }
 /*----------------------------------------------------------------------------*/
 static void pageRead(struct MX35Quad *memory, uint32_t position)
@@ -448,13 +448,13 @@ static void pageRead(struct MX35Quad *memory, uint32_t position)
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &((uint8_t){CMD_PAGE_READ}));
   ifSetParam(memory->spim, IF_SPIM_ADDRESS_24, &row);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, nullptr);
 
-  ifWrite(memory->spim, NULL, 0);
+  ifWrite(memory->spim, nullptr, 0);
 }
 /*----------------------------------------------------------------------------*/
 static void pollFeatureRegister(struct MX35Quad *memory, uint8_t feature,
@@ -470,13 +470,13 @@ static void pollFeatureRegister(struct MX35Quad *memory, uint8_t feature,
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &((uint8_t){CMD_GET_FEATURE}));
   ifSetParam(memory->spim, IF_SPIM_DATA_POLL_BIT, &bit);
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, nullptr);
 
-  ifRead(memory->spim, NULL, 0);
+  ifRead(memory->spim, nullptr, 0);
 }
 /*----------------------------------------------------------------------------*/
 static struct DeviceId readDeviceId(struct MX35Quad *memory)
@@ -489,11 +489,11 @@ static struct DeviceId readDeviceId(struct MX35Quad *memory)
   ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH,
       &((uint32_t){TO_LITTLE_ENDIAN_32(sizeof(struct DeviceId))}));
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, nullptr);
 
   ifRead(memory->spim, &info, sizeof(info));
   return info;
@@ -513,11 +513,11 @@ static uint8_t readFeatureRegister(struct MX35Quad *memory, uint8_t feature)
   ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH,
       &((uint32_t){TO_LITTLE_ENDIAN_32(1)}));
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, nullptr);
 
   ifRead(memory->spim, &data, 1);
   return data;
@@ -538,13 +538,13 @@ static void writeEnable(struct MX35Quad *memory)
 {
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &((uint8_t){CMD_WRITE_ENABLE}));
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_NONE, nullptr);
 
-  ifWrite(memory->spim, NULL, 0);
+  ifWrite(memory->spim, nullptr, 0);
 }
 /*----------------------------------------------------------------------------*/
 static void writeFeatureRegister(struct MX35Quad *memory, uint8_t feature,
@@ -564,11 +564,11 @@ static void writeFeatureRegister(struct MX35Quad *memory, uint8_t feature,
   ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH,
       &((uint32_t){TO_LITTLE_ENDIAN_32(1)}));
 
-  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, NULL);
-  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, NULL);
-  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, NULL);
+  ifSetParam(memory->spim, IF_SPIM_COMMAND_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_ADDRESS_SERIAL, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_POST_ADDRESS_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DELAY_NONE, nullptr);
+  ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, nullptr);
 
   ifWrite(memory->spim, &value, 1);
 
@@ -579,13 +579,13 @@ static void writeFeatureRegister(struct MX35Quad *memory, uint8_t feature,
 static enum Result memoryInit(void *object, const void *configBase)
 {
   const struct MX35QuadConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->spim != NULL);
+  assert(config != nullptr);
+  assert(config->spim != nullptr);
 
   struct MX35Quad * const memory = object;
   enum Result res = E_OK;
 
-  memory->callback = NULL;
+  memory->callback = nullptr;
   memory->spim = config->spim;
   memory->position = 0;
   memory->blocking = true;
@@ -595,9 +595,9 @@ static enum Result memoryInit(void *object, const void *configBase)
   /* Lock the interface */
   busAcquire(memory);
   /* Explicitly enter indirect mode */
-  ifSetParam(memory->spim, IF_SPIM_INDIRECT, NULL);
+  ifSetParam(memory->spim, IF_SPIM_INDIRECT, nullptr);
   /* Detect interface capabilities */
-  memory->quad = ifSetParam(memory->spim, IF_SPIM_QUAD, NULL) == E_OK;
+  memory->quad = ifSetParam(memory->spim, IF_SPIM_QUAD, nullptr) == E_OK;
   /* Read device information */
   const struct DeviceId id = readDeviceId(memory);
   /* Unlock the interface */

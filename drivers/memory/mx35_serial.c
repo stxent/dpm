@@ -99,22 +99,22 @@ static inline uint32_t addressToRow(const struct MX35Serial *memory,
 /*----------------------------------------------------------------------------*/
 static void busAcquire(struct MX35Serial *memory)
 {
-  ifSetParam(memory->spi, IF_ACQUIRE, NULL);
+  ifSetParam(memory->spi, IF_ACQUIRE, nullptr);
 
   if (memory->rate)
     ifSetParam(memory->spi, IF_RATE, &memory->rate);
 
   ifSetParam(memory->spi, IF_SPI_MODE, &(uint8_t){0});
-  ifSetParam(memory->spi, IF_SPI_UNIDIRECTIONAL, NULL);
+  ifSetParam(memory->spi, IF_SPI_UNIDIRECTIONAL, nullptr);
 
   if (memory->blocking)
   {
-    ifSetParam(memory->spi, IF_BLOCKING, NULL);
-    ifSetCallback(memory->spi, NULL, NULL);
+    ifSetParam(memory->spi, IF_BLOCKING, nullptr);
+    ifSetCallback(memory->spi, nullptr, nullptr);
   }
   else
   {
-    ifSetParam(memory->spi, IF_ZEROCOPY, NULL);
+    ifSetParam(memory->spi, IF_ZEROCOPY, nullptr);
     ifSetCallback(memory->spi, interruptHandler, memory);
   }
 }
@@ -122,8 +122,8 @@ static void busAcquire(struct MX35Serial *memory)
 static void busRelease(struct MX35Serial *memory)
 {
   if (!memory->blocking)
-    ifSetCallback(memory->spi, NULL, NULL);
-  ifSetParam(memory->spi, IF_RELEASE, NULL);
+    ifSetCallback(memory->spi, nullptr, nullptr);
+  ifSetParam(memory->spi, IF_RELEASE, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static void cacheRead(struct MX35Serial *memory, uint32_t position,
@@ -244,7 +244,7 @@ static void eraseBlock(struct MX35Serial *memory, uint32_t position)
 static void interruptHandler(void *argument)
 {
   struct MX35Serial * const memory = argument;
-  const enum Result status = ifGetParam(memory->spi, IF_STATUS, NULL);
+  const enum Result status = ifGetParam(memory->spi, IF_STATUS, nullptr);
   bool event = false;
 
   assert(memory->context.state != STATE_IDLE
@@ -482,7 +482,7 @@ static void interruptHandler(void *argument)
       break;
   }
 
-  if (event && memory->callback != NULL)
+  if (event && memory->callback != nullptr)
     memory->callback(memory->callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
@@ -605,8 +605,8 @@ static void writeFeatureRegister(struct MX35Serial *memory, uint8_t feature,
 static enum Result memoryInit(void *object, const void *configBase)
 {
   const struct MX35SerialConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->spi != NULL);
+  assert(config != nullptr);
+  assert(config->spi != nullptr);
 
   struct MX35Serial * const memory = object;
   enum Result res = E_OK;
@@ -616,7 +616,7 @@ static enum Result memoryInit(void *object, const void *configBase)
     return E_VALUE;
   pinOutput(memory->cs, true);
 
-  memory->callback = NULL;
+  memory->callback = nullptr;
   memory->spi = config->spi;
   memory->timer = config->timer;
   memory->position = 0;
@@ -632,7 +632,7 @@ static enum Result memoryInit(void *object, const void *configBase)
   else
     memory->rate = config->rate;
 
-  if (memory->timer != NULL)
+  if (memory->timer != nullptr)
   {
     /* Configure polling timer */
     const uint32_t frequency = !config->poll ? DEFAULT_POLL_RATE : config->poll;
@@ -690,8 +690,8 @@ static void memoryDeinit(void *object)
 {
   struct MX35Serial * const memory = object;
 
-  if (memory->timer != NULL)
-    timerSetCallback(memory->timer, NULL, NULL);
+  if (memory->timer != nullptr)
+    timerSetCallback(memory->timer, nullptr, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static void memorySetCallback(void *object, void (*callback)(void *),
@@ -851,7 +851,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
       return E_OK;
 
     case IF_ZEROCOPY:
-      assert(memory->timer != NULL);
+      assert(memory->timer != nullptr);
       memory->blocking = false;
       return E_OK;
 

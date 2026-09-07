@@ -43,8 +43,8 @@ static void onPinInterrupt(void *argument)
 static void onTimerOverflow(void *argument)
 {
   struct Button * const button = argument;
-  void (*callback)(void *) = NULL;
-  void *callbackArgument = NULL;
+  void (*callback)(void *) = nullptr;
+  void *callbackArgument = nullptr;
   bool stop = false;
 
   if (pinRead(button->pin) == button->level)
@@ -74,23 +74,23 @@ static void onTimerOverflow(void *argument)
     interruptEnable(button->interrupt);
   }
 
-  if (callback != NULL)
+  if (callback != nullptr)
     callback(callbackArgument);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result buttonInit(void *object, const void *configBase)
 {
   const struct ButtonConfig * const config = configBase;
-  assert(config != NULL);
-  assert(config->interrupt != NULL && config->timer != NULL);
+  assert(config != nullptr);
+  assert(config->interrupt != nullptr && config->timer != nullptr);
 
   struct Button * const button = object;
 
   button->pin = pinInit(config->pin);
   assert(pinValid(button->pin));
 
-  button->callback = NULL;
-  button->callbackArgument = NULL;
+  button->callback = nullptr;
+  button->callbackArgument = nullptr;
   button->interrupt = config->interrupt;
   button->timer = config->timer;
   button->counter = 0;
@@ -114,8 +114,8 @@ static void buttonDeinit(void *object)
 
   buttonDisable(button);
 
-  timerSetCallback(button->timer, NULL, NULL);
-  interruptSetCallback(button->interrupt, NULL, NULL);
+  timerSetCallback(button->timer, nullptr, nullptr);
+  interruptSetCallback(button->interrupt, nullptr, nullptr);
 }
 /*----------------------------------------------------------------------------*/
 static void buttonEnable(void *object)
