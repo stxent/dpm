@@ -157,7 +157,7 @@ void buttonComplexSetLongPressCallback(struct ButtonComplex *button,
   button->longPressCallback = callback;
   button->longPressCallbackArgument = argument;
 }
-    /*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 void buttonComplexSetPressCallback(struct ButtonComplex *button,
     void (*callback)(void *), void *argument)
 {

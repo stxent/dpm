@@ -84,7 +84,7 @@ static inline enum SensorStatus sensorGetStatus(const void *sensor)
  * measurement taken by the sensor. The timestamp is typically represented
  * as a 64-bit value indicating the time in microseconds since system boot.
  *
- * @param sensor Pointer to a Sensor object. Must not be NULL.
+ * @param sensor Pointer to a Sensor object. Must not be @b NULL.
  * @return The timestamp for the last measurement, if timestamps are supported
  * by the sensor. If the sensor does not support timestamps or an error occurs,
  * the function returns 0.
@@ -100,7 +100,7 @@ static inline uint64_t sensorGetTimestamp(const void *sensor)
  *
  * @param sensor Pointer to a Sensor object.
  * @param argument User-defined argument (context data) to be passed
- * to callbacks. Can be NULL.
+ * to callbacks. Can be @b NULL.
  */
 static inline void sensorSetCallbackArgument(void *sensor, void *argument)
 {
@@ -116,7 +116,7 @@ static inline void sensorSetCallbackArgument(void *sensor, void *argument)
  *
  * @param sensor Pointer to a Sensor object.
  * @param callback Function pointer to the error callback.
- * Pass NULL to disable the error callback.
+ * Pass @b NULL to disable the error callback.
  */
 static inline void sensorSetErrorCallback(void *sensor,
     void (*callback)(void *, enum SensorResult))
@@ -131,7 +131,8 @@ static inline void sensorSetErrorCallback(void *sensor,
  *
  * @param sensor Pointer to a Sensor object.
  * @param callback Function pointer to the result callback. The 'data' pointer
- * is valid only within the callback. Pass NULL to disable the result callback.
+ * is valid only within the callback. Pass @b NULL to disable the result
+ * callback.
  */
 static inline void sensorSetResultCallback(void *sensor,
     void (*callback)(void *, const void *, size_t))

@@ -206,11 +206,11 @@ static void channelSetEdges(void *object, [[maybe_unused]] uint32_t leading,
  * controlled in software; the other edge is handled by timing logic.
  *
  * @param unit Pointer to a SoftwarePwmUnit object that manages
- * the PWM channels. Must not be NULL.
+ * the PWM channels. Must not be @b NULL.
  * @param pin Pin used as the signal output for the PWM channel.
  * The pin must be configurable for digital output.
  * @return Pointer to a newly created SoftwarePwm object on success.
- * Returns NULL if the operation fails.
+ * Returns @b NULL if the operation fails.
  */
 void *softwarePwmCreate(void *unit, PinNumber pin)
 {
