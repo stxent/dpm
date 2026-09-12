@@ -55,6 +55,8 @@ struct W25QSerial
   uint32_t position;
   /* Bit rate of the serial interface */
   uint32_t rate;
+  /* Maximum retry count */
+  uint16_t retries;
 
   struct
   {
@@ -66,6 +68,8 @@ struct W25QSerial
     size_t length;
     /* Memory address during write and erase opertions */
     uint32_t position;
+    /* Retries left */
+    uint16_t attempts;
     /* Non-blocking process state */
     uint8_t state;
   } context;

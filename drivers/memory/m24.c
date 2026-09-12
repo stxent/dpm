@@ -15,7 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
-#define WRITE_CYCLE_TIME 5
+#define DEFAULT_WAIT_RATE    1000
+#define DEFAULT_WAIT_RETRIES 10
 
 enum
 {
@@ -28,6 +29,7 @@ enum
   STATE_WRITE_DATA,
   STATE_WRITE_DATA_WAIT,
   STATE_WRITE_PROGRAM,
+  STATE_WRITE_PROGRAM_CHECK,
   STATE_WRITE_PROGRAM_WAIT,
 
   STATE_ERROR_WAIT,
@@ -147,22 +149,34 @@ static void onBusEvent(void *object)
 {
   struct M24 * const memory = object;
   bool busy = false;
+  bool updated = false;
 
   timerDisable(memory->timer);
 
   if (ifGetParam(memory->bus, IF_STATUS, nullptr) != E_OK)
   {
-    memory->transfer.state = STATE_ERROR_WAIT;
+    if (memory->transfer.state == STATE_WRITE_PROGRAM_WAIT
+        && memory->transfer.retries)
+    {
+      --memory->transfer.retries;
 
-    /* Start bus timeout sequence */
-    startBusTimeout(memory->timer);
+      memory->transfer.state = STATE_WRITE_PROGRAM;
+      startProgramTimeout(memory->timer, memory->delay);
+    }
+    else
+    {
+      /* Start bus timeout error sequence */
+      memory->transfer.state = STATE_ERROR_WAIT;
+      startBusTimeout(memory->timer);
+    }
   }
 
   switch (memory->transfer.state)
   {
     case STATE_READ_SETUP_WAIT:
-      busy = true;
       memory->transfer.state = STATE_READ_DATA;
+      busy = true;
+      updated = true;
       break;
 
     case STATE_READ_DATA_WAIT:
@@ -170,6 +184,7 @@ static void onBusEvent(void *object)
       memory->transfer.position += memory->transfer.chunk;
       memory->transfer.rxBuffer += memory->transfer.chunk;
       memory->transfer.state = STATE_READ_SETUP;
+      updated = true;
       break;
 
     case STATE_WRITE_DATA_WAIT:
@@ -178,9 +193,22 @@ static void onBusEvent(void *object)
       memory->transfer.txBuffer += memory->transfer.chunk;
 
       if (memory->delay)
+      {
+        memory->transfer.retries = DEFAULT_WAIT_RETRIES;
+
         memory->transfer.state = STATE_WRITE_PROGRAM;
+        startProgramTimeout(memory->timer, memory->delay);
+      }
       else
+      {
         memory->transfer.state = STATE_WRITE_DATA;
+        updated = true;
+      }
+      break;
+
+    case STATE_WRITE_PROGRAM_WAIT:
+      memory->transfer.state = STATE_WRITE_DATA;
+      updated = true;
       break;
 
     default:
@@ -193,7 +221,8 @@ static void onBusEvent(void *object)
     ifSetParam(memory->bus, IF_RELEASE, nullptr);
   }
 
-  invokeUpdate(memory);
+  if (updated)
+    invokeUpdate(memory);
 }
 /*----------------------------------------------------------------------------*/
 static void onTimerEvent(void *object)
@@ -202,8 +231,8 @@ static void onTimerEvent(void *object)
 
   switch (memory->transfer.state)
   {
-    case STATE_WRITE_PROGRAM_WAIT:
-      memory->transfer.state = STATE_WRITE_DATA;
+    case STATE_WRITE_PROGRAM:
+      memory->transfer.state = STATE_WRITE_PROGRAM_CHECK;
       break;
 
     case STATE_ERROR_WAIT:
@@ -247,7 +276,7 @@ static void updateTask(void *argument)
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInitEeprom(void *object, const void *configBase)
 {
-  return memoryInitGeneric(object, configBase, WRITE_CYCLE_TIME);
+  return memoryInitGeneric(object, configBase, DEFAULT_WAIT_RATE);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInitFram(void *object, const void *configBase)
@@ -256,7 +285,7 @@ static enum Result memoryInitFram(void *object, const void *configBase)
 }
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInitGeneric(void *object, const void *configBase,
-    uint32_t delay)
+    uint32_t waitCycleRate)
 {
   const struct M24Config * const config = configBase;
   assert(config != nullptr);
@@ -284,11 +313,10 @@ static enum Result memoryInitGeneric(void *object, const void *configBase,
   memory->chipSize = config->chipSize;
   memory->pageSize = config->pageSize;
 
-  if (delay)
+  if (waitCycleRate)
   {
     const uint32_t frequency = timerGetFrequency(config->timer);
-    const uint64_t timeout = (delay * (1ULL << 32)) / 1000;
-    const uint32_t overflow = (frequency * timeout + ((1ULL << 32) - 1)) >> 32;
+    const uint32_t overflow = (frequency + (waitCycleRate - 1)) / waitCycleRate;
 
     memory->delay = overflow;
   }
@@ -310,6 +338,7 @@ static enum Result memoryInitGeneric(void *object, const void *configBase,
   memory->transfer.chunk = 0;
   memory->transfer.count = 0;
   memory->transfer.position = 0;
+  memory->transfer.retries = 0;
   memory->transfer.state = STATE_IDLE;
   memory->transfer.status = STATUS_DONE;
 
@@ -613,9 +642,12 @@ bool m24Update(void *object)
         }
         break;
 
-      case STATE_WRITE_PROGRAM:
+      case STATE_WRITE_PROGRAM_CHECK:
+        busy = true;
         memory->transfer.state = STATE_WRITE_PROGRAM_WAIT;
-        startProgramTimeout(memory->timer, memory->delay);
+
+        busInit(memory, memory->transfer.position, false);
+        ifWrite(memory->bus, NULL, 0);
         break;
 
       case STATE_ERROR_INTERFACE:

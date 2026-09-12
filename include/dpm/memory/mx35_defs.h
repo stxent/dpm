@@ -48,18 +48,6 @@ enum
 #define MEMORY_PAGE_4K_SIZE             4224
 #define MEMORY_PAGE_4K_ECC_SIZE         4352
 #define MEMORY_PAGES_PER_BLOCK          64
-/*------------------Configuration Feature Register----------------------------*/
-#define FR_CFG_QE                       BIT(0)
-#define FR_CFG_CONTINUOUS               BIT(2)
-#define FR_CFG_ECC_ENABLE               BIT(4)
-#define FR_CFG_OTP_ENABLE               BIT(6)
-#define FR_CFG_OTP_PROTECT              BIT(7)
-/*------------------Status Feature Register-----------------------------------*/
-#define FR_STATUS_OIP                   BIT(0)
-#define FR_STATUS_WEL                   BIT(1)
-#define FR_STATUS_E_FAIL                BIT(2)
-#define FR_STATUS_P_FAIL                BIT(3)
-#define FR_STATUS_CRBSY                 BIT(6)
 /*------------------Block Protection Feature Register-------------------------*/
 #define FR_BP_SP                        BIT(0)
 #define FR_BP_COMPLEMENTARY             BIT(1)
@@ -68,5 +56,26 @@ enum
 #define FR_BP_BP1                       BIT(4)
 #define FR_BP_BP2                       BIT(5)
 #define FR_BP_BPRWD                     BIT(7)
+/*------------------Configuration Feature Register----------------------------*/
+#define FR_CFG_QE                       BIT(0)
+#define FR_CFG_CONTINUOUS               BIT(2)
+#define FR_CFG_ECC_ENABLE               BIT(4)
+#define FR_CFG_OTP_ENABLE               BIT(6)
+#define FR_CFG_OTP_PROTECT              BIT(7)
+
+/* Kioxia devices */
+#define FR_CFG_HOLD_D                   BIT(0)
+#define FR_CFG_HSE                      BIT(1)
+#define FR_CFG_PRT_E                    BIT(2)
+/*------------------Status Feature Register-----------------------------------*/
+#define FR_STATUS_OIP                   BIT(0)
+#define FR_STATUS_WEL                   BIT(1)
+#define FR_STATUS_E_FAIL                BIT(2)
+#define FR_STATUS_P_FAIL                BIT(3)
+#define FR_STATUS_CRBSY                 BIT(6)
+
+/* Kioxia devices */
+#define FR_STATUS_ECCS0                 BIT(4)
+#define FR_STATUS_ECCS1                 BIT(5)
 /*----------------------------------------------------------------------------*/
 #endif /* DPM_MEMORY_MX35_DEFS_H_ */
