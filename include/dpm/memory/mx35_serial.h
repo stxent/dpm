@@ -58,6 +58,8 @@ struct MX35Serial
   uint32_t rate;
   /* Page size in bytes */
   uint16_t page;
+  /* Maximum retries count */
+  uint16_t retries;
 
   struct
   {
@@ -69,6 +71,8 @@ struct MX35Serial
     size_t length;
     /* Memory address during write and erase opertions */
     uint32_t position;
+    /* Retries left */
+    uint16_t attempts;
     /* Non-blocking process state */
     uint8_t state;
   } context;

@@ -80,6 +80,8 @@ struct M24
     size_t count;
     uint32_t position;
 
+    /* Retires left */
+    uint8_t retries;
     /* Current transfer state */
     uint8_t state;
     /* Operation result */

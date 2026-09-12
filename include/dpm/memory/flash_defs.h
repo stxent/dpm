@@ -10,6 +10,7 @@
 #include <stdint.h>
 /*----------------------------------------------------------------------------*/
 #define JEDEC_MANUFACTURER_MICRON           0x20
+#define JEDEC_MANUFACTURER_KIOXIA           0x98
 #define JEDEC_MANUFACTURER_MACRONIX         0xC2
 #define JEDEC_MANUFACTURER_WINBOND          0xEF
 /*----------------------------------------------------------------------------*/

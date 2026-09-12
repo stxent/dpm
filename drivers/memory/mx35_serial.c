@@ -8,6 +8,7 @@
 #include <dpm/memory/mx35.h>
 #include <dpm/memory/mx35_defs.h>
 #include <dpm/memory/mx35_serial.h>
+#include <halm/delay.h>
 #include <halm/generic/flash.h>
 #include <halm/generic/spi.h>
 #include <halm/timer.h>
@@ -15,7 +16,13 @@
 #include <assert.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
-#define DEFAULT_POLL_RATE 100
+#define DEFAULT_TIMEOUT_HZ    100
+#define DEFAULT_POLL_RATE     1000
+#define DEFAULT_POLL_RETRIES  (DEFAULT_POLL_RATE / DEFAULT_TIMEOUT_HZ)
+
+#define DEFAULT_DELAY_US      20
+#define DEFAULT_DELAY_LIMIT \
+    ((1000000 / DEFAULT_DELAY_US) / DEFAULT_TIMEOUT_HZ)
 
 enum
 {
@@ -35,7 +42,8 @@ enum
   STATE_ERASE_START,
   STATE_ERASE_CHECK,
   STATE_ERASE_WAIT,
-  STATE_ERROR
+  STATE_ERROR_DEVICE,
+  STATE_ERROR_INTERFACE
 };
 
 struct [[gnu::packed]] DeviceId
@@ -61,9 +69,9 @@ static void pageRead(struct MX35Serial *, uint32_t);
 static void pollFeatureRegister(struct MX35Serial *, uint8_t);
 static struct DeviceId readDeviceId(struct MX35Serial *);
 static uint8_t readFeatureRegister(struct MX35Serial *, uint8_t);
-static void waitMemoryBusy(struct MX35Serial *);
+static bool waitMemoryBusy(struct MX35Serial *);
 static void writeEnable(struct MX35Serial *);
-static void writeFeatureRegister(struct MX35Serial *, uint8_t, uint8_t);
+static bool writeFeatureRegister(struct MX35Serial *, uint8_t, uint8_t);
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInit(void *, const void *);
 static void memoryDeinit(void *);
@@ -181,7 +189,8 @@ static bool changeErrorCorrectionMode(struct MX35Serial *memory, bool enabled)
 
   if (current != expected)
   {
-    writeFeatureRegister(memory, FEATURE_CFG, expected);
+    if (!writeFeatureRegister(memory, FEATURE_CFG, expected))
+      return false;
     current = readFeatureRegister(memory, FEATURE_CFG);
   }
 
@@ -196,7 +205,8 @@ static bool changeQuadMode(struct MX35Serial *memory, bool enabled)
 
   if (current != expected)
   {
-    writeFeatureRegister(memory, FEATURE_CFG, expected);
+    if (!writeFeatureRegister(memory, FEATURE_CFG, expected))
+      return false;
     current = readFeatureRegister(memory, FEATURE_CFG);
   }
 
@@ -205,6 +215,7 @@ static bool changeQuadMode(struct MX35Serial *memory, bool enabled)
 /*----------------------------------------------------------------------------*/
 static void contextReset(struct MX35Serial *memory)
 {
+  memory->context.attempts = 0;
   memory->context.buffer = 0;
   memory->context.left = 0;
   memory->context.length = 0;
@@ -218,11 +229,12 @@ static bool disableBlockProtection(struct MX35Serial *memory)
 
   if (value)
   {
-    writeFeatureRegister(memory, FEATURE_BP, 0);
+    if (!writeFeatureRegister(memory, FEATURE_BP, 0))
+      return false;
     value = readFeatureRegister(memory, FEATURE_BP);
   }
 
-  return !value;
+  return value == 0;
 }
 /*----------------------------------------------------------------------------*/
 static void eraseBlock(struct MX35Serial *memory, uint32_t position)
@@ -248,11 +260,12 @@ static void interruptHandler(void *argument)
   bool event = false;
 
   assert(memory->context.state != STATE_IDLE
-      && memory->context.state != STATE_ERROR);
+      && memory->context.state != STATE_ERROR_DEVICE
+      && memory->context.state != STATE_ERROR_INTERFACE);
 
   if (status != E_OK)
   {
-    memory->context.state = STATE_ERROR;
+    memory->context.state = STATE_ERROR_INTERFACE;
     event = true;
 
     memory->context.buffer = 0;
@@ -287,9 +300,22 @@ static void interruptHandler(void *argument)
     case STATE_READ_PAGE_WAIT:
       if (memory->command[0] & FR_STATUS_OIP)
       {
-        /* Memory is still busy, restart the periodic timer */
-        timerSetValue(memory->timer, 0);
-        timerEnable(memory->timer);
+        if (--memory->context.attempts)
+        {
+          /* Memory is still busy, restart the periodic timer */
+          timerSetValue(memory->timer, 0);
+          timerEnable(memory->timer);
+        }
+        else
+        {
+          /* Retries expired */
+          pinSet(memory->cs);
+
+          memory->context.state = STATE_ERROR_DEVICE;
+          event = true;
+
+          busRelease(memory);
+        }
       }
       else
       {
@@ -321,13 +347,14 @@ static void interruptHandler(void *argument)
       /* Release chip select */
       pinSet(memory->cs);
 
-      /* Update context */
+      /* Setup context */
       memory->context.buffer += memory->context.length;
       memory->context.left -= memory->context.length;
       memory->context.position += memory->context.length;
 
       if (memory->context.left)
       {
+        memory->context.attempts = memory->retries;
         memory->context.state = STATE_READ_PAGE_START;
         pageRead(memory, memory->context.position);
       }
@@ -402,22 +429,36 @@ static void interruptHandler(void *argument)
     case STATE_WRITE_PAGE_WAIT:
       if (memory->command[0] & FR_STATUS_OIP)
       {
-        /* Memory is still busy, restart the periodic timer */
-        timerSetValue(memory->timer, 0);
-        timerEnable(memory->timer);
+        if (--memory->context.attempts)
+        {
+          /* Memory is still busy, restart the periodic timer */
+          timerSetValue(memory->timer, 0);
+          timerEnable(memory->timer);
+        }
+        else
+        {
+          /* Retries expired */
+          pinSet(memory->cs);
+
+          memory->context.state = STATE_ERROR_DEVICE;
+          event = true;
+
+          busRelease(memory);
+        }
       }
       else
       {
         /* Release chip select */
         pinSet(memory->cs);
 
-        /* Update context */
+        /* Setup context */
         memory->context.buffer += memory->context.length;
         memory->context.left -= memory->context.length;
         memory->context.position += memory->context.length;
 
         if (memory->context.left)
         {
+          memory->context.attempts = memory->retries;
           memory->context.state = STATE_WRITE_ENABLE;
           writeEnable(memory);
         }
@@ -462,9 +503,22 @@ static void interruptHandler(void *argument)
     case STATE_ERASE_WAIT:
       if (memory->command[0] & FR_STATUS_OIP)
       {
-        /* Memory is still busy, restart the periodic timer */
-        timerSetValue(memory->timer, 0);
-        timerEnable(memory->timer);
+        if (--memory->context.attempts)
+        {
+          /* Memory is still busy, restart the periodic timer */
+          timerSetValue(memory->timer, 0);
+          timerEnable(memory->timer);
+        }
+        else
+        {
+          /* Retries expired */
+          pinSet(memory->cs);
+
+          memory->context.state = STATE_ERROR_DEVICE;
+          event = true;
+
+          busRelease(memory);
+        }
       }
       else
       {
@@ -562,15 +616,19 @@ static uint8_t readFeatureRegister(struct MX35Serial *memory, uint8_t feature)
   return memory->command[0];
 }
 /*----------------------------------------------------------------------------*/
-static void waitMemoryBusy(struct MX35Serial *memory)
+static bool waitMemoryBusy(struct MX35Serial *memory)
 {
+  uint16_t retries = DEFAULT_DELAY_LIMIT;
   uint8_t status;
 
   do
   {
     status = readFeatureRegister(memory, FEATURE_STATUS);
+    udelay(DEFAULT_DELAY_US);
   }
-  while (status & FR_STATUS_OIP);
+  while ((status & FR_STATUS_OIP) && --retries);
+
+  return retries != 0;
 }
 /*----------------------------------------------------------------------------*/
 static void writeEnable(struct MX35Serial *memory)
@@ -584,7 +642,7 @@ static void writeEnable(struct MX35Serial *memory)
     pinSet(memory->cs);
 }
 /*----------------------------------------------------------------------------*/
-static void writeFeatureRegister(struct MX35Serial *memory, uint8_t feature,
+static bool writeFeatureRegister(struct MX35Serial *memory, uint8_t feature,
     uint8_t value)
 {
   /* Enable write mode */
@@ -599,7 +657,7 @@ static void writeFeatureRegister(struct MX35Serial *memory, uint8_t feature,
   pinSet(memory->cs);
 
   /* Wait until write operation is completed */
-  waitMemoryBusy(memory);
+  return waitMemoryBusy(memory);
 }
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInit(void *object, const void *configBase)
@@ -620,6 +678,8 @@ static enum Result memoryInit(void *object, const void *configBase)
   memory->spi = config->spi;
   memory->timer = config->timer;
   memory->position = 0;
+  memory->retries = !config->poll ? DEFAULT_POLL_RETRIES
+      : (config->poll + (DEFAULT_TIMEOUT_HZ - 1)) / DEFAULT_TIMEOUT_HZ;
   memory->blocking = true;
   memory->ecc = config->ecc;
   contextReset(memory);
@@ -665,10 +725,8 @@ static enum Result memoryInit(void *object, const void *configBase)
     memory->page = memory->ecc ? MEMORY_PAGE_2K_SIZE : MEMORY_PAGE_2K_ECC_SIZE;
   else
     memory->page = 1UL << (MEMORY_PAGE_2K_COLUMN_SIZE - 1);
-
   if (info.wide)
     memory->page <<= 1;
-
   memory->capacity = memory->page * info.blocks * MEMORY_PAGES_PER_BLOCK;
 
   busAcquire(memory);
@@ -746,7 +804,9 @@ static enum Result memoryGetParam(void *object, int parameter, void *data)
     case IF_STATUS:
       if (!memory->blocking)
       {
-        if (memory->context.state == STATE_ERROR)
+        if (memory->context.state == STATE_ERROR_DEVICE)
+          return E_DEVICE;
+        else if (memory->context.state == STATE_ERROR_INTERFACE)
           return E_INTERFACE;
         else if (memory->context.state != STATE_IDLE)
           return E_BUSY;
@@ -775,15 +835,16 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
       {
         if (memory->blocking)
         {
-          contextReset(memory);
+          bool completed;
 
+          contextReset(memory);
           busAcquire(memory);
           writeEnable(memory);
           eraseBlock(memory, position);
-          waitMemoryBusy(memory);
+          completed = waitMemoryBusy(memory);
           busRelease(memory);
 
-          return E_OK;
+          return completed ? E_OK : E_DEVICE;
         }
         else
         {
@@ -792,6 +853,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           memory->context.left = 0;
           memory->context.length = 0;
           /* Setup context */
+          memory->context.attempts = memory->retries;
           memory->context.position = position;
           memory->context.state = STATE_ERASE_ENABLE;
 
@@ -882,7 +944,8 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
       const uint32_t chunk = MIN(available, left);
 
       pageRead(memory, position);
-      waitMemoryBusy(memory);
+      if (!waitMemoryBusy(memory))
+        break;
       cacheRead(memory, position, data, chunk);
 
       left -= chunk;
@@ -892,6 +955,7 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
 
     busRelease(memory);
 
+    length -= left;
     memory->position += length;
     if (memory->position == memory->capacity)
       memory->position = 0;
@@ -899,6 +963,7 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
   else
   {
     /* Setup context */
+    memory->context.attempts = memory->retries;
     memory->context.buffer = (uintptr_t)buffer;
     memory->context.left = length;
     memory->context.length = 0;
@@ -936,7 +1001,8 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
       writeEnable(memory);
       cacheWrite(memory, position, data, chunk);
       pageProgram(memory, position);
-      waitMemoryBusy(memory);
+      if (!waitMemoryBusy(memory))
+        break;
 
       left -= chunk;
       data += chunk;
@@ -945,6 +1011,7 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
 
     busRelease(memory);
 
+    length -= left;
     memory->position += length;
     if (memory->position == memory->capacity)
       memory->position = 0;
@@ -952,6 +1019,7 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
   else
   {
     /* Setup context */
+    memory->context.attempts = memory->retries;
     memory->context.buffer = (uintptr_t)buffer;
     memory->context.left = length;
     memory->context.length = 0;
