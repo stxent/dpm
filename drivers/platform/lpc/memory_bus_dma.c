@@ -296,7 +296,7 @@ static size_t busWrite(void *object, const void *buffer, size_t length)
     position += chunk << interface->width;
   }
 
-  if (dmaEnable(interface->dma) != E_OK)
+  if (!dmaEnable(interface->dma))
     goto error;
 
   /* Start the transfer by enabling the clock generation timer */

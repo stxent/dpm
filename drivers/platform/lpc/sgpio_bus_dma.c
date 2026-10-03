@@ -14,9 +14,9 @@ static void channelDeinit(void *);
 static void channelConfigure(void *, const void *);
 static void channelSetCallback(void *, void (*)(void *), void *);
 
-static enum Result channelEnable(void *);
+static bool channelEnable(void *);
 static void channelDisable(void *);
-static enum Result channelResidue(const void *, size_t *);
+static bool channelResidue(const void *, size_t *);
 static enum Result channelStatus(const void *);
 
 static void channelAppend(void *, void *, const void *, size_t);
@@ -84,7 +84,7 @@ static void channelSetCallback(void *object, void (*callback)(void *),
   GpDmaOneShot->setCallback(object, callback, argument);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result channelEnable(void *object)
+static bool channelEnable(void *object)
 {
   return GpDmaOneShot->enable(object);
 }
@@ -94,7 +94,7 @@ static void channelDisable(void *object)
   GpDmaOneShot->disable(object);
 }
 /*----------------------------------------------------------------------------*/
-static enum Result channelResidue(const void *object, size_t *count)
+static bool channelResidue(const void *object, size_t *count)
 {
   return GpDmaOneShot->residue(object, count);
 }

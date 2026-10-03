@@ -27,7 +27,7 @@ enum Result memoryBusDmaFinalizerStart(struct MemoryBusDmaFinalizer *finalizer)
 
   dmaAppend(finalizer->dma, (void *)&reg->MCR, &finalizer->value,
       sizeof(finalizer->value));
-  return dmaEnable(finalizer->dma);
+  return dmaEnable(finalizer->dma) ? E_OK : E_BUSY;
 }
 /*----------------------------------------------------------------------------*/
 void memoryBusDmaFinalizerStop(struct MemoryBusDmaFinalizer *finalizer)
