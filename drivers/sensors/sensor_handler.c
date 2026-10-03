@@ -252,8 +252,6 @@ void shSetFailureCallback(struct SensorHandler *handler,
 void shSetErrorCallback(void *object, void (*callback)(void *), void *argument)
 {
   struct SensorHandler * const handler = object;
-
-  assert(callback != nullptr);
   assert(handler->wq == nullptr);
 
   handler->errorCallbackArgument = argument;
@@ -263,8 +261,6 @@ void shSetErrorCallback(void *object, void (*callback)(void *), void *argument)
 void shSetIdleCallback(void *object, void (*callback)(void *), void *argument)
 {
   struct SensorHandler * const handler = object;
-
-  assert(callback != nullptr);
   assert(handler->wq == nullptr);
 
   handler->idleCallbackArgument = argument;
@@ -274,8 +270,6 @@ void shSetIdleCallback(void *object, void (*callback)(void *), void *argument)
 void shSetUpdateCallback(void *object, void (*callback)(void *), void *argument)
 {
   struct SensorHandler * const handler = object;
-
-  assert(callback != nullptr);
   assert(handler->wq == nullptr);
 
   handler->updateCallbackArgument = argument;
@@ -285,8 +279,6 @@ void shSetUpdateCallback(void *object, void (*callback)(void *), void *argument)
 void shSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct SensorHandler * const handler = object;
-
-  assert(wq != nullptr);
   assert(handler->updateCallback == nullptr);
 
   handler->wq = wq;

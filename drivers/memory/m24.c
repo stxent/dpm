@@ -497,8 +497,6 @@ void m24SetErrorCallback(void *object, void (*callback)(void *),
 {
   struct M24 * const memory = object;
 
-  assert(callback != nullptr);
-
   memory->errorCallbackArgument = argument;
   memory->errorCallback = callback;
 }
@@ -508,8 +506,6 @@ void m24SetIdleCallback(void *object, void (*callback)(void *),
 {
   struct M24 * const memory = object;
 
-  assert(callback != nullptr);
-
   memory->idleCallbackArgument = argument;
   memory->idleCallback = callback;
 }
@@ -518,8 +514,6 @@ void m24SetUpdateCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct M24 * const memory = object;
-
-  assert(callback != nullptr);
   assert(memory->wq == nullptr);
 
   memory->updateCallbackArgument = argument;
@@ -529,8 +523,6 @@ void m24SetUpdateCallback(void *object, void (*callback)(void *),
 void m24SetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct M24 * const memory = object;
-
-  assert(wq != nullptr);
   assert(memory->updateCallback == nullptr);
 
   memory->wq = wq;

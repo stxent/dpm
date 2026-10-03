@@ -272,8 +272,6 @@ void tea57xxSetCallback(void *object, void (*callback)(void *),
 {
   struct TEA57XX * const radio = object;
 
-  assert(callback != nullptr);
-
   radio->callbackArgument = argument;
   radio->callback = callback;
 }
@@ -282,8 +280,6 @@ void tea57xxSetErrorCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct TEA57XX * const radio = object;
-
-  assert(callback != nullptr);
 
   radio->errorCallbackArgument = argument;
   radio->errorCallback = callback;
@@ -294,8 +290,6 @@ void tea57xxSetIdleCallback(void *object, void (*callback)(void *),
 {
   struct TEA57XX * const radio = object;
 
-  assert(callback != nullptr);
-
   radio->idleCallbackArgument = argument;
   radio->idleCallback = callback;
 }
@@ -304,8 +298,6 @@ void tea57xxSetUpdateCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct TEA57XX * const radio = object;
-
-  assert(callback != nullptr);
   assert(radio->wq == nullptr);
 
   radio->updateCallbackArgument = argument;
@@ -315,8 +307,6 @@ void tea57xxSetUpdateCallback(void *object, void (*callback)(void *),
 void tea57xxSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct TEA57XX * const radio = object;
-
-  assert(wq != nullptr);
   assert(radio->updateCallback == nullptr);
 
   radio->wq = wq;

@@ -1735,8 +1735,6 @@ static void aic3xSetErrorCallback(void *object, void (*callback)(void *),
 {
   struct TLV320AIC3x * const codec = object;
 
-  assert(callback != nullptr);
-
   codec->errorCallbackArgument = argument;
   codec->errorCallback = callback;
 }
@@ -1746,8 +1744,6 @@ static void aic3xSetIdleCallback(void *object, void (*callback)(void *),
 {
   struct TLV320AIC3x * const codec = object;
 
-  assert(callback != nullptr);
-
   codec->idleCallbackArgument = argument;
   codec->idleCallback = callback;
 }
@@ -1756,8 +1752,6 @@ static void aic3xSetUpdateCallback(void *object, void (*callback)(void *),
     void *argument)
 {
   struct TLV320AIC3x * const codec = object;
-
-  assert(callback != nullptr);
   assert(codec->wq == nullptr);
 
   codec->updateCallbackArgument = argument;
@@ -1767,8 +1761,6 @@ static void aic3xSetUpdateCallback(void *object, void (*callback)(void *),
 static void aic3xSetUpdateWorkQueue(void *object, struct WorkQueue *wq)
 {
   struct TLV320AIC3x * const codec = object;
-
-  assert(wq != nullptr);
   assert(codec->updateCallback == nullptr);
 
   codec->wq = wq;
