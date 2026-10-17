@@ -184,7 +184,7 @@ static enum Result oneWireInit(void *object, const void *configBase)
   interface->rxBuffer = nullptr;
   interface->left = 0;
   interface->bit = 0;
-  interface->word = 0;;
+  interface->word = 0;
   interface->state = STATE_IDLE;
   interface->blocking = true;
 

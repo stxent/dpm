@@ -45,7 +45,7 @@ enum
   STATUS_ERROR_TIMEOUT
 };
 /*----------------------------------------------------------------------------*/
-static void fillDataAddress(uint8_t *, const struct M24 *, uint32_t);
+static void fillDataAddress(const struct M24 *, uint8_t *, uint32_t);
 static uint32_t makeSlaveAddress(const struct M24 *, uint32_t);
 
 static void busInit(struct M24 *, uint32_t, bool);
@@ -90,7 +90,7 @@ const struct InterfaceClass * const M24 = &(const struct InterfaceClass){
     .write = memoryWrite
 };
 /*----------------------------------------------------------------------------*/
-static void fillDataAddress(uint8_t *buffer, const struct M24 *memory,
+static void fillDataAddress(const struct M24 *memory, uint8_t *buffer,
     uint32_t position)
 {
   const uint32_t address = position & MASK(memory->shift);
@@ -195,6 +195,7 @@ static void onBusEvent(void *object)
       if (memory->delay)
       {
         memory->transfer.retries = DEFAULT_WAIT_RETRIES;
+        fillDataAddress(memory, memory->transfer.buffer, 0);
 
         memory->transfer.state = STATE_WRITE_PROGRAM;
         startProgramTimeout(memory->timer, memory->delay);
@@ -569,7 +570,7 @@ bool m24Update(void *object)
           memory->transfer.chunk = MIN(nextPagePosition - begin,
               memory->transfer.count);
 
-          fillDataAddress(memory->transfer.buffer, memory,
+          fillDataAddress(memory, memory->transfer.buffer,
               memory->transfer.position);
 
           busInit(memory, memory->transfer.position, true);
@@ -610,7 +611,7 @@ bool m24Update(void *object)
           memory->transfer.chunk = MIN(nextPagePosition - begin,
               memory->transfer.count);
 
-          fillDataAddress(memory->transfer.buffer, memory,
+          fillDataAddress(memory, memory->transfer.buffer,
               memory->transfer.position);
           memcpy(memory->transfer.buffer + memory->width,
               memory->transfer.txBuffer, memory->transfer.chunk);
@@ -638,8 +639,9 @@ bool m24Update(void *object)
         busy = true;
         memory->transfer.state = STATE_WRITE_PROGRAM_WAIT;
 
+        /* Perform an address write to poll memory ready status */
         busInit(memory, memory->transfer.position, false);
-        ifWrite(memory->bus, nullptr, 0);
+        ifWrite(memory->bus, memory->transfer.buffer, memory->width);
         break;
 
       case STATE_ERROR_INTERFACE:

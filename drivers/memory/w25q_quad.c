@@ -14,6 +14,8 @@
 #include <assert.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
+#define DEFAULT_TIMEOUT_MS 3000 /* Milliseconds */
+
 enum
 {
   STATE_IDLE,
@@ -24,6 +26,7 @@ enum
   STATE_ERASE_ENABLE,
   STATE_ERASE_START,
   STATE_ERASE_WAIT,
+  STATE_TIMEOUT,
   STATE_ERROR
 };
 /*----------------------------------------------------------------------------*/
@@ -45,9 +48,9 @@ static void pageRead(struct W25QQuad *, uint32_t, void *, size_t);
 static void pollStatusRegister(struct W25QQuad *, uint8_t, uint8_t);
 static struct JedecInfo readJedecInfo(struct W25QQuad *);
 static uint8_t readStatusRegister(struct W25QQuad *, uint8_t);
-static void waitMemoryBusy(struct W25QQuad *);
+static bool waitMemoryBusy(struct W25QQuad *);
 static void writeEnable(struct W25QQuad *, bool);
-static void writeStatusRegister(struct W25QQuad *, uint8_t, uint8_t, bool);
+static void writeStatusRegister(struct W25QQuad *, uint8_t, uint8_t);
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInit(void *, const void *);
 static void memoryDeinit(void *);
@@ -74,6 +77,7 @@ static void busAcquire(struct W25QQuad *memory)
   ifSetParam(memory->spim, IF_ACQUIRE, nullptr);
 
   ifSetParam(memory->spim, IF_SPIM_MODE, &(uint8_t){0});
+  ifSetParam(memory->spim, IF_SPIM_TIMEOUT, &(uint32_t){DEFAULT_TIMEOUT_MS});
   ifSetParam(memory->spim, memory->quad ? IF_SPIM_QUAD : IF_SPIM_DUAL, nullptr);
 
   if (memory->blocking)
@@ -106,7 +110,7 @@ static bool changeDriverStrength(struct W25QQuad *memory,
 
   if (current != expected)
   {
-    writeStatusRegister(memory, CMD_WRITE_STATUS_REGISTER_3, expected, false);
+    writeStatusRegister(memory, CMD_WRITE_STATUS_REGISTER_3, expected);
     current = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_3);
   }
 
@@ -142,7 +146,7 @@ static bool changeQuadMode(struct W25QQuad *memory, bool enabled)
 
   if (current != expected)
   {
-    writeStatusRegister(memory, CMD_WRITE_STATUS_REGISTER_2, expected, false);
+    writeStatusRegister(memory, CMD_WRITE_STATUS_REGISTER_2, expected);
     current = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_2);
   }
 
@@ -241,11 +245,12 @@ static void interruptHandler(void *argument)
   bool event = false;
 
   assert(memory->context.state != STATE_IDLE
+      && memory->context.state != STATE_TIMEOUT
       && memory->context.state != STATE_ERROR);
 
   if (status != E_OK)
   {
-    memory->context.state = STATE_ERROR;
+    memory->context.state = status == E_TIMEOUT ? STATE_TIMEOUT : STATE_ERROR;
     event = true;
 
     memory->context.buffer = nullptr;
@@ -526,15 +531,15 @@ static uint8_t readStatusRegister(struct W25QQuad *memory, uint8_t command)
   return data;
 }
 /*----------------------------------------------------------------------------*/
-static void waitMemoryBusy(struct W25QQuad *memory)
+static bool waitMemoryBusy(struct W25QQuad *memory)
 {
-  uint8_t status;
+  assert(memory->blocking);
 
-  do
-  {
-    status = readStatusRegister(memory, CMD_READ_STATUS_REGISTER_1);
-  }
-  while (status & SR1_BUSY);
+  /* The polling timeout is enforced by the underlying interface */
+  pollStatusRegister(memory, CMD_READ_STATUS_REGISTER_1, 0);
+
+  /* Check the result of the polling operation */
+  return ifGetParam(memory->spim, IF_STATUS, nullptr) == E_OK;
 }
 /*----------------------------------------------------------------------------*/
 static void writeEnable(struct W25QQuad *memory, bool nonvolatile)
@@ -554,10 +559,10 @@ static void writeEnable(struct W25QQuad *memory, bool nonvolatile)
 }
 /*----------------------------------------------------------------------------*/
 static void writeStatusRegister(struct W25QQuad *memory, uint8_t command,
-    uint8_t value, bool nonvolatile)
+    uint8_t value)
 {
   /* Enable write mode */
-  writeEnable(memory, nonvolatile);
+  writeEnable(memory, false);
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &command);
   ifSetParam(memory->spim, IF_SPIM_DATA_LENGTH,
@@ -570,9 +575,7 @@ static void writeStatusRegister(struct W25QQuad *memory, uint8_t command,
   ifSetParam(memory->spim, IF_SPIM_DATA_SERIAL, nullptr);
 
   ifWrite(memory->spim, &value, 1);
-
-  /* Wait until write operation is completed */
-  waitMemoryBusy(memory);
+  /* Busy bit polling is not needed after a write to the volatile register */
 }
 /*----------------------------------------------------------------------------*/
 void w25MemoryMappingDisable(struct W25QQuad *memory)
@@ -791,15 +794,14 @@ static enum Result memoryGetParam(void *object, int parameter, void *data)
     case IF_STATUS:
       if (!memory->blocking)
       {
-        if (memory->context.state == STATE_ERROR)
+        if (memory->context.state == STATE_TIMEOUT)
+          return E_TIMEOUT;
+        else if (memory->context.state == STATE_ERROR)
           return E_INTERFACE;
         else if (memory->context.state != STATE_IDLE)
           return E_BUSY;
-        else
-          return E_OK;
       }
-      else
-        return E_OK;
+      return E_OK;
 
     default:
       return E_INVALID;
@@ -815,6 +817,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
     case IF_FLASH_ERASE_BLOCK:
     {
       const uint32_t position = *(const uint32_t *)data;
+      enum Result res = E_OK;
 
       if (position < memory->capacity)
       {
@@ -825,10 +828,9 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           busAcquire(memory);
           writeEnable(memory, true);
           eraseBlock64KB(memory, position);
-          waitMemoryBusy(memory);
+          if (!waitMemoryBusy(memory))
+            res = E_TIMEOUT;
           busRelease(memory);
-
-          return E_OK;
         }
         else
         {
@@ -843,16 +845,19 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           busAcquire(memory);
           writeEnable(memory, true);
 
-          return E_BUSY;
+          res = E_BUSY;
         }
       }
       else
-        return E_ADDRESS;
+        res = E_ADDRESS;
+
+      return res;
     }
 
     case IF_FLASH_ERASE_SECTOR:
     {
       const uint32_t position = *(const uint32_t *)data;
+      enum Result res = E_OK;
 
       if (position < memory->capacity)
       {
@@ -863,10 +868,9 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           busAcquire(memory);
           writeEnable(memory, true);
           eraseSector4KB(memory, position);
-          waitMemoryBusy(memory);
+          if (!waitMemoryBusy(memory))
+            res = E_TIMEOUT;
           busRelease(memory);
-
-          return E_OK;
         }
         else
         {
@@ -881,11 +885,13 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           busAcquire(memory);
           writeEnable(memory, true);
 
-          return E_BUSY;
+          res = E_BUSY;
         }
       }
       else
-        return E_ADDRESS;
+        res = E_ADDRESS;
+
+      return res;
     }
 
     case IF_FLASH_SUSPEND:
@@ -1001,7 +1007,9 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
 
       writeEnable(memory, true);
       pageProgram(memory, position, data, chunk);
-      waitMemoryBusy(memory);
+
+      if (!waitMemoryBusy(memory))
+        break;
 
       left -= chunk;
       data += chunk;
@@ -1010,6 +1018,7 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
 
     busRelease(memory);
 
+    length -= left;
     memory->position += length;
     if (memory->position == memory->capacity)
       memory->position = 0;

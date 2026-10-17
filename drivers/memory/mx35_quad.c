@@ -8,12 +8,17 @@
 #include <dpm/memory/mx35.h>
 #include <dpm/memory/mx35_defs.h>
 #include <dpm/memory/mx35_quad.h>
+#include <halm/delay.h>
 #include <halm/generic/flash.h>
 #include <halm/generic/spim.h>
 #include <xcore/memory.h>
 #include <assert.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
+#define DEFAULT_TIMEOUT_MS      10 /* Milliseconds */
+#define FEATURE_WRITE_DELAY_US  1 /* Microseconds */
+#define FEATURE_WRITE_RETRIES   30
+
 enum
 {
   STATE_IDLE,
@@ -27,6 +32,7 @@ enum
   STATE_ERASE_ENABLE,
   STATE_ERASE_START,
   STATE_ERASE_WAIT,
+  STATE_TIMEOUT,
   STATE_ERROR
 };
 
@@ -52,9 +58,9 @@ static void pageRead(struct MX35Quad *, uint32_t);
 static void pollFeatureRegister(struct MX35Quad *, uint8_t, uint8_t);
 static struct DeviceId readDeviceId(struct MX35Quad *);
 static uint8_t readFeatureRegister(struct MX35Quad *, uint8_t);
-static void waitMemoryBusy(struct MX35Quad *);
+static bool waitMemoryBusy(struct MX35Quad *);
 static void writeEnable(struct MX35Quad *);
-static void writeFeatureRegister(struct MX35Quad *, uint8_t, uint8_t);
+static bool writeFeatureRegister(struct MX35Quad *, uint8_t, uint8_t);
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInit(void *, const void *);
 static void memoryDeinit(void *);
@@ -93,6 +99,7 @@ static void busAcquire(struct MX35Quad *memory)
   ifSetParam(memory->spim, IF_ACQUIRE, nullptr);
 
   ifSetParam(memory->spim, IF_SPIM_MODE, &((uint8_t){0}));
+  ifSetParam(memory->spim, IF_SPIM_TIMEOUT, &(uint32_t){DEFAULT_TIMEOUT_MS});
   ifSetParam(memory->spim, memory->quad ? IF_SPIM_QUAD : IF_SPIM_DUAL, nullptr);
 
   if (memory->blocking)
@@ -216,7 +223,9 @@ static bool changeErrorCorrectionMode(struct MX35Quad *memory, bool enabled)
 
   if (current != expected)
   {
-    writeFeatureRegister(memory, FEATURE_CFG, expected);
+    if (!writeFeatureRegister(memory, FEATURE_CFG, expected))
+      return false;
+
     current = readFeatureRegister(memory, FEATURE_CFG);
   }
 
@@ -231,7 +240,9 @@ static bool changeQuadMode(struct MX35Quad *memory, bool enabled)
 
   if (current != expected)
   {
-    writeFeatureRegister(memory, FEATURE_CFG, expected);
+    if (!writeFeatureRegister(memory, FEATURE_CFG, expected))
+      return false;
+
     current = readFeatureRegister(memory, FEATURE_CFG);
   }
 
@@ -253,7 +264,9 @@ static bool disableBlockProtection(struct MX35Quad *memory)
 
   if (value)
   {
-    writeFeatureRegister(memory, FEATURE_BP, 0);
+    if (!writeFeatureRegister(memory, FEATURE_BP, 0))
+      return false;
+
     value = readFeatureRegister(memory, FEATURE_BP);
   }
 
@@ -283,11 +296,12 @@ static void interruptHandler(void *argument)
   bool event = false;
 
   assert(memory->context.state != STATE_IDLE
+      && memory->context.state != STATE_TIMEOUT
       && memory->context.state != STATE_ERROR);
 
   if (status != E_OK)
   {
-    memory->context.state = STATE_ERROR;
+    memory->context.state = status == E_TIMEOUT ? STATE_TIMEOUT : STATE_ERROR;
     event = true;
 
     memory->context.buffer = 0;
@@ -523,15 +537,15 @@ static uint8_t readFeatureRegister(struct MX35Quad *memory, uint8_t feature)
   return data;
 }
 /*----------------------------------------------------------------------------*/
-static void waitMemoryBusy(struct MX35Quad *memory)
+static bool waitMemoryBusy(struct MX35Quad *memory)
 {
-  uint8_t status;
+  assert(memory->blocking);
 
-  do
-  {
-    status = readFeatureRegister(memory, FEATURE_STATUS);
-  }
-  while (status & FR_STATUS_OIP);
+  /* The polling timeout is enforced by the underlying interface */
+  pollFeatureRegister(memory, FEATURE_STATUS, 0);
+
+  /* Check the result of the polling operation */
+  return ifGetParam(memory->spim, IF_STATUS, nullptr) == E_OK;
 }
 /*----------------------------------------------------------------------------*/
 static void writeEnable(struct MX35Quad *memory)
@@ -547,17 +561,19 @@ static void writeEnable(struct MX35Quad *memory)
   ifWrite(memory->spim, nullptr, 0);
 }
 /*----------------------------------------------------------------------------*/
-static void writeFeatureRegister(struct MX35Quad *memory, uint8_t feature,
-    uint8_t value)
+static bool writeFeatureRegister(struct MX35Quad *memory,
+    uint8_t feature, uint8_t value)
 {
   const uint32_t address = toLittleEndian32(feature);
-  [[maybe_unused]] enum Result res;
+  uint16_t retries = FEATURE_WRITE_RETRIES;
+  uint8_t status;
 
   /* Enable write mode */
   writeEnable(memory);
 
   /* Check for non-standard address length support */
-  res = ifSetParam(memory->spim, IF_SPIM_ADDRESS_8, &address);
+  [[maybe_unused]] const enum Result res =
+      ifSetParam(memory->spim, IF_SPIM_ADDRESS_8, &address);
   assert(res == E_OK);
 
   ifSetParam(memory->spim, IF_SPIM_COMMAND, &((uint8_t){CMD_SET_FEATURE}));
@@ -573,7 +589,14 @@ static void writeFeatureRegister(struct MX35Quad *memory, uint8_t feature,
   ifWrite(memory->spim, &value, 1);
 
   /* Wait until write operation is completed */
-  waitMemoryBusy(memory);
+  do
+  {
+    status = readFeatureRegister(memory, FEATURE_STATUS);
+    udelay(FEATURE_WRITE_DELAY_US);
+  }
+  while ((status & FR_STATUS_OIP) && --retries);
+
+  return retries != 0;
 }
 /*----------------------------------------------------------------------------*/
 static enum Result memoryInit(void *object, const void *configBase)
@@ -688,15 +711,14 @@ static enum Result memoryGetParam(void *object, int parameter, void *data)
     case IF_STATUS:
       if (!memory->blocking)
       {
-        if (memory->context.state == STATE_ERROR)
+        if (memory->context.state == STATE_TIMEOUT)
+          return E_TIMEOUT;
+        else if (memory->context.state == STATE_ERROR)
           return E_INTERFACE;
         else if (memory->context.state != STATE_IDLE)
           return E_BUSY;
-        else
-          return E_OK;
       }
-      else
-        return E_OK;
+      return E_OK;
 
     default:
       return E_INVALID;
@@ -712,6 +734,7 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
     case IF_FLASH_ERASE_BLOCK:
     {
       const uint32_t position = *(const uint32_t *)data;
+      enum Result res = E_OK;
 
       if (position < memory->capacity)
       {
@@ -722,10 +745,9 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           busAcquire(memory);
           writeEnable(memory);
           eraseBlock(memory, position);
-          waitMemoryBusy(memory);
+          if (!waitMemoryBusy(memory))
+            res = E_TIMEOUT;
           busRelease(memory);
-
-          return E_OK;
         }
         else
         {
@@ -740,11 +762,13 @@ static enum Result memorySetParam(void *object, int parameter, const void *data)
           busAcquire(memory);
           writeEnable(memory);
 
-          return E_BUSY;
+          res = E_BUSY;
         }
       }
       else
-        return E_ADDRESS;
+        res = E_ADDRESS;
+
+      return res;
     }
 
     default:
@@ -814,7 +838,10 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
       const uint32_t chunk = MIN(available, left);
 
       pageRead(memory, position);
-      waitMemoryBusy(memory);
+
+      if (!waitMemoryBusy(memory))
+        break;
+
       cacheRead(memory, position, data, chunk);
 
       left -= chunk;
@@ -824,6 +851,7 @@ static size_t memoryRead(void *object, void *buffer, size_t length)
 
     busRelease(memory);
 
+    length -= left;
     memory->position += length;
     if (memory->position == memory->capacity)
       memory->position = 0;
@@ -868,7 +896,9 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
       writeEnable(memory);
       cacheWrite(memory, position, data, chunk);
       pageProgram(memory, position);
-      waitMemoryBusy(memory);
+
+      if (!waitMemoryBusy(memory))
+        break;
 
       left -= chunk;
       data += chunk;
@@ -877,6 +907,7 @@ static size_t memoryWrite(void *object, const void *buffer, size_t length)
 
     busRelease(memory);
 
+    length -= left;
     memory->position += length;
     if (memory->position == memory->capacity)
       memory->position = 0;

@@ -6,10 +6,10 @@
 
 #include <dpm/radio/tea57xx.h>
 #include <dpm/radio/tea57xx_defs.h>
-#include <halm/generic/i2c.h>
 #include <halm/timer.h>
 #include <halm/wq.h>
 #include <xcore/atomic.h>
+#include <xcore/interface.h>
 #include <assert.h>
 #include <string.h>
 /*----------------------------------------------------------------------------*/
@@ -34,7 +34,7 @@ static inline uint32_t frequencyFromMultiplier(const struct TEA57XX *,
 static inline uint16_t frequencyToMultiplier(const struct TEA57XX *,
     uint32_t);
 
-static void busInit(struct TEA57XX *, bool);
+static void busInit(struct TEA57XX *);
 static void invokeUpdate(struct TEA57XX *);
 static void loadDefaultConfig(struct TEA57XX *);
 static void onBusEvent(void *);
@@ -74,7 +74,7 @@ static inline uint16_t frequencyToMultiplier(const struct TEA57XX *radio,
   return ((int32_t)frequency + intermediate) / reference;
 }
 /*----------------------------------------------------------------------------*/
-static void busInit(struct TEA57XX *radio, bool read)
+static void busInit(struct TEA57XX *radio)
 {
   /* Lock the interface */
   ifSetParam(radio->bus, IF_ACQUIRE, nullptr);
@@ -85,9 +85,6 @@ static void busInit(struct TEA57XX *radio, bool read)
 
   if (radio->rate)
     ifSetParam(radio->bus, IF_RATE, &radio->rate);
-
-  if (read)
-    ifSetParam(radio->bus, IF_I2C_REPEATED_START, nullptr);
 
   /* Start bus watchdog */
   startBusTimeout(radio->timer);
@@ -359,7 +356,7 @@ bool tea57xxUpdate(void *object)
         atomicFetchAnd(&radio->flags, ~FLAG_STATUS);
         radio->state = STATE_READ_DATA_WAIT;
 
-        busInit(radio, true);
+        busInit(radio);
         ifRead(radio->bus, radio->buffer, sizeof(radio->buffer));
         busy = true;
         break;
@@ -399,7 +396,7 @@ bool tea57xxUpdate(void *object)
         radio->state = STATE_WRITE_DATA_WAIT;
 
         memcpy(radio->buffer, radio->config, sizeof(radio->buffer));
-        busInit(radio, false);
+        busInit(radio);
         ifWrite(radio->bus, radio->buffer, sizeof(radio->buffer));
 
         busy = true;
@@ -437,7 +434,7 @@ bool tea57xxUpdate(void *object)
         updateSearchFrequency(radio);
 
         memcpy(radio->buffer, radio->config, sizeof(radio->buffer));
-        busInit(radio, false);
+        busInit(radio);
         ifWrite(radio->bus, radio->buffer, sizeof(radio->buffer));
 
         busy = true;

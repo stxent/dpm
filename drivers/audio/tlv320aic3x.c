@@ -946,7 +946,7 @@ static void onBusEvent(void *object)
       busy = true;
       codec->transfer.state = STATE_CHECK_REQUEST_WAIT;
 
-      /* Reconfigure bus and enable watchdof */
+      /* Reconfigure bus and enable watchdog */
       busInitRead(codec);
 
       /* Page 0 selected, write register address */
